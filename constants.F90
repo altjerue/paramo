@@ -1,14 +1,6 @@
 module constants
-   use, intrinsic :: iso_fortran_env
+   use data_types
    implicit none
-
-   integer, parameter :: sp=kind(1.0)  ! double precision
-   integer, parameter :: dp=kind(1.0d0)  ! double precision
-   ! * Note: kind(X) gives the kind of number X. Such value is compiler and processor dependent.
-   ! integer, parameter :: sp = REAL32
-   ! integer, parameter :: dp = REAL64
-   ! integer, parameter :: qp = REAL128
-
 
    !
    !  #    #   ##   ##### #    #
@@ -23,6 +15,7 @@ module constants
       twopi = 6.283185307179586476925287d0, &
       sqrtpi = 1.772453850905516027298167d0, &
       sqrt2 = 1.414213562373095048801689d0, &
+      isqrt2 = 0.707106781186547524400844d0, &
       lzero = -460.517018598809136803598291d0 ! log(1e-200)
 
 
@@ -35,9 +28,9 @@ module constants
    ! #      #    #   #    ####
    !
    real(dp), parameter :: &
-      cspeed  = 2.99792458d10, &                    ! cm / s
-      cspeed2 = 8.987551787368177d20, &             ! cm^2 / s^2
-      cspeed4 = 8.07760871306249d41, &              ! cm^4 / s^4
+      cLight  = 2.99792458d10, &                    ! cm / s
+      cLight2 = 8.987551787368177d20, &             ! cm^2 / s^2
+      cLight4 = 8.07760871306249d41, &              ! cm^4 / s^4
       mass_prot = 1.672621898d-24, &                ! g
       mass_elec = 9.10938356d-28, &                 ! g
       eCharge = 4.80320467299766d-10, &             ! cm^(3/2) g^(1/2) / s
@@ -81,6 +74,5 @@ module constants
    real(dp), parameter :: &
       chunche_c100g100 = 2.2619939050180366385d-6, &
       chunche_c100g20  = 2.1157699720918349273d-1
-
 
 end module constants

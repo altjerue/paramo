@@ -1,5 +1,5 @@
 module h5_inout
-   use constants
+   use data_types
    use hdf5
    implicit none
 

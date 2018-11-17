@@ -13,6 +13,7 @@
 !
 ! *************************************************************************
 module misc
+   use data_types
    implicit none
    
 contains
@@ -20,12 +21,12 @@ contains
    ! :::: Polinomial interpolation ::::
    subroutine polint(xa, ya, x, y, dy)
       implicit none
-      double precision, intent(in) :: x
-      double precision, dimension(:), intent(in) :: xa,ya
-      double precision, intent(out) :: y,dy
+      real(dp), intent(in) :: x
+      real(dp), dimension(:), intent(in) :: xa,ya
+      real(dp), intent(out) :: y,dy
       integer :: m,n,ns
       integer, dimension(1) :: iminloc
-      double precision, dimension(size(xa)) :: c,d,den,ho
+      real(dp), dimension(size(xa)) :: c,d,den,ho
       
       if ( size(xa) == size(ya) ) then
          n = size(xa)
@@ -64,9 +65,9 @@ contains
    subroutine linint(x1,x2,x,y1,y2,y)
    implicit none
    
-   doubleprecision, intent(out) :: y
-   doubleprecision, intent(in) :: y1,y2,x1,x2,x
-   doubleprecision :: dx1,dx2,dx,dy1,dy2,dy3
+   real(dp), intent(out) :: y
+   real(dp), intent(in) :: y1,y2,x1,x2,x
+   real(dp) :: dx1,dx2,dx,dy1,dy2,dy3
    
    dx = abs(x2 - x1)
    dx1 = abs(x1 - x)
@@ -109,11 +110,11 @@ contains
    function arth(first,increment,n)
       implicit none
       integer, parameter :: NPAR_ARTH=16,NPAR2_ARTH=8
-      double precision, intent(in) :: first,increment
+      real(dp), intent(in) :: first,increment
       integer, intent(in) :: n
-      double precision, dimension(n) :: arth
+      real(dp), dimension(n) :: arth
       integer :: k,k2
-      double precision :: temp
+      real(dp) :: temp
       if (n > 0) arth(1)=first
       if (n <= NPAR_ARTH) then
          do k=2,n
@@ -141,8 +142,8 @@ contains
    function locate(xx, x, in_bounds)
       implicit none
 
-      double precision, intent(in) :: x
-      double precision, intent(in), dimension(:) :: xx
+      real(dp), intent(in) :: x
+      real(dp), intent(in), dimension(:) :: xx
       logical, intent(in), optional :: in_bounds
 
       integer :: locate
@@ -199,10 +200,10 @@ contains
       implicit none
       
       integer, intent(in) :: num_coefs
-      double precision, intent(in) :: x,xmin,xmax
-      double precision, intent(in), dimension(:) :: coef
+      real(dp), intent(in) :: x,xmin,xmax
+      real(dp), intent(in), dimension(:) :: coef
       integer :: j
-      double precision :: d,dd,y,y2,sv,res
+      real(dp) :: d,dd,y,y2,sv,res
       
       if ((x-xmin)*(x-xmax) > 0d0) then
          print*,x,xmin,xmax
@@ -237,11 +238,11 @@ contains
       !     "Numberical Recipes".
       !
       implicit none
-      doubleprecision, dimension(:), intent(in) :: a,b,c,r
-      doubleprecision, dimension(:), intent(out) :: u
-      doubleprecision, dimension(size(b)) :: gam 
+      real(dp), dimension(:), intent(in) :: a,b,c,r
+      real(dp), dimension(:), intent(out) :: u
+      real(dp), dimension(size(b)) :: gam 
       integer :: n,j
-      doubleprecision :: bet
+      real(dp) :: bet
       
       n = assert_eq((/ size(a) + 1, size(b), size(c) + 1, size(r), size(u) /), 'tridag_ser')
       bet = b(1)
@@ -299,7 +300,7 @@ contains
    
    function char2double(c) result(d)
       character(len=*), intent(in) :: c
-      double precision :: d
+      real(dp) :: d
       read(c, *) d
       return
    end function char2double
@@ -307,7 +308,7 @@ contains
    function zeros1D(n) result(a)
       implicit none
       integer, intent(in) :: n
-      doubleprecision, dimension(n) :: a
+      real(dp), dimension(n) :: a
       a = 0d0
    end function zeros1D
    
@@ -318,8 +319,8 @@ contains
    function dbesseljn(nu, z) result(dbj)
       implicit none
       integer, intent(in) :: nu
-      double precision, intent(in) :: z
-      double precision :: dbj
+      real(dp), intent(in) :: z
+      real(dp) :: dbj
       !dbj = fgsl_sf_bessel_jcn(nu - 1, z) - nu * fgsl_sf_bessel_jcn(nu, z) / z
       !dbj = dbesjn(nu - 1, z) - dble(nu) * dbesjn(nu, z) / z
       if ( dabs(z) < 1d-9 ) then

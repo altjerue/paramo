@@ -8,14 +8,10 @@
 !  
 ! ************************************************************************
 module SRtoolkit
+   use data_types
    use constants
    use K2
    implicit none
-   
-   double precision, parameter :: sqrt2=1.414213562373095048801688d0
-   double precision, parameter :: isqrt2=0.707106781186547524400844d0
-   
-   public
 
    interface bofg
       module procedure bofg_s
@@ -79,8 +75,8 @@ contains
    !      ::::: Converting Lorentz factor to beta :::::
    !
    function bofg_s(g) result(b)
-      double precision, intent(in) :: g
-      double precision :: b
+      real(dp), intent(in) :: g
+      real(dp) :: b
       if ( g <= 1d0 ) then
          b = 0d0
       else
@@ -89,9 +85,9 @@ contains
    end function bofg_s
    
    function bofg_v(g) result(b)
-      double precision, intent(in), dimension(:) :: g
+      real(dp), intent(in), dimension(:) :: g
       integer :: i
-      double precision, dimension(size(g)) :: b
+      real(dp), dimension(size(g)) :: b
       do i = 1, size(g)
          if ( g(i) <= 1d0 ) then
             b(i) = 0d0
@@ -105,14 +101,14 @@ contains
    !      ::::: Converting speed, beta, to Lorentz factor :::::
    !
    function gofb_s(b) result(g)
-      double precision, intent(in) :: b
-      double precision :: g
+      real(dp), intent(in) :: b
+      real(dp) :: g
       g = 1d0 / dsqrt(1d0 - b**2)
    end function gofb_s
    
    function gofb_v(b) result(g)
-      double precision, intent(in), dimension(:) :: b
-      double precision, dimension(size(b)) :: g
+      real(dp), intent(in), dimension(:) :: b
+      real(dp), dimension(size(b)) :: g
       g = 1d0 / dsqrt(1d0 - b**2)
    end function gofb_v
    
@@ -120,14 +116,14 @@ contains
    !      ::::: Calculating gamma * beta(gamma) :::::
    !
    function gbofg_s(g) result(p)
-      double precision, intent(in) :: g
-      double precision :: p
+      real(dp), intent(in) :: g
+      real(dp) :: p
       p = dsqrt(g**2 - 1d0)
    end function gbofg_s
    
    function gbofg_v(g) result(p)
-      double precision, intent(in), dimension(:) :: g
-      double precision, dimension(size(g)) :: p
+      real(dp), intent(in), dimension(:) :: g
+      real(dp), dimension(size(g)) :: p
       p = dsqrt(g**2 - 1d0)
    end function gbofg_v
    
@@ -135,8 +131,8 @@ contains
    !     :::::  1 / (gamma * beta(gamma))^2 = 1 / (gamma^2 - 1)  :::::
    !
    function one_over_gb2_s(g) result(p)
-      double precision, intent(in) :: g
-      double precision :: p
+      real(dp), intent(in) :: g
+      real(dp) :: p
       if ( g < 1.5d0 ) then
          p = 0.5d0 * (g - 1d0) - 0.25d0 + 0.125d0 * (g - 1d0)
       else
@@ -146,8 +142,8 @@ contains
    
    function one_over_gb2_v(g) result(p)
       integer :: i
-      double precision, intent(in), dimension(:) :: g
-      double precision, dimension(size(g)) :: p
+      real(dp), intent(in), dimension(:) :: g
+      real(dp), dimension(size(g)) :: p
       do i=1,size(g)
          if ( g(i) < 1.5d0 ) then
             p(i) = 0.5d0 * (g(i) - 1d0) - 0.25d0 + 0.125d0 * (g(i) - 1d0)
@@ -162,8 +158,8 @@ contains
    !     ::::: Calculating gamma(gamma * beta) :::::
    !
    function gofgb_s(l) result(g)
-      double precision, intent(in) :: l
-      double precision :: g
+      real(dp), intent(in) :: l
+      real(dp) :: g
       if (l > 1d-2) then
          g = dsqrt(l**2 + 1d0)
       else
@@ -172,9 +168,9 @@ contains
    end function gofgb_s
    
    function gofgb_v(l) result(g)
-      double precision, intent(in), dimension(:) :: l
+      real(dp), intent(in), dimension(:) :: l
       integer :: i
-      double precision, dimension(size(l)) :: g
+      real(dp), dimension(size(l)) :: g
       do i=1,size(g)
          if (l(i) > 1d-2) then
             g(i) = dsqrt(l(i)**2 + 1d0)
@@ -190,8 +186,8 @@ contains
    !
    function Doppler(gamma, mu) result(D)
       implicit none
-      double precision, intent(in) :: gamma, mu
-      double precision :: D
+      real(dp), intent(in) :: gamma, mu
+      real(dp) :: D
       D = 1d0 / (gamma * (1d0 + bofg(gamma) * mu))
    end function Doppler
 
@@ -201,8 +197,8 @@ contains
    !
    function mu_obs_f(gamma, mu) result(muo)
       implicit none
-      double precision, intent(in) :: gamma, mu
-      double precision :: muo
+      real(dp), intent(in) :: gamma, mu
+      real(dp) :: muo
       muo = (mu + bofg(gamma)) / (1 + bofg(gamma) * mu)
    end function mu_obs_f
 
@@ -212,8 +208,8 @@ contains
    !
    function mu_com_f(gamma, mu) result(muc)
       implicit none
-      double precision, intent(in) :: gamma, mu
-      double precision :: muc
+      real(dp), intent(in) :: gamma, mu
+      real(dp) :: muc
       muc = (mu - bofg(gamma)) / (1 - bofg(gamma) * mu)
    end function mu_com_f
 
@@ -223,18 +219,18 @@ contains
    !
    function nu_obs_s(nu, z, gamma, mu) result(nuobs)
       implicit none
-      double precision, intent(in) :: nu, z, gamma, mu
-      double precision :: D,nuobs
+      real(dp), intent(in) :: nu, z, gamma, mu
+      real(dp) :: D,nuobs
       D = Doppler(gamma, mu)
       nuobs = nu * D / (1d0 + z)
     end function nu_obs_s
 
     function nu_obs_v(nu, z, gamma, mu) result(nuobs)
       implicit none
-      double precision, intent(in) :: z, gamma, mu
-      double precision, intent(in), dimension(:) :: nu
-      double precision :: D
-      double precision, dimension(size(nu)) :: nuobs
+      real(dp), intent(in) :: z, gamma, mu
+      real(dp), intent(in), dimension(:) :: nu
+      real(dp) :: D
+      real(dp), dimension(size(nu)) :: nuobs
       D = Doppler(gamma, mu)
       nuobs = nu * D / (1d0 + z)
     end function nu_obs_v
@@ -245,18 +241,18 @@ contains
    !
    function nu_com_s(nu, z, gamma, mu) result(nucom)
       implicit none
-      double precision, intent(in) :: nu, z, gamma, mu
-      double precision :: D,nucom
+      real(dp), intent(in) :: nu, z, gamma, mu
+      real(dp) :: D,nucom
       D = Doppler(gamma, mu)
       nucom = nu * (1d0 + z) / D
    end function nu_com_s
 
     function nu_com_v(nu, z, gamma, mu) result(nucom)
       implicit none
-      double precision, intent(in) :: z, gamma, mu
-      double precision, intent(in), dimension(:) :: nu
-      double precision :: D
-      double precision, dimension(size(nu)) :: nucom
+      real(dp), intent(in) :: z, gamma, mu
+      real(dp), intent(in), dimension(:) :: nu
+      real(dp) :: D
+      real(dp), dimension(size(nu)) :: nucom
       D = Doppler(gamma, mu)
       nucom = nu * (1d0 + z) / D
    end function nu_com_v
@@ -269,17 +265,17 @@ contains
    !
    function t_obs_s(t, z, gamma, x, mu) result(tobs)
       implicit none
-      double precision, intent(in) :: t, z, gamma, x, mu
-      double precision :: tobs
-      tobs = (1d0 + z) * ((t / Doppler(gamma, mu)) + (gamma * x * (bofg(gamma) - mu)) / cspeed)
+      real(dp), intent(in) :: t, z, gamma, x, mu
+      real(dp) :: tobs
+      tobs = (1d0 + z) * ((t / Doppler(gamma, mu)) + (gamma * x * (bofg(gamma) - mu)) / cLight)
    end function t_obs_s
 
    function t_obs_v(t, z, gamma, x, mu) result(tobs)
       implicit none
-      double precision, intent(in) :: z, gamma, x, mu
-      double precision, intent(in), dimension(:) :: t
-      double precision, dimension(size(t)) :: tobs
-      tobs = (1d0 + z) * ((t / Doppler(gamma, mu)) + (gamma * x * (bofg(gamma) - mu)) / cspeed)
+      real(dp), intent(in) :: z, gamma, x, mu
+      real(dp), intent(in), dimension(:) :: t
+      real(dp), dimension(size(t)) :: tobs
+      tobs = (1d0 + z) * ((t / Doppler(gamma, mu)) + (gamma * x * (bofg(gamma) - mu)) / cLight)
    end function t_obs_v
 
 
@@ -290,17 +286,17 @@ contains
    !
    function t_com_s(t, z, gamma, x, mu) result(tcom)
       implicit none
-      double precision, intent(in) :: t, z, gamma, x, mu
-      double precision :: tcom
-      tcom = Doppler(gamma, mu) * ((t / (1d0 + z)) + (gamma * x * (mu - bofg(gamma))) / cspeed)
+      real(dp), intent(in) :: t, z, gamma, x, mu
+      real(dp) :: tcom
+      tcom = Doppler(gamma, mu) * ((t / (1d0 + z)) + (gamma * x * (mu - bofg(gamma))) / cLight)
    end function t_com_s
 
    function t_com_v(t, z, gamma, x, mu) result(tcom)
       implicit none
-      double precision, intent(in) :: z,gamma, x, mu
-      double precision, intent(in), dimension(:) :: t
-      double precision, dimension(size(t)) :: tcom
-      tcom = Doppler(gamma, mu) * ((t / (1d0 + z)) + (gamma * x * (mu - bofg(gamma))) / cspeed)
+      real(dp), intent(in) :: z,gamma, x, mu
+      real(dp), intent(in), dimension(:) :: t
+      real(dp), dimension(size(t)) :: tcom
+      tcom = Doppler(gamma, mu) * ((t / (1d0 + z)) + (gamma * x * (mu - bofg(gamma))) / cLight)
    end function t_com_v
 
 
@@ -316,27 +312,23 @@ contains
    ! :::::  Relativistic Maxwell distribution  :::::
    function RMaxwell_s(g, th) result(rm)
       implicit none
-      double precision, intent(in) :: g, th
-      double precision :: rm
-      
+      real(dp), intent(in) :: g, th
+      real(dp) :: rm
+      call K2_init
       rm = dmax1(1d-200, g**2 * bofg(g) * dexp(-g / th) / (th * dexp(K2_func(-dlog(th)))))
-      
-      return
    end function RMaxwell_s
 
    function RMaxwell_v(g, th) result(rm)
       implicit none
       doubleprecision, intent(in) :: th
-      double precision, intent(in), dimension(:) :: g
+      real(dp), intent(in), dimension(:) :: g
       integer :: k
-      double precision, dimension(size(g)) :: rm
-      
+      real(dp), dimension(size(g)) :: rm
+      call K2_init
       do k=1,size(g)
          rm(k) = dmax1( 1d-200, g(k)**2 * bofg(g(k)) * dexp(-g(k) / th) &
          / (th * dexp(K2_func(-dlog(th)))) )
       enddo
-      
-      return
    end function RMaxwell_v
    
    ! :::::  Power-law distribution  :::::
@@ -371,15 +363,12 @@ contains
    !     Slope of the Relativistic Maxwell distribution
    !
    function dRMaxwell(g, th) result(drm)
-      use K2
       implicit none
-      double precision, intent(in) :: g, th
-      double precision :: drm
-      
+      real(dp), intent(in) :: g, th
+      real(dp) :: drm
+      call K2_init
       !!$drm = -((2d0 * g**(2) - 1d0) / (g**(2) - 1d0) - g / th)
       drm = (g - g**3 - th + 2 * th * g**2) * dexp(-g/th) / ( dsqrt(g**2 - 1d0) * th**2 * dexp(K2_func(-dlog(th))) )
-      
-      return
    end function dRMaxwell
 #endif
 

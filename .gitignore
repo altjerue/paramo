@@ -7,3 +7,4 @@
 *.backup
 *.dSYM
 .tramp_history
+x*
