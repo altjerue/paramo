@@ -13,9 +13,6 @@
 !
 ! *************************************************************************
 module misc
-#ifdef LLVV
-   use ifport
-#endif
    implicit none
    
 contains

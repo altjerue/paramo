@@ -15,7 +15,7 @@ CONTAINS
       DOUBLEPRECISION :: res
       DOUBLEPRECISION, INTENT(IN) :: a, s, eps
       
-      IF ((1d0/6d0) * LN3(a, eps) * (s - 1d0)**2.gt.eps) THEN
+      IF ((1d0 / 6d0) * LN3(a, eps) * (s - 1d0)**2 .gt. eps) THEN
          res = (1d0 - a**(1d0 - s)) / (s - 1d0)
       ELSE
          res = LN1(a, eps) - 5d-1 * LN2(a, eps) * (s - 1d0)
@@ -45,7 +45,7 @@ CONTAINS
       RETURN
    END FUNCTION Qinteg
    
-   function Q2integ(a,s,eps) result(res)
+   function Q2integ(a, s, eps) result(res)
       !              a
       !             /     -s    2
       !  ibq2func = | dx x   log (x)

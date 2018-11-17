@@ -1,12 +1,11 @@
 module radiation
    use constants
    use misc
-   use pwlinteg
+   use pwl_integ
    use SRtoolkit
    use anaFormulae
    !$ use omp_lib
    use magnetobrem
-   use syn_int
    implicit none
 
 contains
@@ -38,7 +37,8 @@ contains
                   if ( qq < SS(1) ) qq = SS(1)
                   if ( qq > SS(numSS) ) qq = SS(numSS)
                   if ( freqs(j) > dexp(XX(numXX)) * nuconst * B ) then
-                     jnu(j) = jnu(j) + j_int(freqs(j), B, nn(k), gg(k), gg(k + 1), qq)
+                     !!!!!!!! TODO integrate using RMA_trapzd
+                     ! jnu(j) = jnu(j) + j_int(freqs(j), B, nn(k), gg(k), gg(k + 1), qq)
                   else
                      if ( gg(k) < globgmax .and. gg(k + 1) <= globgmax ) then
                         jnu(j) = jnu(j) + &
@@ -48,16 +48,19 @@ contains
                         n_globgmx = nn(kglob) * (gg(kglob + 1) / gg(kglob))**qq
                         jnu(j) = jnu(j) + &
                            j_mb(freqs(j), B, nn(k), gg(k), globgmax, qq, RMA_new, chunche_c100g20, jtable) + &
-                           j_int(freqs(j), B, n_globgmx, globgmax, gg(k + 1), qq)
+                           !!!!!!!! TODO integrate using RMA_trapzd
+                           ! j_int(freqs(j), B, n_globgmx, globgmax, gg(k + 1), qq)
                      else
                         jnu(j) = jnu(j) + &
-                           j_int(freqs(j), B, nn(k), gg(k), gg(k + 1), qq)
+                           !!!!!!!! TODO integrate using RMA_trapzd
+                           ! j_int(freqs(j), B, nn(k), gg(k), gg(k + 1), qq)
                      end if
                   end if
                else
                   if ( qq > S(numS) ) qq = S(numS)
                   if ( qq < S(1) ) qq = S(1)
-                  jnu(j) = jnu(j) + j_int(freqs(j), B, nn(k), gg(k), gg(k + 1), qq)
+                  !!!!!!!! TODO integrate using RMA_trapzd
+                  ! jnu(j) = jnu(j) + j_int(freqs(j), B, nn(k), gg(k), gg(k + 1), qq)
                end if
             end if
          end do calc_jnu

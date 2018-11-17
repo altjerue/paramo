@@ -92,7 +92,7 @@ LOPT = $(OPTIMIZATION)
 ITOBS = xITobs
 
 # dependencies
-ITOBS_OBJ = IofTobs.o
+ITOBS_OBJ = misc.o h5_inout.o IofTobs.o
 
 # rules
 all: $(ITOBS)
@@ -103,8 +103,9 @@ all: $(ITOBS)
 	@echo $(MAKEFLAGS) >> make.log
 	@echo " ---------- " >> make.log
 
-	
-IofTobs.o: h5_inout.o
+
+h5_inout.o: constants.o
+IofTobs.o: constants.o h5_inout.o
 
 $(ITOBS): constants.o $(ITOBS_OBJ)
 	$(FC) $(LOPT) -o $@ $^

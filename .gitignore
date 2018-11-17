@@ -1,0 +1,9 @@
+*.mod
+*.o
+*~
+*.h5
+*.dat
+*.params
+*.backup
+*.dSYM
+.tramp_history

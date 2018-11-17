@@ -1,20 +1,86 @@
 module constants
+   use, intrinsic :: iso_fortran_env
    implicit none
 
-   double precision, parameter :: cspeed = 2.99792458d10, &
-        pi = 3.141592653589793238462643d0, &
-        sqrtpi = 1.772453850905516027298167d0, &
-        mp = 1.67262158d-24, &
-        me = 9.10938188d-28, &
-        echarge = 4.803204d-10, &
-        sigmaT = 6.6524586d-25, &
-        Planckh = 6.629069d-27, &
-        nuconst = 2.7992491077281560779657886d6, & ! eCharge / 2 * pi * m_e * cLight
-        jmbconst = 4.8352765842234213535181620d-29, & ! 2 * pi * eCharge**2 / cLight
-        ambconst = 2.6540088545187588392244135d-2, & ! pi * eCharge**2 / (me * cLight)
-        lzero = dlog(1d-200), &
-        lzero100 = dlog(1d-100), &
-        chunche_c100g100 = 2.2619939050180366385d-6, &
-        chunche_c100g20  = 2.1157699720918349273d-1
+   integer, parameter :: sp=kind(1.0)  ! double precision
+   integer, parameter :: dp=kind(1.0d0)  ! double precision
+   ! * Note: kind(X) gives the kind of number X. Such value is compiler and processor dependent.
+   ! integer, parameter :: sp = REAL32
+   ! integer, parameter :: dp = REAL64
+   ! integer, parameter :: qp = REAL128
+
+
+   !
+   !  #    #   ##   ##### #    #
+   !  ##  ##  #  #    #   #    #
+   !  # ## # #    #   #   ######
+   !  #    # ######   #   #    #
+   !  #    # #    #   #   #    #
+   !  #    # #    #   #   #    #
+   !
+   real(dp), parameter :: &
+      pi = 3.141592653589793238462643d0, &
+      twopi = 6.283185307179586476925287d0, &
+      sqrtpi = 1.772453850905516027298167d0, &
+      sqrt2 = 1.414213562373095048801689d0, &
+      lzero = -460.517018598809136803598291d0 ! log(1e-200)
+
+
+   !
+   ! #####  #    # #   #  ####
+   ! #    # #    #  # #  #
+   ! #    # ######   #    ####
+   ! #####  #    #   #        #
+   ! #      #    #   #   #    #
+   ! #      #    #   #    ####
+   !
+   real(dp), parameter :: &
+      cspeed  = 2.99792458d10, &                    ! cm / s
+      cspeed2 = 8.987551787368177d20, &             ! cm^2 / s^2
+      cspeed4 = 8.07760871306249d41, &              ! cm^4 / s^4
+      mass_prot = 1.672621898d-24, &                ! g
+      mass_elec = 9.10938356d-28, &                 ! g
+      eCharge = 4.80320467299766d-10, &             ! cm^(3/2) g^(1/2) / s
+      sigmaT = 6.6524587158d-25, &                  ! 1 / cm^2
+      hPlanck = 6.62607004d-27, &                   ! erg s
+      hbar = 1.0545718d-27, &                       ! erg s
+      kBoltz = 1.38064852d-16, &                    ! erg / K
+      Ggrav = 6.67408d-8, &                         ! c^3 / g / s^2
+      eVolt = 1.60218d-12, &                        ! erg
+      nuconst = 2.7992491077281560779657886d6, &    ! eCharge / (2 * pi * m_e * cLight)
+      jmbconst = 4.8352765842234213535181620d-29, & ! 2 * pi * eCharge**2 / cLight
+      ambconst = 2.6540088545187588392244135d-2  ! pi * eCharge**2 / (m_e * cLight)
+
+
+   !
+   !   ##    ####  ##### #####   ####
+   !  #  #  #        #   #    # #    #
+   ! #    #  ####    #   #    # #    #
+   ! ######      #   #   #####  #    #
+   ! #    # #    #   #   #   #  #    #
+   ! #    #  ####    #   #    #  ####
+   !
+   real(dp), parameter :: &
+      asto_unit = 1495978707d13, &          ! cm
+      solar_mass = 1.9884754153381438d33, & ! g
+      solar_radius = 6.957d10, &            ! cm
+      solar_lum = 3.828d33, &               ! erg / s
+      parsec = 3.085677581467192d18, &      ! cm
+      jansky = 1d-23, &                     ! erg / s cm^2 Hz
+      lightyr = 9.46073d17                  ! cm
+
+
+   !
+   ! #    # #    # #    # #####  ###### #####   ####
+   ! ##   # #    # ##  ## #    # #      #    # #
+   ! # #  # #    # # ## # #####  #####  #    #  ####
+   ! #  # # #    # #    # #    # #      #####       #
+   ! #   ## #    # #    # #    # #      #   #  #    #
+   ! #    #  ####  #    # #####  ###### #    #  ####
+   !
+   real(dp), parameter :: &
+      chunche_c100g100 = 2.2619939050180366385d-6, &
+      chunche_c100g20  = 2.1157699720918349273d-1
+
 
 end module constants

@@ -1,7 +1,7 @@
-program paramo
+subroutine paramo
    use constants
    use misc
-   use pwlinteg
+   use pwl_integ
    use hdf5
    use SRtoolkit
    use anaFormulae
@@ -486,4 +486,4 @@ program paramo
    write(*,*) '=======  FINISHED  ======='
    write(*,*) ''
 
-end program paramo
+end subroutine paramo

@@ -1,9 +1,48 @@
 program IofTobs
-
-   
+   use constants
+   use misc
+   use hdf5
+   use h5_inout
    implicit none
 
 
+   integer :: herror, numArgs
+   integer :: numdf, numdt
+   integer(HID_T) :: file_id, group_id
+
+   real(dp), allocatable, dimension(:) :: t
+
+   character(len=256) :: paramo_fname
+   character(len=*), parameter :: args_error = "Usage:"//new_line('A')//&
+   "   xITobs part-evol-file"//new_line('A')//&
+   "Options:"//new_line('A')//&
+   "   part-evol-file: File in HDF5 format from Paramo"
+
+   numArgs = command_argument_count()
+   ! call get_command_argument(0, program_name)
+
+   if (numArgs /= 1) call an_error(args_error)
+   call get_command_argument(1, paramo_fname)
+
+   ! Opening Paramo file
+   call h5open_f(herror)
+   call h5io_openf(paramo_fname, file_id, herror)
+   ! Reading from 'Params' group
+   call h5io_openg(file_id, 'Params', group_id, herror)
+   call h5io_rint0(group_id, 'numdf', numdf, herror)
+   call h5io_rint0(group_id, 'numdt', numdt, herror)
+
+   allocate(t(numdt))
+
+   ! Reading data
+   call h5io_rdble1(file_id, 'time', t, herror)
+   ! Closing everything
+   call h5io_closeg(group_id, herror)
+   call h5io_closef(file_id, herror)
+   call h5close_f(herror)
+
+
+#if 0
    write(*, *) ''
    write(*, *) '--> Moving to the observer frame'
 
@@ -39,6 +78,6 @@ program IofTobs
       end do obs_loop
    end do freq_loop
    !$OMP END PARALLEL DO
-
+#endif
 
 end program IofTobs
