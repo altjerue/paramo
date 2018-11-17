@@ -1,4 +1,5 @@
 subroutine paramo
+   use data_types
    use constants
    use misc
    use pwl_integ
