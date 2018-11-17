@@ -41,7 +41,6 @@ def build_LCs(nu_min, nu_max, only_load=True, Jy=False, eV=False, days=False, pa
     numdt = t.size
     Fnu = spec.flux_dens(Inu, dL, z, D, R)
     LC = spec.LightCurves()
-
     if Jy:
         return t, spec.conv2Jy(LC.integ(nu_min, nu_max, numdt, nu, Fnu))
     else:
@@ -76,7 +75,6 @@ def build_avgSpec(t_min, t_max, dset='Iobs', only_load=True, Jy=False, eV=False,
     numdf = nu.size
     Fnu = spec.flux_dens(Inu, dL, z, D, R)
     sp = spec.spectrum()
-
     if Jy:
         return nu, spec.conv2Jy(sp.averaged(t_min, t_max, numdf, t, Fnu))
     else:

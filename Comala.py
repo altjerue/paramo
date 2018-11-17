@@ -40,12 +40,7 @@ class parameters(object):
         self.numdf = 256                # number of frequencies
         self.cool_kind = 1              # kind of cooling
         self.time_grid = 1              # kind of cooling
-        # -----  ARGS OF THE EXECUTABLE  -----
-        self.wCool = True               # variable cooling
-        self.wMBSabs = True             # compute MBS self-absorption
-        self.wSSCem = True              # compute SSC emissivity
-        # -----  INPUT AND OUTPUT  -----
-        self.file_label = 'DriverTest'  # a label to identify each output
+
         self.params_file = 'input.par'  # name of the parameters file
 
     def __init__(self, **kwargs):
@@ -144,11 +139,17 @@ class compiler(object):
 #  #   #  #    # #   ##
 #  #    #  ####  #    #
 class Paramo(object):
-    def __init__(self, par_kw={}, comp_kw={}):
+
+    def __init__(self, wCool=False, wAbs=False, wSSC=False, flabel='DriverTest', par_kw={}, comp_kw={}):
         self.par = parameters(**par_kw)
         self.comp = compiler(rules='xParamo', **comp_kw)
         self.par.write_params()
         self.cwd = os.getcwd()
+        # -----  ARGS OF THE EXECUTABLE  -----
+        self.wCool = wCool    # variable cooling
+        self.wAbs = wAbs      # compute MBS self-absorption
+        self.wSSC = wSSC      # compute SSC emissivity
+        self.flabel = flabel  # a label to identify each output
 
     def output_file(self):
         outf = ''
@@ -184,7 +185,7 @@ class Paramo(object):
             outf += 'oSSC'
             argv += ' F'
 
-        return outf + '-' + self.file_label + '.h5', argv
+        return outf + '-' + self.flabel + '.jp.h5', argv
 
     def run_Paramo(self):
         self.comp.compile()
@@ -197,6 +198,7 @@ class Paramo(object):
 
 
 class ITobs(object):
+
     def __init__(self, paramo_file, comp_kw={}):
         self.comp = compiler(rules='xITobs', **comp_kw)
         self.Pfile = paramo_file

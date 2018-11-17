@@ -8,3 +8,7 @@
 *.dSYM
 .tramp_history
 x*
+.DS_Store
+*.pyc
+*.log
+__pycache__
