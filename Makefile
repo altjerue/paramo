@@ -34,11 +34,11 @@ endif
 # optimization level
 ifeq ($(DBG),1)
 	ifeq ($(IFORT),1)
-		OPTIMIZATION = -m64 -g -debug all -check all -implicitnone -warn unused\
+		OPTIMIZATION=-m64 -g -debug all -check all -implicitnone -warn unused\
 		-fp-stack-check -heap-arrays -ftrapuv -check pointers\
 		-check bounds -free
 	else
-		OPTIMIZATION = -g -Wall -ffree-form -ffree-line-length-none -DNONSTCPP \
+		OPTIMIZATION=-g -Wall -ffree-form -ffree-line-length-none -DNONSTCPP \
 		-mieee-fp -ffpe-trap=invalid,zero,overflow \
 		-fbacktrace -fcheck=all -fbounds-check -fno-unsafe-math-optimizations \
 		-frounding-math -fsignaling-nans $(OMBS)
@@ -46,43 +46,37 @@ ifeq ($(DBG),1)
 else
 	ifeq ($(IFORT),1)
 		ifeq ($(IFAST),1)
-			FASTI = -fast
+			FASTI =-fast
 		else
-			FASTI = -O5
+			FASTI =-O5
 		endif
 
 		ifeq ($(IPAR),1)
-			PARI = -parallel
+			PARI=-parallel
 		endif
 
-		ifeq ($(OMP),1)
-			OMPI = -openmp
+		ifeq ($(OPENMP),1)
+			OMP=-openmp
 		endif
 
-		OPTIMIZATION = -mssse3 -xssse3 $(FASTI) $(PARI) $(OMPI) -free $(OMBS)
+		OPTIMIZATION=-mssse3 -xssse3 $(FASTI) $(PARI) $(OMP) -free $(OMBS)
 	else
-		ifeq ($(OMP),1)
-			OMPI = -fopenmp
+		ifeq ($(OPENMP),1)
+			OMP=-fopenmp
 		endif
 
-		OPTIMIZATION = -O5 -ftree-vectorize \
-		-funroll-all-loops -ffree-form -ffree-line-length-none $(OMPI) \
+		OPTIMIZATION=-O5 -ftree-vectorize \
+		-funroll-all-loops -ffree-form -ffree-line-length-none $(OMP) \
 		-DNONSTCPP $(OMBS)
 	endif
 endif
 
 ifeq ($(COREI7),1)
-        OPTIMIZATION+= -march=corei7 -mtune=corei7
-	ifeq ($(OPENMP),1)
-		OPTIMIZATION+= -fopenmp
-	endif
+	OPTIMIZATION+=-march=corei7 -mtune=corei7
 endif
 
 ifeq ($(NATIVE),1)
-        OPTIMIZATION+= -march=native -mtune=native
-	ifeq ($(OPENMP),1)
-		OPTIMIZATION+= -fopenmp
-	endif
+	OPTIMIZATION+=-march=native -mtune=native
 endif
 
 COPT = -c $(OPTIMIZATION)

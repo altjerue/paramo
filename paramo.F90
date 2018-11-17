@@ -18,12 +18,12 @@ subroutine paramo
    integer :: time_grid, cool_kind, i_start, i_edge
    integer(HID_T) :: file_id, group_id
 
-   doubleprecision :: uB, R, Q0, gmin, gmax, numin, numax, qind, B, dtacc, g1, &
+   real(dp) :: uB, R, Q0, gmin, gmax, numin, numax, qind, B, dtacc, g1, &
       g2, nu0_B, tstep, zetae, Qth, Qnth, theta_e, tmax, d_lum, z, sind, D, &
       gamma_bulk, theta_obs, R0, Rinit, b_index, mu_obs, mu_com, tob_max, tob_min
-   doubleprecision, allocatable, dimension(:) :: freqs, gg, t, dg, Ntot, &
+   real(dp), allocatable, dimension(:) :: freqs, gg, t, dg, Ntot, &
       aux_zero_arr, sen_lum, dfreqs, dtimes, dt, nu_obs, t_obs, to_com
-   doubleprecision, allocatable, dimension(:, :) :: nu0, nn, Qinj, jnut, jmbs, &
+   real(dp), allocatable, dimension(:, :) :: nu0, nn, Qinj, jnut, jmbs, &
       jssc, ambs,anut,Imbs,Inut,Issc,Iobs
 
    character(len = 256) :: output_file, program_name, wCool, wMBSabs, &

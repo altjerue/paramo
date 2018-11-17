@@ -18,11 +18,11 @@ contains
       ! ************************************************************************
       implicit none
 
-      doubleprecision, intent(in) :: eps_e, eps_B, pind, t, G0, E0, n
-      doubleprecision, intent(out) :: B, Gshock, Rshock, n_bs
-      doubleprecision, optional, intent(out) :: g1, g2
+      real(dp), intent(in) :: eps_e, eps_B, pind, t, G0, E0, n
+      real(dp), intent(out) :: B, Gshock, Rshock, n_bs
+      real(dp), optional, intent(out) :: g1, g2
       logical, optional, value :: adiab
-      doubleprecision :: M0,L
+      real(dp) :: M0,L
 
       if ( .not. present(adiab) ) adiab = .true.
 
@@ -52,7 +52,7 @@ contains
 
       ! function shock_energy(Gsh, L, n, ad) result(E)
       !    implicit none
-      !    doubleprecision, intent(in) :: Gsh, L, n
+      !    real(dp), intent(in) :: Gsh, L, n
       !    logical, intent(in) :: ad
       !    if ( ad ) then
       !       E =  16d0 * pi * Gsh**2 * R**3 * n * mp * cspeed**2 / 17d0
@@ -63,9 +63,9 @@ contains
 
       function shock_radius(t, E0, n, L, ad) result(R)
          implicit none
-         doubleprecision, intent(in) :: E0, n, t, L
+         real(dp), intent(in) :: E0, n, t, L
          logical, intent(in) :: ad
-         doubleprecision :: R
+         real(dp) :: R
          if ( ad ) then
             R = ( 17d0 * E0 * t / (4d0 * pi * mp * n * cspeed) )**0.25
          else
@@ -75,9 +75,9 @@ contains
 
       function shock_Lorentz(t, E0, G0, n, L, ad) result(Gsh)
          implicit none
-         doubleprecision, intent(in) :: E0, G0, n, t, L
+         real(dp), intent(in) :: E0, G0, n, t, L
          logical, intent(in) :: ad
-         doubleprecision :: Gsh
+         real(dp) :: Gsh
 
          if ( t <= 0d0 ) then
             Gsh = G0

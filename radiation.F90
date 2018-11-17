@@ -1,4 +1,5 @@
 module radiation
+   use data_types
    use constants
    use misc
    use pwl_integ
@@ -19,12 +20,12 @@ contains
    !
    function mbs_emissivity(freqs, gg, nn, B, mbs_or_syn) result(jnu)
       implicit none
-      doubleprecision, intent(in) :: B
-      doubleprecision, intent(in), dimension(:) :: freqs, gg, nn
+      real(dp), intent(in) :: B
+      real(dp), intent(in), dimension(:) :: freqs, gg, nn
       logical, intent(in) :: mbs_or_syn
       integer :: j, k, kglob
-      doubleprecision :: qq, n_globgmx
-      doubleprecision, dimension(size(freqs)) :: jnu
+      real(dp) :: qq, n_globgmx
+      real(dp), dimension(size(freqs)) :: jnu
       !$OMP PARALLEL DO ORDERED COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
       !$OMP& PRIVATE(qq, k)
       freqs_loop: do j=1, size(freqs)
@@ -81,12 +82,12 @@ contains
    !
    function mbs_absorption(freqs,gg,nn,B,mbs_or_syn) result(anu)
       implicit none
-      doubleprecision, intent(in) :: B
-      doubleprecision, intent(in), dimension(:) :: freqs,gg,nn
+      real(dp), intent(in) :: B
+      real(dp), intent(in), dimension(:) :: freqs,gg,nn
       logical, intent(in) :: mbs_or_syn
       integer :: j,k,kglob
-      doubleprecision :: qq,n_globgmx
-      doubleprecision, dimension(size(freqs)) :: anu,aa
+      real(dp) :: qq,n_globgmx
+      real(dp), dimension(size(freqs)) :: anu,aa
 
       !$OMP PARALLEL DO ORDERED COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
       !$OMP& PRIVATE(qq,k)
@@ -150,12 +151,12 @@ contains
       !
       !   for the optically thick case.
       implicit none
-      doubleprecision, intent(in) :: s
-      doubleprecision, intent(in), dimension(:) :: jnu, anu, Is0
-      doubleprecision, intent(out), dimension(:) :: Inu
+      real(dp), intent(in) :: s
+      real(dp), intent(in), dimension(:) :: jnu, anu, Is0
+      real(dp), intent(out), dimension(:) :: Inu
       optional :: jnu, anu, Is0
       integer :: j
-      doubleprecision :: Snu
+      real(dp) :: Snu
       logical :: with_emiss, with_absor, with_inten
       with_emiss = present(jnu)
       with_absor = present(anu)
@@ -209,12 +210,12 @@ contains
       !
       !   for the optically thick case.
       implicit none
-      doubleprecision, intent(in), dimension(:) :: s
-      doubleprecision, intent(in), dimension(:, :) :: jnu, anu, Is0
-      doubleprecision, intent(out), dimension(:, :) :: Inu
+      real(dp), intent(in), dimension(:) :: s
+      real(dp), intent(in), dimension(:, :) :: jnu, anu, Is0
+      real(dp), intent(out), dimension(:, :) :: Inu
       optional :: jnu, anu, Is0
       integer :: j, i
-      doubleprecision :: Snu
+      real(dp) :: Snu
       logical :: with_emiss, with_absor, with_inten
       with_emiss = present(jnu)
       with_absor = present(anu)
@@ -261,13 +262,13 @@ contains
       !
       function blob_qromb(tini, tfin, emiss, tem) result(qromb)
          implicit none
-         doubleprecision, intent(in) :: tini, tfin
-         doubleprecision, intent(in), dimension(:) :: tem, emiss
+         real(dp), intent(in) :: tini, tfin
+         real(dp), intent(in), dimension(:) :: tem, emiss
          integer, parameter :: jmax = 25, jmaxp = jmax + 1, kq = 6, km = kq - 1
          integer :: jq
-         doubleprecision, parameter :: eps = 1d-3
-         doubleprecision, dimension(jmaxp) :: h, s
-         doubleprecision :: dqromb, qromb
+         real(dp), parameter :: eps = 1d-3
+         real(dp), dimension(jmaxp) :: h, s
+         real(dp) :: dqromb, qromb
          if ( tini == tfin ) then
             qromb = 0d0
             return
@@ -292,11 +293,11 @@ contains
       !
       subroutine blob_trapzd(tini, tfin, s, n, emiss, tem)
          implicit none
-         doubleprecision, intent(in) :: tini, tfin
-         doubleprecision, intent(in), dimension(:) :: tem, emiss
-         doubleprecision, intent(inout) :: s
+         real(dp), intent(in) :: tini, tfin
+         real(dp), intent(in), dimension(:) :: tem, emiss
+         real(dp), intent(inout) :: s
          integer, intent(in) :: n
-         doubleprecision :: del, fsum, x, jini, jfin, jx, dj
+         real(dp) :: del, fsum, x, jini, jfin, jx, dj
          integer :: it, jt
          if ( n == 1 ) then
             ! call polint(tem, emiss, dexp(tini), jini, dj)
@@ -361,11 +362,11 @@ contains
    !
    function ssc_cool_coef(nu0B,gg,freqs,Inu) result(nu0)
       implicit none
-      doubleprecision, intent(in) :: nu0B
-      doubleprecision, intent(in), dimension(:) :: freqs,gg,Inu
+      real(dp), intent(in) :: nu0B
+      real(dp), intent(in), dimension(:) :: freqs,gg,Inu
       integer :: j,k,jKN
-      doubleprecision :: nuKN,urad,Iind,Ibol
-      doubleprecision, dimension(size(gg)) :: nu0
+      real(dp) :: nuKN,urad,Iind,Ibol
+      real(dp), dimension(size(gg)) :: nu0
       do k = 1, size(gg)
          nuKN = 3d0 * me * cspeed**2 / (4d0 * Planckh * gg(k))
          Ibol = 0d0
@@ -394,10 +395,10 @@ contains
    !
    function injection(t,dtinj,gg,g1,g2,qind,th,Qth,Qnth) result(Qinj)
       implicit none
-      doubleprecision, intent(in) :: g1,g2,th,Qth,Qnth,dtinj,t,qind
-      doubleprecision, intent(in), dimension(:) :: gg
+      real(dp), intent(in) :: g1,g2,th,Qth,Qnth,dtinj,t,qind
+      real(dp), intent(in), dimension(:) :: gg
       integer :: k
-      doubleprecision, dimension(size(gg)) :: Qinj
+      real(dp), dimension(size(gg)) :: Qinj
       if ( t <= dtinj ) then
          if ( Qth < 1d-100 ) then
             Qinj = dmax1(1d-200, Qnth * powlaw_dis(gg,g1,g2,qind))
@@ -428,12 +429,12 @@ contains
    !
    subroutine ssc_emissivity(fout, gmin, gmax, gg, nn, Imbs, emiss)
       implicit none
-      doubleprecision, intent(in) :: gmin, gmax
-      doubleprecision, intent(in), dimension(:) :: gg, nn, Imbs, fout
-      doubleprecision, intent(out), dimension(:) :: emiss
+      real(dp), intent(in) :: gmin, gmax
+      real(dp), intent(in), dimension(:) :: gg, nn, Imbs, fout
+      real(dp), intent(out), dimension(:) :: emiss
       integer :: j,k,Nf
-      doubleprecision :: g1,g2,jbol0
-      doubleprecision, dimension(size(fout)) :: fin,I0
+      real(dp) :: g1,g2,jbol0
+      real(dp), dimension(size(fout)) :: fin,I0
 
       Nf = size(fout)
       fin = fout
@@ -465,13 +466,13 @@ contains
       !
       function ssc_qromb(fin,fout,a,b,gg,nn) result(qromb)
          implicit none
-         doubleprecision, intent(in) :: fin,fout,a,b
-         doubleprecision, intent(in), dimension(:) :: nn,gg
+         real(dp), intent(in) :: fin,fout,a,b
+         real(dp), intent(in), dimension(:) :: nn,gg
          integer,         parameter :: jmax = 25, jmaxp = jmax + 1, kq = 6, km = kq - 1
-         doubleprecision, parameter :: eps=1d-4
+         real(dp), parameter :: eps=1d-4
          integer :: jq
-         doubleprecision :: dqromb,qromb
-         doubleprecision, dimension(jmaxp) :: h,s
+         real(dp) :: dqromb,qromb
+         real(dp), dimension(jmaxp) :: h,s
          h(1) = 1d0
          do jq=1,jmax
             call ssc_trapzd(fin,fout,dlog(a),dlog(b),s(jq),jq,gg,nn)
@@ -492,11 +493,11 @@ contains
       subroutine ssc_trapzd(fin,fout,a,b,s,n,gg,nn)
          implicit none
          integer, intent(in) :: n
-         doubleprecision, intent(in) :: a, b, fout, fin
-         doubleprecision, intent(in), dimension(:) :: gg, nn
-         doubleprecision, intent(inout) :: s
+         real(dp), intent(in) :: a, b, fout, fin
+         real(dp), intent(in), dimension(:) :: gg, nn
+         real(dp), intent(inout) :: s
          integer :: it, jt
-         doubleprecision :: del, fsum, x
+         real(dp) :: del, fsum, x
          if ( n == 1 ) then
             s = 0.5d0 * (b - a) * ( &
             dexp(a) * ssc_integrand(fin, fout, dexp(a), gg, nn) + &
@@ -519,11 +520,11 @@ contains
       !
       function ssc_integrand(fin, fout, gev, gg, nn) result(integrand)
          implicit none
-         doubleprecision, intent(in) :: fin,fout,gev
-         doubleprecision, intent(in), dimension(:) :: gg,nn
+         real(dp), intent(in) :: fin,fout,gev
+         real(dp), intent(in), dimension(:) :: gg,nn
          integer :: kk,Ng
          integer, dimension(1) :: keval
-         doubleprecision :: fIC,nnev,beta,integrand,qq,foutfin,bplus,bminus
+         real(dp) :: fIC,nnev,beta,integrand,qq,foutfin,bplus,bminus
          Ng = ubound(gg, dim=1)
          keval = minloc(dabs(gev - gg))
          kk = keval(1)
@@ -577,13 +578,13 @@ contains
    !   ####   ####   ####  ######       ###### # #    # ######  ####
    !
    subroutine cooling_lines(nn,gg,nu0,times,dtinj,Qinj)
-      doubleprecision, intent(in) :: dtinj
-      doubleprecision, intent(in), dimension(:) :: gg,times
-      doubleprecision, intent(in), dimension(:,:) :: nu0,Qinj
-      doubleprecision, intent(out), dimension(:) :: nn
+      real(dp), intent(in) :: dtinj
+      real(dp), intent(in), dimension(:) :: gg,times
+      real(dp), intent(in), dimension(:,:) :: nu0,Qinj
+      real(dp), intent(out), dimension(:) :: nn
       integer :: k,i,kk,Ng,Nt
       double precision :: g0,ghigh,glow,g,tup,tdw,t_curr
-      doubleprecision, dimension(size(times), size(gg)) :: q, Q0
+      real(dp), dimension(size(times), size(gg)) :: q, Q0
 
       Ng = ubound(gg, dim=1)
       Nt = ubound(times, dim=1)
@@ -751,11 +752,11 @@ contains
    !
    function ssccZS12(gg,nn,B,R) result(nu0)
       implicit none
-      doubleprecision, intent(in) :: B, R
-      doubleprecision, intent(in), dimension(:) :: nn, gg
-      doubleprecision, dimension(size(gg)) :: nu0
+      real(dp), intent(in) :: B, R
+      real(dp), intent(in), dimension(:) :: nn, gg
+      real(dp), dimension(size(gg)) :: nu0
       integer :: k,Ng
-      doubleprecision :: R15,D0,A0,Ig2n,pp
+      real(dp) :: R15,D0,A0,Ig2n,pp
       Ng = size(gg)
       R15 = R * 1d-15
       D0 = 1.29d-9 * B**2
@@ -794,9 +795,9 @@ contains
       !     - Fnu : flux density measured by a distant observer
       ! ************************************************************************
       implicit none
-      doubleprecision, intent(in) :: dL,z,dopp,R
-      doubleprecision, intent(in), dimension(:) :: Inu
-      doubleprecision, dimension(size(Inu)) :: Fnu
+      real(dp), intent(in) :: dL,z,dopp,R
+      real(dp), intent(in), dimension(:) :: Inu
+      real(dp), dimension(size(Inu)) :: Fnu
       Fnu = pi * R**2 * dopp**3 * (1d0 + z) * Inu / dL**2
    end function flux_dens
 
