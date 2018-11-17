@@ -91,8 +91,9 @@ class parameters(object):
 #  #    # #    # #    # #      # #      #
 #   ####   ####  #    # #      # ###### ######
 class compiler(object):
-    def __init__(self, **kwargs):
-        # -----  COMPILER PARAMS  -----
+
+    # -----  COMPILER FLAGS & RULES -----
+    def flags(self):
         self.HYB = False         # compile with HYB=1 flag
         self.MBS = False         # compile with MBS=1 flag
         self.arch = 'i7'         # compile with specific arch flag
@@ -100,7 +101,9 @@ class compiler(object):
         self.DBG = False         # compile for debugging
         self.rules = 'all'       # rule to compile
         self.compile_dir = './'  # address to Paramo, must end with '/'
-        self.cwd = os.getcwd()
+
+    def __init__(self, **kwargs):
+        self.flags()
         self.__dict__.update(kwargs)
 
     def compile(self):
@@ -122,12 +125,13 @@ class compiler(object):
         if self.MBS:
             make += ' MBS=1'
 
+        self.cwd = os.getcwd()
         os.chdir(self.compile_dir)
         print("--> Running Makefile:\n   ", make, "\n")
         log = strftime("%a, %d %b %Y %H:%M:%S %Z", localtime())
         os.system(make)
         with open("make.log", "a") as logfile:
-            logfile.write(log + "\n" + make + "\n")
+            logfile.write(log + "\n" + make + "\n\n")
         logfile.close()
         os.chdir(self.cwd)
 
@@ -192,54 +196,15 @@ class Paramo(object):
         return self.outfile
 
 
-class I_Tobs(object):
-    def __init__(self, par_kw={}, comp_kw={}):
-        self.par = parameters(**par_kw)
-        self.comp = compiler(rules='xParamo', **comp_kw)
-        self.par.write_params()
+class ITobs(object):
+    def __init__(self, paramo_file, comp_kw={}):
+        self.comp = compiler(rules='xITobs', **comp_kw)
+        self.Pfile = paramo_file
         self.cwd = os.getcwd()
 
-    def output_file(self):
-        outf = ''
-        argv = ''
-        if self.HYB:
-            outf += 'H'
-        else:
-            outf += 'P'
-
-        if self.MBS:
-            outf += 'M'
-        else:
-            outf += 'S'
-
-        if self.wCool:
-            outf += 'V'
-            argv += ' T'
-        else:
-            outf += 'C'
-            argv += ' F'
-
-        if self.wMBSabs:
-            outf += 'O'
-            argv += ' T'
-        else:
-            outf += 'T'
-            argv += ' F'
-
-        if self.wSSC:
-            outf += 'wSSC'
-            argv += ' T'
-        else:
-            outf += 'oSSC'
-            argv += ' F'
-
-        return outf + '-' + self.file_label + '.h5', argv
-
-    def run_Paramo(self):
+    def run_ITobs(self):
         self.comp.compile()
-        self.outfile, self.argv = self.output_file()
-        run_cmd = '{0}xParamo {1}{2}'.format(self.comp.compile_dir, self.par.params_file, self.argv)
+        run_cmd = '{0}xITobs {1}'.format(self.comp.compile_dir, self.Pfile)
         print("\n--> Running:\n  ", run_cmd, "\n")
         os.system(run_cmd)
         print("\n--> Paramo finished")
-        return self.outfile
