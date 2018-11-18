@@ -75,7 +75,7 @@ class parameters(object):
             print(self.numdf, '! number of frequencies', file=f)
             print(self.cool_kind, '! kind of cooling', file=f)
             print(self.time_grid, '! kind of time grid', file=f)
-            print(self.file_label, '! label to identify each output', file=f)
+            # print(self.file_label, '! label to identify each output', file=f)
 
 
 #
@@ -100,6 +100,7 @@ class compiler(object):
     def __init__(self, **kwargs):
         self.flags()
         self.__dict__.update(kwargs)
+        self.cwd = os.getcwd()
 
     def compile(self):
         make = 'make ' + self.rules + ' -j4'
@@ -120,7 +121,6 @@ class compiler(object):
         if self.MBS:
             make += ' MBS=1'
 
-        self.cwd = os.getcwd()
         os.chdir(self.compile_dir)
         print("--> Running Makefile:\n   ", make, "\n")
         log = strftime("%a, %d %b %Y %H:%M:%S %Z", localtime())
@@ -130,6 +130,10 @@ class compiler(object):
         logfile.close()
         os.chdir(self.cwd)
 
+    def cleanup(self):
+        os.chdir(self.compile_dir)
+        os.system("make clean")
+        os.chdir(self.cwd)
 
 #
 #  #####  #    # #    #
@@ -138,6 +142,8 @@ class compiler(object):
 #  #####  #    # #  # #
 #  #   #  #    # #   ##
 #  #    #  ####  #    #
+
+
 class Paramo(object):
 
     def __init__(self, wCool=False, wAbs=False, wSSC=False, flabel='DriverTest', par_kw={}, comp_kw={}):
@@ -190,7 +196,7 @@ class Paramo(object):
     def run_Paramo(self):
         self.comp.compile()
         self.outfile, self.argv = self.output_file()
-        run_cmd = '{0}xParamo {1}{2}'.format(self.comp.compile_dir, self.par.params_file, self.argv)
+        run_cmd = '{0}xParamo {1}{2} {3}'.format(self.comp.compile_dir, self.par.params_file, self.argv, self.outfile)
         print("\n--> Running:\n  ", run_cmd, "\n")
         os.system(run_cmd)
         print("\n--> Paramo finished")

@@ -1,22 +1,27 @@
-subroutine paramo
+subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc, mbs_or_syn)
    use data_types
    use constants
    use misc
    use pwl_integ
    use hdf5
+   use h5_inout
    use SRtoolkit
    use anaFormulae
+#ifdef MBS
    use magnetobrem
+#endif
    use radiation
    implicit none
 
-   ! TODO get rid of all the things that are not mine
+   character(len=*), intent(in) :: output_file, params_file
+   logical, intent(in) :: with_cool, with_abs, with_ssc, mbs_or_syn
 
+   integer, parameter :: nmod=100
    character(len=*), parameter :: on_screen = &
       "(' Time iteration:', I6, ' | Time =', ES15.7, ' | Time step =', ES15.7, ' | nu_0(g_max) =', ES15.7, ' | Ntot =', ES15.7)"
 
-   integer :: i, j, k, kg2, numbins, numdf, numdt, nmod=100, numArgs, ios, ii
-   integer :: time_grid, cool_kind, i_start, i_edge
+   integer :: i, j, k, kg2, numbins, numdf, numdt, ii, ios
+   integer :: time_grid, cool_kind, i_start, i_edge, herror
    integer(HID_T) :: file_id, group_id
 
    real(dp) :: uB, R, Q0, gmin, gmax, numin, numax, qind, B, dtacc, g1, &
@@ -27,44 +32,10 @@ subroutine paramo
    real(dp), allocatable, dimension(:, :) :: nu0, nn, Qinj, jnut, jmbs, &
       jssc, ambs,anut,Imbs,Inut,Issc,Iobs
 
-   character(len = 256) :: output_file, program_name, wCool, wMBSabs, &
-      params_file, file_tail, wSSCem
+   logical :: at_the_edge
 
-   logical :: with_cool, with_abs, with_ssc, mbs_or_syn, at_the_edge
-
-   !
-   !  ####  #####   ##   #####  ##### #    # #####
-   ! #        #    #  #  #    #   #   #    # #    #
-   !  ####    #   #    # #    #   #   #    # #    #
-   !      #   #   ###### #####    #   #    # #####
-   ! #    #   #   #    # #   #    #   #    # #
-   !  ####    #   #    # #    #   #    ####  #
-   !
-   numArgs = command_argument_count()
-   call get_command_argument(0, program_name)
-
-   if (numArgs /= 4) call an_error(&
-      'Usage: '//new_line('A')//&
-      '  '//trim(program_name)//' params_file with-cooling'//new_line('A')//&
-      'Options:'//new_line('A')//&
-      '  params_file: Parameters file'//new_line('A')//&
-      '  with cooling: T/F (True/False)'//new_line('A')//&
-      '  with SSC: T/F (True/False)'//new_line('A')//&
-      '  with MBS self-absorption: T/F (True/False)')
-
-   !
-   !   ::::::::::   Opening parameters file   ::::::::::
-   !
-   call get_command_argument(1, params_file)
    open(unit=77, file=params_file, iostat=ios)
-   if ( ios /= 0 ) call an_error(&
-      'Problem opening '//trim(params_file)//'. Usage: '//new_line('A')//&
-      '  '//trim(program_name)//' params_file with-cooling'//new_line('A')//&
-      'Options:'//new_line('A')//&
-      '  params_file: Parameters file'//new_line('A')//&
-      '  with cooling: T/F (True/False)'//new_line('A')//&
-      '  with SSC: T/F (True/False)'//new_line('A')//&
-      '  with MBS self-absorption: T/F (True/False)')
+   if ( ios /= 0 ) call an_error("Paramo: Parameter file "//params_file//" could not be opened")
    read(77,*) R
    read(77,*) R0
    read(77,*) Rinit
@@ -91,94 +62,15 @@ subroutine paramo
    read(77,*) numdf
    read(77,*) cool_kind
    read(77,*) time_grid
-   read(77,*) file_tail
    close(77)
 
-   !
-   !    -----> With or without cooling
-   !
-   call get_command_argument(2, wCool)
-   if ( wCool == 'T' ) then
-      with_cool = .true.
-      output_file = 'V'!//trim(dirs(dir_index))
-   elseif ( wCool == 'F' ) then
-      with_cool = .false.
-      output_file = 'C'!//trim(dirs(dir_index))
-   else
-      call an_error(&
-         'Wrong cooling. Value given: '//trim(wCool)//'. Usage: '//new_line('A')//&
-         '  '//trim(program_name)//' params_file with-cooling'//new_line('A')//&
-         'Options:'//new_line('A')//&
-         '  params_file: Parameters file'//new_line('A')//&
-         '  with cooling: T/F (True/False)'//new_line('A')//&
-         '  with SSC: T/F (True/False)'//new_line('A')//&
-         '  with MBS self-absorption: T/F (True/False)')
-   end if
 
-   !
-   !    -----> With or without absorption
-   !
-   call get_command_argument(3, wMBSabs)
-   if ( wMBSabs == 'T' ) then
-      with_abs = .true.
-      output_file = trim(output_file)//'O'!//trim(dirs(dir_index))
-   elseif ( wMBSabs == 'F' ) then
-      with_abs = .false.
-      output_file = trim(output_file)//'T'!//trim(dirs(dir_index))
-   else
-      call an_error(&
-         'Wrong absorption. Value given: '//trim(wMBSabs)//'. Usage: '//new_line('A')//&
-         '  '//trim(program_name)//' params_file with-cooling'//new_line('A')//&
-         'Options:'//new_line('A')//&
-         '  params_file: Parameters file'//new_line('A')//&
-         '  with cooling: T/F (True/False)'//new_line('A')//&
-         '  with SSC: T/F (True/False)'//new_line('A')//&
-         '  with MBS self-absorption: T/F (True/False)')
-   end if
-
-   !
-   !    -----> With or without SSC emissivity
-   !
-   call get_command_argument(4, wSSCem)
-   if ( wSSCem == 'T' ) then
-      with_ssc = .true.
-      output_file = trim(output_file)//'wSSC'!//trim(dirs(dir_index))
-   elseif ( wSSCem == 'F' ) then
-      with_ssc = .false.
-      output_file = trim(output_file)//'oSSC'!//trim(dirs(dir_index))
-   else
-      call an_error(&
-         'Wrong SSC emissivity. Value given: '//trim(wSSCem)//'. Usage: '//new_line('A')//&
-         '  '//trim(program_name)//' params_file with-cooling'//new_line('A')//&
-         'Options:'//new_line('A')//&
-         '  params_file: Parameters file'//new_line('A')//&
-         '  with cooling: T/F (True/False)'//new_line('A')//&
-         '  with SSC: T/F (True/False)'//new_line('A')//&
-         '  with MBS self-absorption: T/F (True/False)')
-   end if
-
-
-   !
    !  ####  ###### ##### #    # #####
    ! #      #        #   #    # #    #
    !  ####  #####    #   #    # #    #
    !      # #        #   #    # #####
    ! #    # #        #   #    # #
    !  ####  ######   #    ####  #
-   !
-   call K2_init
-   call RF_init
-#ifndef MBS
-   call sint_load_table("uinterp.h5")
-   mbs_or_syn = .false.
-   output_file = 'S'//trim(output_file)
-#else
-   call sint_load_table("uinterp.h5")
-   call load_mb_table("disTable.h5")
-   mbs_or_syn = .true.
-   output_file = 'M'//trim(output_file)
-   print*, globgmax, chunche_c100g20, chunche_c100g100
-#endif
 
    allocate(t(0:numdt), gg(numbins), freqs(numdf), dg(numbins), Ntot(numdt),&
       aux_zero_arr(numbins - 1), dfreqs(numdf), dtimes(numdt), &
@@ -200,7 +92,7 @@ subroutine paramo
    !   # #    # #   #       ####   ####  #    # #####
    !
    uB = B**2 / (8d0 * pi)
-   nu0_B = 4d0 * sigmaT * uB / (3d0 * me * cspeed)
+   nu0_B = 4d0 * sigmaT * uB / (3d0 * mass_e * cLight)
    if ( with_cool .and. (cool_kind == 3) ) then
       nu0 = nu0_B * (Rinit / R0)**(-b_index)
    else
@@ -209,10 +101,8 @@ subroutine paramo
    
 #ifdef HYB
    zetae = 0.75d0
-   output_file = 'H'//trim(output_file)
 #else
    zetae = 1.0d0
-   output_file = 'P'//trim(output_file)
 #endif
    Qnth = zetae * Q0
    Qth = (1d0 - zetae) * Q0
@@ -222,9 +112,6 @@ subroutine paramo
    mu_obs = dcos(theta_obs * pi / 180d0)
    mu_com = mu_com_f(gamma_bulk, mu_obs)
    D = Doppler(gamma_bulk, mu_obs)
-
-   ! output_file = trim(output_file)//'_FinDif-'//trim(file_tail)//'.h5'
-   output_file = trim(output_file)//'-'//trim(file_tail)//'.h5'
 
    build_f: do j=1,numdf
       nu_obs(j) = numin * ( (numax / numin)**(dble(j - 1) / dble(numdf - 1)) )
@@ -287,9 +174,12 @@ subroutine paramo
       Qinj(i, :) = injection(t(i), dtacc, gg, g1, g2, qind, theta_e, Qth, Qnth)
 
 
-      !
-      !    :::::  Solving matrix  :::::
-      !
+      !  ###### ###### #####
+      !  #      #      #    #
+      !  #####  #####  #    #
+      !  #      #      #    #
+      !  #      #      #    #
+      !  ###### ###### #####
       ! call tridag_ser(aux_zero_arr, &
       !    1d0 + nu0(i - 1,:) * gg**2 * dt / dg, &
       !    - nu0(i - 1,2:) * gg(2:)**2 * dt / dg(:numbins - 1), &
@@ -298,19 +188,16 @@ subroutine paramo
       call cooling_lines(nn(i, :), gg, nu0(:i, :), t(1:i), dtacc, Qinj(:i, :))
 
 
-      !!!   ---{   Then we compute the light path
-      sen_lum(i) = sum(dt(:i)) * cspeed * mu_com
-      ! sen_lum(i) = dmin1( sum(dt(:i)) * cspeed, 2d0 * R )* mu_com
-      !!!   }---
+      !   ----->   Then we compute the light path
+      sen_lum(i) = sum(dt(:i)) * cLight * mu_com
+      ! sen_lum(i) = dmin1( sum(dt(:i)) * cLight, 2d0 * R )* mu_com
 
-      !
-      !   ####   ####  #    # #####  #    # #####    ###### #    # #  ####   ####
-      !  #    # #    # ##  ## #    # #    #   #      #      ##  ## # #      #
-      !  #      #    # # ## # #    # #    #   #      #####  # ## # #  ####   ####
-      !  #      #    # #    # #####  #    #   #      #      #    # #      #      #
-      !  #    # #    # #    # #      #    #   #      #      #    # # #    # #    #
-      !   ####   ####  #    # #       ####    #      ###### #    # #  ####   ####
-      !
+      !  #####    ##   #####  #   ##   ##### #  ####  #    #
+      !  #    #  #  #  #    # #  #  #    #   # #    # ##   #
+      !  #    # #    # #    # # #    #   #   # #    # # #  #
+      !  #####  ###### #    # # ######   #   # #    # #  # #
+      !  #   #  #    # #    # # #    #   #   # #    # #   ##
+      !  #    # #    # #####  # #    #   #   #  ####  #    #
 
       !!!*   First we compute the emissivity
       jmbs(:, i) = mbs_emissivity(freqs, gg, nn(i, :), B, mbs_or_syn)
@@ -322,14 +209,14 @@ subroutine paramo
          anut(:, i) = ambs(:, i)
 
          !!!*   Then we compute the MBS radiation field
-         call solRadTrans_pathIndep(Imbs(:, i), dt(i) * cspeed, jnu=jmbs(:, i), anu=ambs(:, i))
+         call solRadTrans_pathIndep(Imbs(:, i), dt(i) * cLight, jnu=jmbs(:, i), anu=ambs(:, i))
 
          !!!*   Then we compute (or not) the MBS self-Compton
          if ( with_ssc ) then
             !!!*   We compute the MSC locally
             call ssc_emissivity(freqs, gmin, g2, gg, nn(i, :), Imbs(:, i), jssc(:, i))
             !!!*   Then we compute the MSC radiation field
-            call solRadTrans_pathIndep(Issc(:, i), dt(i) * cspeed, jnu=jssc(:, i), anu=anut(:, i))
+            call solRadTrans_pathIndep(Issc(:, i), dt(i) * cLight, jnu=jssc(:, i), anu=anut(:, i))
          else
             jssc(:, i) = 0d0
             Issc(:, i) = 0d0
@@ -339,7 +226,7 @@ subroutine paramo
          jnut(:, i) = jmbs(:, i) + jssc(:, i)
 
          !!!*   Then we solve the radiative transfer equation for the total intensity
-         call solRadTrans_pathIndep(Inut(:, i), dt(i) * cspeed, jnu=jnut(:, i), anu=anut(:, i))
+         call solRadTrans_pathIndep(Inut(:, i), dt(i) * cLight, jnu=jnut(:, i), anu=anut(:, i))
 
       else
 
@@ -347,14 +234,14 @@ subroutine paramo
          anut(:, i) = 0d0
 
          !!!*   Then we compute the MBS radiation field
-         call solRadTrans_pathIndep(Imbs(:, i), dt(i) * cspeed, jnu=jmbs(:, i))
+         call solRadTrans_pathIndep(Imbs(:, i), dt(i) * cLight, jnu=jmbs(:, i))
 
          !!!*   Then we compute (or not) the MBS self-Compton
          if ( with_ssc ) then
             !!!*   We compute the MSC locally
             call ssc_emissivity(freqs, gmin, g2, gg, nn(i,: ), Imbs(:, i), jssc(:, i))
             !!!*   Then we compute the MSC intensity locally
-            call solRadTrans_pathIndep(Issc(:, i), dt(i) * cspeed, jnu=jssc(:, i))
+            call solRadTrans_pathIndep(Issc(:, i), dt(i) * cLight, jnu=jssc(:, i))
          else
             jssc(:, i) = 0d0
             Issc(:, i) = 0d0
@@ -364,7 +251,7 @@ subroutine paramo
          jnut(:, i) = jmbs(:, i) + jssc(:, i)
 
          !!!*   Then we solve the radiative transfer equation for the total intensity
-         call solRadTrans_pathIndep(Inut(:, i), dt(i) * cspeed, jnu=jnut(:, i))
+         call solRadTrans_pathIndep(Inut(:, i), dt(i) * cLight, jnu=jnut(:, i))
 
       end if
 
@@ -385,7 +272,7 @@ subroutine paramo
             case (3)
                !!!   ---{   Uhm & Zhang, 2014, Nat. Phys., 10, 351
                if (i == 1) write(*,*) "Using power-law dacaying magnetic field"
-               nu0(i, :) = nu0_B * ((Rinit + cspeed * gamma_bulk * t(i)) / R0)**(-2d0 * b_index)
+               nu0(i, :) = nu0_B * ((Rinit + cLight * gamma_bulk * t(i)) / R0)**(-2d0 * b_index)
                !!!   }---
             case default
                write(*, *) 'Wrong cooling selection'
@@ -404,7 +291,6 @@ subroutine paramo
 
    end do time_loop
 
-   Iobs = cspeed * Iobs
 
    !
    !  ####    ##   #    # # #    #  ####
@@ -415,76 +301,73 @@ subroutine paramo
    !  ####  #    #   ##   # #    #  ####
    !
    write(*, *) ""
-   call system("[ -f "//trim(output_file)//" ] && rm "//trim(output_file)//" && echo 'output: '"//trim(output_file)//" || echo 'output: '"//trim(output_file))
+   ! call system("[ -f "//trim(output_file)//" ] && rm "//trim(output_file)//" && echo 'output: '"//trim(output_file)//" || echo 'output: '"//trim(output_file))
 
-   call hm_init
-   call hm_create(output_file, file_id)
+   ! ------  Opening output file  ------
+   call h5open_f(herror)
+   call h5io_createf(output_file, file_id, herror)
 
    ! ------  Saving initial parameters  ------
-   call hm_gcreate(file_id, "Params", group_id)
-
-   call hm_write0_int(group_id, numdt,     'numdt')
-   call hm_write0_int(group_id, numdf,     'numdf')
-   call hm_write0_int(group_id, numbins,   'numbins')
-   call hm_write0_int(group_id, cool_kind, 'cooling kind')
-   call hm_write0_int(group_id, time_grid, 'time grid')
-
-   call hm_write0_double(group_id, tmax,       't_max')
-   call hm_write0_double(group_id, tstep,      'tstep')
-   call hm_write0_double(group_id, dtacc,      'Dt_inj')
-   call hm_write0_double(group_id, B,          'Bfield')
-   call hm_write0_double(group_id, R,          'R')
-   call hm_write0_double(group_id, R0,         'R0')
-   call hm_write0_double(group_id, Rinit,      'Rinit')
-   call hm_write0_double(group_id, d_lum,      'd_lum')
-   call hm_write0_double(group_id, z,          'redshift')
-   call hm_write0_double(group_id, gamma_bulk, 'gamma_bulk')
-   call hm_write0_double(group_id, theta_obs,  'view-angle')
-   call hm_write0_double(group_id, b_index,    'Bfield-index')
-   call hm_write0_double(group_id, gmin,       'gamma_min')
-   call hm_write0_double(group_id, gmax,       'gamma_max')
-   call hm_write0_double(group_id, g1,         'gamma_1')
-   call hm_write0_double(group_id, g2,         'gamma_2')
-   call hm_write0_double(group_id, qind,       'pwl-index')
-   call hm_write0_double(group_id, Q0,         'Q0')
-   call hm_write0_double(group_id, theta_e,    'Theta_e')
-   call hm_write0_double(group_id, zetae,      'zeta_e')
-   call hm_write0_double(group_id, numin,      'nu_min')
-   call hm_write0_double(group_id, numax,      'nu_max')
-
-   call hm_gclose(group_id)
+   call h5io_createg(file_id, "Parameters", group_id, herror)
+   call h5io_wint0(group_id, 'numdt', numdt, herror)
+   call h5io_wint0(group_id, 'numdf', numdf, herror)
+   call h5io_wint0(group_id, 'numbins', numbins, herror)
+   call h5io_wint0(group_id, 'cooling-kind', cool_kind, herror)
+   call h5io_wint0(group_id, 'time-grid', time_grid, herror)
+   call h5io_wdble0(group_id, 't_max', tmax, herror)
+   call h5io_wdble0(group_id, 'tstep', tstep, herror)
+   call h5io_wdble0(group_id, 'Dt_inj', dtacc, herror)
+   call h5io_wdble0(group_id, 'Bfield', B, herror)
+   call h5io_wdble0(group_id, 'R', R, herror)
+   call h5io_wdble0(group_id, 'R0', R0, herror)
+   call h5io_wdble0(group_id, 'Rinit', Rinit, herror)
+   call h5io_wdble0(group_id, 'd_lum', d_lum, herror)
+   call h5io_wdble0(group_id, 'redshift', z, herror)
+   call h5io_wdble0(group_id, 'gamma_bulk', gamma_bulk, herror)
+   call h5io_wdble0(group_id, 'view-angle', theta_obs, herror)
+   call h5io_wdble0(group_id, 'Bfield-index', b_index, herror)
+   call h5io_wdble0(group_id, 'gamma_min', gmin, herror)
+   call h5io_wdble0(group_id, 'gamma_max', gmax, herror)
+   call h5io_wdble0(group_id, 'gamma_1', g1, herror)
+   call h5io_wdble0(group_id, 'gamma_2', g2, herror)
+   call h5io_wdble0(group_id, 'pwl-index', qind, herror)
+   call h5io_wdble0(group_id, 'Q0', Q0, herror)
+   call h5io_wdble0(group_id, 'Theta_e', theta_e, herror)
+   call h5io_wdble0(group_id, 'zeta_e', zetae, herror)
+   call h5io_wdble0(group_id, 'nu_min', numin, herror)
+   call h5io_wdble0(group_id, 'nu_max', numax, herror)
+   call h5io_closeg(group_id, herror)
 
    ! ------  Saving data  ------
-   call hm_write0_double(file_id, Qth,   'Q_th')
-   call hm_write0_double(file_id, Qnth,  'Q_nth')
-   call hm_write0_double(file_id, uB,    'u_B')
-   call hm_write0_double(file_id, nu0_B, 'nu0_B')
+   call h5io_wdble0(file_id, 'Q_th', Qth, herror)
+   call h5io_wdble0(file_id, 'Q_nth', Qnth, herror)
+   call h5io_wdble0(file_id, 'u_B', uB, herror)
+   call h5io_wdble0(file_id, 'nu0_B', nu0_B, herror)
+   call h5io_wdble1(file_id, 'time', t(1:), herror)
+   call h5io_wdble1(file_id, 't_obs', t_obs, herror)
+   call h5io_wdble1(file_id, 'Ntot', Ntot, herror)
+   call h5io_wdble1(file_id, 'sen_lum', sen_lum, herror)
+   call h5io_wdble1(file_id, 'frequency', freqs, herror)
+   call h5io_wdble1(file_id, 'nu_obs', nu_obs, herror)
+   call h5io_wdble1(file_id, 'gamma', gg, herror)
+   call h5io_wdble2(file_id, 'jnut', jnut, herror)
+   ! call h5io_wdble2(file_id, 'jmbs', jmbs, herror)
+   ! call h5io_wdble2(file_id, 'jssc', jssc, herror)
+   ! call h5io_wdble2(file_id, 'ambs', ambs, herror)
+   call h5io_wdble2(file_id, 'anut', anut, herror)
+   ! call h5io_wdble2(file_id, 'Imbs', Imbs, herror)
+   ! call h5io_wdble2(file_id, 'Issc', Issc, herror)
+   call h5io_wdble2(file_id, 'Inut', Inut, herror)
+   call h5io_wdble2(file_id, 'Iobs', Iobs, herror)
+   call h5io_wdble2(file_id, 'Qinj', Qinj, herror)
+   call h5io_wdble2(file_id, 'distrib', nn, herror)
+   call h5io_wdble2(file_id, 'nu0_tot', nu0, herror)
 
-   call hm_write1_double(file_id, numdt,   t(1:),   'time')
-   call hm_write1_double(file_id, numdt,   t_obs,   't_obs')
-   call hm_write1_double(file_id, numdt,   Ntot,    'Ntot')
-   call hm_write1_double(file_id, numdt,   sen_lum, 'sen_lum')
-   call hm_write1_double(file_id, numdf,   freqs,   'frequency')
-   call hm_write1_double(file_id, numdf,   nu_obs,  'nu_obs')
-   call hm_write1_double(file_id, numbins, gg,      'gamma')
-
-   call hm_write2_double(file_id, numdf, numdt,   jnut, 'jnut')
-   ! call hm_write2_double(file_id, numdf, numdt,   jmbs, 'jmbs')
-   ! call hm_write2_double(file_id, numdf, numdt,   jssc, 'jssc')
-   ! call hm_write2_double(file_id, numdf, numdt,   ambs, 'ambs')
-   call hm_write2_double(file_id, numdf, numdt,   anut, 'anut')
-   ! call hm_write2_double(file_id, numdf, numdt,   Imbs, 'Imbs')
-   ! call hm_write2_double(file_id, numdf, numdt,   Issc, 'Issc')
-   call hm_write2_double(file_id, numdf, numdt,   Inut, 'Inut')
-   call hm_write2_double(file_id, numdf, numdt,   Iobs, 'Iobs')
-   call hm_write2_double(file_id, numdt, numbins, Qinj, 'Qinj')
-   call hm_write2_double(file_id, numdt, numbins, nn,   'distrib')
-   call hm_write2_double(file_id, numdt, numbins, nu0,  'nu0_tot')
-
-   call hm_close(file_id)
-   call hm_finalize
+   ! ------  Closing output file  ------
+   call h5io_closef(file_id, herror)
+   call h5close_f(herror)
 
    write(*,*) '=======  FINISHED  ======='
    write(*,*) ''
 
-end subroutine paramo
+end subroutine Paramo

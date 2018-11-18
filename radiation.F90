@@ -38,8 +38,8 @@ contains
                   if ( qq < SS(1) ) qq = SS(1)
                   if ( qq > SS(numSS) ) qq = SS(numSS)
                   if ( freqs(j) > dexp(XX(numXX)) * nuconst * B ) then
-                     !!!!!!!! TODO integrate using RMA_trapzd
-                     ! jnu(j) = jnu(j) + j_int(freqs(j), B, nn(k), gg(k), gg(k + 1), qq)
+                     jnu(j) = jnu(j) + &
+                        j_mb_qromb(freqs(j), B, nn(k), gg(k), gg(k + 1), qq, chunche_c100g20, RMA_new)
                   else
                      if ( gg(k) < globgmax .and. gg(k + 1) <= globgmax ) then
                         jnu(j) = jnu(j) + &
@@ -49,19 +49,16 @@ contains
                         n_globgmx = nn(kglob) * (gg(kglob + 1) / gg(kglob))**qq
                         jnu(j) = jnu(j) + &
                            j_mb(freqs(j), B, nn(k), gg(k), globgmax, qq, RMA_new, chunche_c100g20, jtable) + &
-                           !!!!!!!! TODO integrate using RMA_trapzd
-                           ! j_int(freqs(j), B, n_globgmx, globgmax, gg(k + 1), qq)
+                           j_mb_qromb(freqs(j), B, n_globgmx, globgmax, gg(k + 1), qq, chunche_c100g20, RMA_new)
                      else
                         jnu(j) = jnu(j) + &
-                           !!!!!!!! TODO integrate using RMA_trapzd
-                           ! j_int(freqs(j), B, nn(k), gg(k), gg(k + 1), qq)
+                           j_mb_qromb(freqs(j), B, nn(k), gg(k), gg(k + 1), qq, chunche_c100g20, RMA_new)
                      end if
                   end if
                else
-                  if ( qq > S(numS) ) qq = S(numS)
-                  if ( qq < S(1) ) qq = S(1)
-                  !!!!!!!! TODO integrate using RMA_trapzd
-                  ! jnu(j) = jnu(j) + j_int(freqs(j), B, nn(k), gg(k), gg(k + 1), qq)
+                  if ( qq > 8d0 ) qq = 8d0
+                  if ( qq < -8d0 ) qq = -8d0
+                     jnu(j) = jnu(j) + j_mb_qromb(freqs(j), B, nn(k), gg(k), gg(k + 1), qq, chunche_c100g20, RMA_new)
                end if
             end if
          end do calc_jnu
@@ -97,30 +94,30 @@ contains
          calc_jnu: do k=1, size(gg) - 1
             if ( nn(k) > 1d-100 ) then
                qq = -dlog(nn(k + 1) / nn(k)) / dlog(gg(k + 1) / gg(k))
-               if (mbs_or_syn) then
+               if ( mbs_or_syn ) then
                   if ( qq < SS(1) ) qq = SS(1)
                   if ( qq > SS(numSS) ) qq = SS(numSS)
                   if ( freqs(j) > dexp(XX(numXX)) * nuconst * B ) then
-                     aa(j) = aa(j) + a_int(freqs(j),B,nn(k),gg(k),gg(k + 1),qq)
+                     aa(j) = aa(j) + a_mb_qromb(freqs(j), B, nn(k), gg(k), gg(k + 1), qq, chunche_c100g20, RMA_new)
                   else
                      if ( gg(k) < globgmax .and. gg(k + 1) <= globgmax ) then
                         aa(j) = aa(j) + &
-                        a_mb(freqs(j),B,nn(k),gg(k),gg(k + 1),qq,RMA_new,chunche_c100g20,jtable)
-                     else if (gg(k) < globgmax .and. gg(k + 1) > globgmax) then
-                        kglob = locate(gg,globgmax,in_bounds=.true.)
-                        n_globgmx = nn(kglob) * (gg(kglob + 1) / gg(kglob))**qq
+                           a_mb(freqs(j), B, nn(k), gg(k), gg(k + 1), qq, RMA_new, chunche_c100g20, jtable)
+                     else if ( gg(k) < globgmax .and. gg(k + 1) > globgmax ) then
+                        kglob = locate(gg, globgmax, in_bounds=.true.)
+                        n_globgmx = nn(kglob) * ( gg(kglob + 1) / gg(kglob) )**qq
                         aa(j) = aa(j) + &
-                        a_mb(freqs(j),B,nn(k),gg(k),globgmax,qq,RMA_new,chunche_c100g20,jtable) + &
-                        a_int(freqs(j),B,n_globgmx,globgmax, gg(k + 1),qq)
+                           a_mb(freqs(j), B, nn(k), gg(k), globgmax, qq, RMA_new, chunche_c100g20, jtable) + &
+                           a_mb_qromb(freqs(j), B, n_globgmx, globgmax, gg(k + 1), qq, chunche_c100g20, RMA_new)
                      else
                         aa(j) = aa(j) + &
-                        a_int(freqs(j),B,nn(k),gg(k),gg(k + 1),qq)
+                           a_mb_qromb(freqs(j), B, nn(k), gg(k), gg(k + 1), qq, chunche_c100g20, RMA_new)
                      end if
                   end if
                else
-                  if ( qq > S(numS) ) qq = S(numS)
-                  if ( qq < S(1) ) qq = S(1)
-                  aa(j) = aa(j) + a_int(freqs(j),B,nn(k),gg(k),gg(k + 1),qq)
+                  if ( qq > 8d0 ) qq = 8d0
+                  if ( qq < 8d0 ) qq = -8d0
+                  aa(j) = aa(j) + a_mb_qromb(freqs(j), B, nn(k), gg(k), gg(k + 1), qq, chunche_c100g20, RMA_new)
                end if
             end if
          end do calc_jnu
@@ -368,7 +365,7 @@ contains
       real(dp) :: nuKN,urad,Iind,Ibol
       real(dp), dimension(size(gg)) :: nu0
       do k = 1, size(gg)
-         nuKN = 3d0 * me * cspeed**2 / (4d0 * Planckh * gg(k))
+         nuKN = 3d0 * mass_e * cLight**2 / (4d0 * hPlanck * gg(k))
          Ibol = 0d0
          freqloop: do j = 2, size(freqs)
             if ( freqs(j) >= nuKN ) exit freqloop
@@ -376,11 +373,11 @@ contains
                Iind = -dlog(Inu(j) / Inu(j - 1)) / dlog(freqs(j) / freqs(j - 1))
                if ( Iind > 8d0 ) cycle freqloop !Iind = 8d0
                if ( Iind < -8d0 ) cycle freqloop !Iind = -8d0
-               Ibol = Ibol + Inu(j - 1) * freqs(j - 1) * ibpfunc(freqs(j) / freqs(j - 1),Iind,1d-9)
+               Ibol = Ibol + Inu(j - 1) * freqs(j - 1) * Pinteg(freqs(j) / freqs(j - 1),Iind,1d-9)
             end if
          end do freqloop
-         urad = 4d0 * pi * Ibol / cspeed
-         nu0(k) = nu0B + 4d0 * sigmaT * urad / (3d0 * me * cspeed)
+         urad = 4d0 * pi * Ibol / cLight
+         nu0(k) = nu0B + 4d0 * sigmaT * urad / (3d0 * mass_e * cLight)
       end do
    end function ssc_cool_coef
 
@@ -444,7 +441,7 @@ contains
       fout_loop: do k=1,Nf
          fin_loop: do j=1,Nf
             g1 = dmax1(dsqrt(0.25d0 * fout(k) / fin(j)), gmin)
-            g2 = dmin1(0.75d0 * me * cspeed**2 / (Planckh * fin(j)), gmax)
+            g2 = dmin1(0.75d0 * mass_e * cLight**2 / (hPlanck * fin(j)), gmax)
             if ( g1 >= g2 ) then
                I0(j) = 0d0
             else
@@ -674,7 +671,7 @@ contains
                   tup = tup + (g0 - gg(k)) / (nu0(i, k) * g0 * gg(k))
                   g0 = gg(k)
                   nn(kk) = nn(kk) + Q0(i, k) * ghigh**(1d0 - q(i, k)) * & 
-                  ibpfunc(ghigh / glow, 2d0 - q(i, k), 1d-9) / (nu0(i, k) * g0**2)
+                  Pinteg(ghigh / glow, 2d0 - q(i, k), 1d-9) / (nu0(i, k) * g0**2)
                   k = k - 1
 
                else
@@ -682,7 +679,7 @@ contains
                   glow = g
                   tup = times(i + 1)
                   g0 = g
-                  nn(kk) = nn(kk) + Q0(i, k) * ghigh**(1d0 - q(i, k)) * ibpfunc(ghigh / glow, 2d0 - q(i, k), 1d-9) / (nu0(i, k) * g0**2)
+                  nn(kk) = nn(kk) + Q0(i, k) * ghigh**(1d0 - q(i, k)) * Pinteg(ghigh / glow, 2d0 - q(i, k), 1d-9) / (nu0(i, k) * g0**2)
                   i = i + 1
 
                end if
@@ -698,7 +695,7 @@ contains
                   glow = gg(k)
                   tup = tup + (g0 - gg(k)) / (nu0(i, k) * g0 * gg(k))
                   g0 = gg(k)
-                  nn(kk) = nn(kk) + Q0(i, k) * ghigh**(1d0 - q(i, k)) * ibpfunc(ghigh / glow, 2d0 - q(i, k), 1d-9) / (nu0(i, k) * g0**2)
+                  nn(kk) = nn(kk) + Q0(i, k) * ghigh**(1d0 - q(i, k)) * Pinteg(ghigh / glow, 2d0 - q(i, k), 1d-9) / (nu0(i, k) * g0**2)
                   k = k - 1
 
                else
@@ -706,7 +703,7 @@ contains
                   glow = g / ( 1d0 + nu0(i, k) * (dtinj - tup) * g )
                   tup = dtinj
                   g0 = g
-                  nn(kk) = nn(kk) + Q0(i, k) * ghigh**(1d0 - q(i, k)) * ibpfunc(ghigh / glow, 2d0 - q(i, k), 1d-9) / (nu0(i, k) * g0**2)
+                  nn(kk) = nn(kk) + Q0(i, k) * ghigh**(1d0 - q(i, k)) * Pinteg(ghigh / glow, 2d0 - q(i, k), 1d-9) / (nu0(i, k) * g0**2)
                   i = locate(times, dtinj, .true.)
 
                end if
@@ -767,7 +764,7 @@ contains
             pp = -dlog(nn(k + 1) * gg(k + 1)**2 / (nn(k) * gg(k)**2)) / dlog(gg(k + 1) / gg(k))
             if ( pp > 8d0 ) pp = 8d0
             if ( pp < -8d0 ) pp = -8d0
-            Ig2n = Ig2n + nn(k) * gg(k)**3d0 * ibpfunc(gg(k + 1) / gg(k), pp, 1d-9)
+            Ig2n = Ig2n + nn(k) * gg(k)**3d0 * Pinteg(gg(k + 1) / gg(k), pp, 1d-9)
          endif
       enddo
       nu0 = D0 + A0 * Ig2n

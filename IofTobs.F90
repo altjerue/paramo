@@ -34,7 +34,7 @@ program IofTobs
 
    ! Opening Paramo file
    call h5open_f(herror)
-   call h5io_openf(trim(paramo_fname), file_id, herror)
+   call h5io_openf(paramo_fname, file_id, herror)
    call h5io_openg(file_id, 'Params', group_id, herror)
    call h5io_rint0(group_id, 'numdf', numdf, herror)
    call h5io_rint0(group_id, 'numdt', numdt, herror)
@@ -100,6 +100,8 @@ program IofTobs
       end do obs_loop
    end do freq_loop
    !$OMP END PARALLEL DO
+
+   Iobs = cLight * Iobs
 
    call h5lexists_f(file_id, 'Iobs', Iobs_exists, herror)
    if ( Iobs_exists ) call h5ldelete_f(file_id, 'Iobs', herror)
