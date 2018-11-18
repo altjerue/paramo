@@ -221,10 +221,10 @@ contains
       loggmin = dlog(gmin / globgmax)
       loggmax = dlog(gmax / globgmax)
 
-      if (LLmin(i) >= loggmax) then
+      if ( LLmin(i) >= loggmax ) then
          emiss = 0d0
          return
-      else if (LLmin(i) >= loggmin .and. LLmin(i) < loggmax) then
+      else if ( LLmin(i) >= loggmin .and. LLmin(i) < loggmax ) then
          I3min = dexp(chtab_int(chi, dexp(LLmin(i)), qq, jmbtab))
          I3max = dexp(chtab_int(chi, gmax / globgmax, qq, jmbtab))
       else
@@ -286,33 +286,14 @@ contains
             real(dp), intent(in) :: c,g
          end function RMAfunc
       end interface
-
       real(dp), intent(in) :: nu,B,gmin,gmax,qq,n0,c0
       integer :: i
       real(dp) :: emiss,chi,nu_b,I2,jmbconst2
-
       jmbconst2 = 0.25d0 * jmbconst ! <- missing 1/4 factor
       nu_b = nuconst * B
       chi = nu / nu_b
-
-      !!$I2 = globgmax**(1d0 - q) * &
-      !!$     ( RMA_qromb(chi, q, dlog(gmin / globgmax), 0d0, globgmax) - &
-      !!$     RMA_qromb(chi, q, dlog(gmax / globgmax), 0d0, globgmax) )
-      !!$I2 = RMA_qromb(chi, q, dlog(gmin / globgmax), 0d0, globgmax) - RMA_qromb(chi, q, dlog(gmax / globgmax), 0d0, globgmax)
-      !!$emiss = dmax1(1d-200, jmbconst * nu_b * n0 * gmin**q * I2)
-      !!$emiss = dmax1(1d-200, jmbconst * nu_b * n0 * gmin**q * globgmax**(1d0 - q) * I2)
-
-      i = max( 1, min( idnint(dble(numXX - 1) * (dlog(chi) - XX(1)) / (XX(numXX) - XX(1))) + 1, numXX - 1 ) )
-      if (LLmin(i) > dlog(gmax / globgmax)) then
-         emiss = 0d0
-      else if (LLmin(i) > dlog(gmin / globgmax) .and. LLmin(i) <= dlog(gmax / globgmax)) then
-         I2 = c0 * RMA_qromb(chi, qq, LLmin(i), dlog(gmax/globgmax), globgmax, RMAfunc)
-         emiss = dmax1(1d-200, jmbconst2 * nu_b * n0 * I2 * gmin**qq)
-      else
-         I2 = c0 * RMA_qromb(chi, qq, dlog(gmin / globgmax), dlog(gmax / globgmax), globgmax, RMAfunc)
-         emiss = dmax1(1d-200, jmbconst2 * nu_b * n0 * I2 * gmin**qq)
-      end if
-
+      I2 = c0 * RMA_qromb(chi, qq, dlog(gmin), dlog(gmax), 1d0, RMAfunc)
+      emiss = dmax1(1d-200, jmbconst2 * nu_b * n0 * I2 * gmin**qq)
    end function j_mb_qromb
 
 
@@ -425,22 +406,11 @@ contains
       real(dp) :: absor,chi,nu_b,A2,ambconst2
       real(dp), intent(in) :: nu,B,gmin,gmax,qq,n0,c0
 
-      ambconst2 = 0.25d0 * ambconst ! <- missing 1/4 factor
+      ambconst2 = 2.5d-1 * 1.5625d-2 * ambconst ! <- missing 1/64/4 factor
       nu_b = nuconst * B
       chi = nu / nu_b
-
-      !!$I2 = globgmax**(1d0 - q) * &
-      !!$     ( RMA_qromb(chi, q, dlog(gmin / globgmax), 0d0, globgmax) - &
-      !!$     RMA_qromb(chi, q, dlog(gmax / globgmax), 0d0, globgmax) )
-      !!$I2 = RMA_qromb(chi, q, dlog(gmin / globgmax), 0d0, globgmax) - RMA_qromb(chi, q, dlog(gmax / globgmax), 0d0, globgmax)
-      !!$emiss = dmax1(1d-200, jmbconst * nu_b * n0 * gmin**q * I2)
-      !!$emiss = dmax1(1d-200, jmbconst * nu_b * n0 * gmin**q * globgmax**(1d0 - q) * I2)
-
-      A2 = c0*ARMA_qromb(chi, qq, dlog(gmin/globgmax), dlog(gmax/globgmax), globgmax, RMAfunc)
-
-      absor = dmax1(1d-200, ambconst2 * nu_b * n0 * A2 * gmin**qq / nu**2)
-
-      return
+      A2 = c0 * ARMA_qromb(chi, qq, dlog(gmin), dlog(gmax), 1d0, RMAfunc)
+      absor = ambconst2 * nu_b * n0 * A2 * gmin**qq / nu**2
    end function a_mb_qromb
 
 end module magnetobrem

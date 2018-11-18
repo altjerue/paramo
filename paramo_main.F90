@@ -7,12 +7,12 @@ program paramo_main
    implicit none
 
    character(len=*), parameter :: args_error = "Usage:"//new_line('A')//&
-   '  xParamo params_file with-cooling'//new_line('A')//&
-   'Options:'//new_line('A')//&
-   '  params_file: Parameters file'//new_line('A')//&
-   '  with cooling: T/F (True/False)'//new_line('A')//&
-   '  with SSC: T/F (True/False)'//new_line('A')//&
-   '  with MBS self-absorption: T/F (True/False)'
+      '  xParamo params_file with-cooling'//new_line('A')//&
+      'Options:'//new_line('A')//&
+      '  params_file: Parameters file'//new_line('A')//&
+      '  with cooling: T/F (True/False)'//new_line('A')//&
+      '  with SSC: T/F (True/False)'//new_line('A')//&
+      '  with MBS self-absorption: T/F (True/False)'
 
    integer :: numArgs
    character(len=256) :: program_name, params_file, output_file, wCool, &
@@ -22,7 +22,7 @@ program paramo_main
    numArgs = command_argument_count()
    call get_command_argument(0, program_name)
 
-   if (numArgs /= 5) call an_error(args_error)
+   if ( numArgs /= 5 ) call an_error(args_error)
 
    !
    !   ::::::::::   Opening parameters file   ::::::::::

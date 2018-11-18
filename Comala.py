@@ -44,7 +44,7 @@ class parameters(object):
         self.params_file = 'input.par'  # name of the parameters file
 
     def __init__(self, **kwargs):
-        self.params()
+        self.rParams()
         self.__dict__.update(kwargs)
 
     def wParams(self):
@@ -91,7 +91,7 @@ class compiler(object):
     def flags(self):
         self.HYB = False         # compile with HYB=1 flag
         self.MBS = False         # compile with MBS=1 flag
-        self.arch = 'i7'         # compile with specific arch flag
+        self.arch = ''           # compile with specific arch flag
         self.OMP = False         # compile with OpenMP
         self.DBG = False         # compile for debugging
         self.rules = 'all'       # rule to compile
@@ -149,7 +149,7 @@ class Paramo(object):
     def __init__(self, wCool=False, wAbs=False, wSSC=False, flabel='DriverTest', par_kw={}, comp_kw={}):
         self.par = parameters(**par_kw)
         self.comp = compiler(rules='xParamo', **comp_kw)
-        self.par.write_params()
+        self.par.wParams()
         self.cwd = os.getcwd()
         # -----  ARGS OF THE EXECUTABLE  -----
         self.wCool = wCool    # variable cooling
@@ -160,12 +160,12 @@ class Paramo(object):
     def output_file(self):
         outf = ''
         argv = ''
-        if self.HYB:
+        if self.comp.HYB:
             outf += 'H'
         else:
             outf += 'P'
 
-        if self.MBS:
+        if self.comp.MBS:
             outf += 'M'
         else:
             outf += 'S'
@@ -177,7 +177,7 @@ class Paramo(object):
             outf += 'C'
             argv += ' F'
 
-        if self.wMBSabs:
+        if self.wAbs:
             outf += 'O'
             argv += ' T'
         else:

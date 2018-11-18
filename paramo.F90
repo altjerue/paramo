@@ -350,7 +350,6 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc, mbs_o
    ! call h5io_wdble2(file_id, 'Imbs', Imbs, herror)
    ! call h5io_wdble2(file_id, 'Issc', Issc, herror)
    call h5io_wdble2(file_id, 'Inut', Inut, herror)
-   call h5io_wdble2(file_id, 'Iobs', Iobs, herror)
    call h5io_wdble2(file_id, 'Qinj', Qinj, herror)
    call h5io_wdble2(file_id, 'distrib', nn, herror)
    call h5io_wdble2(file_id, 'nu0_tot', nu0, herror)

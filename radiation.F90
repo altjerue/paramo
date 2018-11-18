@@ -58,7 +58,7 @@ contains
                else
                   if ( qq > 8d0 ) qq = 8d0
                   if ( qq < -8d0 ) qq = -8d0
-                     jnu(j) = jnu(j) + j_mb_qromb(freqs(j), B, nn(k), gg(k), gg(k + 1), qq, chunche_c100g20, RMA_new)
+                     jnu(j) = jnu(j) + j_mb_qromb(freqs(j), B, nn(k), gg(k), gg(k + 1), qq, 1d0, RMA_new)
                end if
             end if
          end do calc_jnu
@@ -117,7 +117,7 @@ contains
                else
                   if ( qq > 8d0 ) qq = 8d0
                   if ( qq < 8d0 ) qq = -8d0
-                  aa(j) = aa(j) + a_mb_qromb(freqs(j), B, nn(k), gg(k), gg(k + 1), qq, chunche_c100g20, RMA_new)
+                  aa(j) = aa(j) + a_mb_qromb(freqs(j), B, nn(k), gg(k), gg(k + 1), qq, 1d0, RMA_new)
                end if
             end if
          end do calc_jnu
