@@ -361,7 +361,7 @@ contains
       implicit none
       real(dp), intent(in) :: nu0B
       real(dp), intent(in), dimension(:) :: freqs,gg,Inu
-      integer :: j,k,jKN
+      integer :: j,k
       real(dp) :: nuKN,urad,Iind,Ibol
       real(dp), dimension(size(gg)) :: nu0
       do k = 1, size(gg)

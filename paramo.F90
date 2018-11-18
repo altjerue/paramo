@@ -12,27 +12,21 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc, mbs_o
 #endif
    use radiation
    implicit none
-
    character(len=*), intent(in) :: output_file, params_file
    logical, intent(in) :: with_cool, with_abs, with_ssc, mbs_or_syn
-
    integer, parameter :: nmod=100
    character(len=*), parameter :: on_screen = &
       "(' Time iteration:', I6, ' | Time =', ES15.7, ' | Time step =', ES15.7, ' | nu_0(g_max) =', ES15.7, ' | Ntot =', ES15.7)"
-
-   integer :: i, j, k, kg2, numbins, numdf, numdt, ii, ios
-   integer :: time_grid, cool_kind, i_start, i_edge, herror
+   integer :: i, j, k, kg2, numbins, numdf, numdt, ios
+   integer :: time_grid, cool_kind, herror
    integer(HID_T) :: file_id, group_id
-
    real(dp) :: uB, R, Q0, gmin, gmax, numin, numax, qind, B, dtacc, g1, &
-      g2, nu0_B, tstep, zetae, Qth, Qnth, theta_e, tmax, d_lum, z, sind, D, &
-      gamma_bulk, theta_obs, R0, Rinit, b_index, mu_obs, mu_com, tob_max, tob_min
+      g2, nu0_B, tstep, zetae, Qth, Qnth, theta_e, tmax, d_lum, z, D, &
+      gamma_bulk, theta_obs, R0, Rinit, b_index, mu_obs, mu_com
    real(dp), allocatable, dimension(:) :: freqs, gg, t, dg, Ntot, &
       aux_zero_arr, sen_lum, dfreqs, dtimes, dt, nu_obs, t_obs, to_com
    real(dp), allocatable, dimension(:, :) :: nu0, nn, Qinj, jnut, jmbs, &
       jssc, ambs,anut,Imbs,Inut,Issc,Iobs
-
-   logical :: at_the_edge
 
    open(unit=77, file=params_file, iostat=ios)
    if ( ios /= 0 ) call an_error("Paramo: Parameter file "//params_file//" could not be opened")
@@ -64,14 +58,12 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc, mbs_o
    read(77,*) time_grid
    close(77)
 
-
    !  ####  ###### ##### #    # #####
    ! #      #        #   #    # #    #
    !  ####  #####    #   #    # #    #
    !      # #        #   #    # #####
    ! #    # #        #   #    # #
    !  ####  ######   #    ####  #
-
    allocate(t(0:numdt), gg(numbins), freqs(numdf), dg(numbins), Ntot(numdt),&
       aux_zero_arr(numbins - 1), dfreqs(numdf), dtimes(numdt), &
       sen_lum(numdt), dt(numdt), nu_obs(numdf), t_obs(numdt), to_com(numdt))

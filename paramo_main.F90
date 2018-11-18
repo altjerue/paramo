@@ -14,7 +14,7 @@ program paramo_main
    '  with SSC: T/F (True/False)'//new_line('A')//&
    '  with MBS self-absorption: T/F (True/False)'
 
-   integer :: numArgs, error
+   integer :: numArgs
    character(len=256) :: program_name, params_file, output_file, wCool, &
       wMBSabs, wSSCem
    logical :: with_cool, with_abs, with_ssc, mbs_or_syn

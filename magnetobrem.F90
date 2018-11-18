@@ -206,7 +206,7 @@ contains
       real(dp), intent(in), dimension(:) :: jmbtab
       integer :: i
       real(dp) :: emiss, chi, nu_b, I2, jmbconst2, loggmin, loggmax
-      real(dp) :: I3max, I3min, I3diff, I3rel, I3RMAmax, I3RMAmin, I3RMAdiff, I3RMArel, I3prod
+      real(dp) :: I3max, I3min, I3diff, I3rel
 
       jmbconst2 = 0.125d0 * jmbconst ! <- missing 1/8 factor
       nu_b = nuconst * B
@@ -322,7 +322,7 @@ contains
    !  ###### #    #      # #    # #####
    !  #    # #    # #    # #    # #   #
    !  #    # #####   ####   ####  #    #
-   function a_mb(nu,B,n0,gmin,gmax,qq,aRMAfunc,c0,ambtab) result(absor)
+   function a_mb(nu, B, n0, gmin, gmax, qq, aRMAfunc, c0, ambtab) result(absor)
       ! =======================================================================
       !  a_mb:
       !  -----
@@ -337,16 +337,16 @@ contains
       !  ambtab:  array    <- table to be used for interpolation (absorption)
       ! =======================================================================
       interface
-         function aRMAfunc(c,g) result(res)
+         function aRMAfunc(c, g) result(res)
             use data_types
             real(dp) :: res
             real(dp), intent(in) :: c,g
          end function aRMAfunc
       end interface
       integer :: i
-      real(dp), intent(in) :: nu,B,gmin,gmax,qq,n0,c0
+      real(dp), intent(in) :: nu, B, gmin, gmax, qq, n0, c0
       real(dp), intent(in), dimension(:) :: ambtab
-      real(dp) :: absor,chi,nu_b,A2,ambconst2,A3max,A3min,A3diff,A3rel
+      real(dp) :: absor, chi, nu_b, A2, ambconst2, A3max, A3min, A3diff, A3rel
       real(dp) :: loggmin, loggmax
 
       ambconst2 = 2.5d-1 * 1.5625d-2 * ambconst ! <- missing 1/64/4 factor
@@ -354,7 +354,7 @@ contains
       chi = nu / nu_b
 
 
-      if (chi < dexp(XX(1))) then
+      if ( chi < dexp(XX(1)) ) then
          !!$   A2 = dmax1(1d-200, ARMA_qromb(chi, qq, dlog(gmin), dlog(gmax), 1d0,  RMAfunc))
          !!$   absor = dmax1(1d-200, ambconst2 * nu_b * n0 * A2 * gmin**qq)
          write(*,*) 'chi =', chi
