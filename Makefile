@@ -1,9 +1,9 @@
 ifeq ($(IFORT),1)
-	ifeq ($(MPI),1)
+ifeq ($(MPI),1)
 		FC=ih5pfc
-	else
+else  # MPI
 		FC=ih5fc
-	endif
+endif # MPI
 endif
 
 ifeq ($(MBS),1)
@@ -78,18 +78,19 @@ endif
 COPT=-c $(OPTIMIZATION)
 LOPT=$(OPTIMIZATION)
 
-# executables
+# -----  executables  -----
 PARAMO=xParamo
 ITOBS=xITobs
 
-# dependencies
+# -----  dependencies  -----
 PARAMO_OBJ = misc.o pwl_integ.o h5_inout.o K2.o SRtoolkit.o anaFormulae.o \
 	magnetobrem.o radiation.o Paramo.o paramo_main.o
 ITOBS_OBJ = misc.o h5_inout.o K2.o SRtoolkit.o pwl_integ.o IofTobs.o
 
-# rules
+# -----  rules  -----
 all: $(PARAMO) $(ITOBS)
 
+# objects
 constants.o K2.o pwl_integ.o misc.o h5_inout.o: data_types.o
 SRtoolkit.o: data_types.o constants.o K2.o
 magnetobrem.o: data_types.o constants.o h5_inout.o misc.o anaFormulae.o \
@@ -102,6 +103,7 @@ anaFormulae.o: data_types.o constants.o misc.o pwl_integ.o
 radiation.o: data_types.o constants.o misc.o pwl_integ.o SRtoolkit.o \
 	anaFormulae.o magnetobrem.o
 
+# executables
 $(PARAMO): data_types.o constants.o $(PARAMO_OBJ)
 	$(FC) $(LOPT) -o $@ $^
 
@@ -112,6 +114,7 @@ $(ITOBS): data_types.o constants.o $(ITOBS_OBJ)
 %.o: %.F90
 	$(FC) $(COPT) $(DEFS) $< -o $@
 
+# -----  PHONY things  -----
 .PHONY: clean
 
 clean:
