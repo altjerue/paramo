@@ -1,18 +1,18 @@
 ifeq ($(ARC),1)
-	FC = h5pfc
+	FC=h5pfc
 else
-	FC = h5fc
+	FC=h5fc
 endif
 
 ifeq ($(MPI),1)
-	FC = h5pfc
+	FC=h5pfc
 endif
 
 ifeq ($(IFORT),1)
 	ifeq ($(MPI),1)
-		FC = ih5pfc
+		FC=ih5pfc
 	else
-		FC = ih5fc
+		FC=ih5fc
 	endif
 endif
 
@@ -34,21 +34,20 @@ endif
 # optimization level
 ifeq ($(DBG),1)
 	ifeq ($(IFORT),1)
-		OPTIMIZATION=-m64 -g -debug all -check all -implicitnone -warn unused\
-		-fp-stack-check -heap-arrays -ftrapuv -check pointers\
-		-check bounds -free
+		OPTIMIZATION=-m64 -g -debug all -check all -implicitnone -warn unused \
+		-fp-stack-check -heap-arrays -ftrapuv -check pointers -check bounds -free
 	else
 		OPTIMIZATION=-g -Wall -ffree-form -ffree-line-length-none -DNONSTCPP \
-		-mieee-fp -ffpe-trap=invalid,zero,overflow \
-		-fbacktrace -fcheck=all -fbounds-check -fno-unsafe-math-optimizations \
-		-frounding-math -fsignaling-nans $(OMBS)
+		-mieee-fp -ffpe-trap=invalid,zero,overflow -fbacktrace -fcheck=all \
+		-fbounds-check -fno-unsafe-math-optimizations -frounding-math \
+		-fsignaling-nans $(OMBS)
 	endif
 else
 	ifeq ($(IFORT),1)
 		ifeq ($(IFAST),1)
-			FASTI =-fast
+			FASTI=-fast
 		else
-			FASTI =-O5
+			FASTI=-O5
 		endif
 
 		ifeq ($(IPAR),1)
@@ -62,12 +61,11 @@ else
 		OPTIMIZATION=-mssse3 -xssse3 $(FASTI) $(PARI) $(OMP) -free $(OMBS)
 	else
 		ifeq ($(OPENMP),1)
-			OMP=-fopenmp
+			OMP=-fopenmp -fcheck=all
 		endif
 
-		OPTIMIZATION=-O5 -ftree-vectorize \
-		-funroll-all-loops -ffree-form -ffree-line-length-none $(OMP) \
-		-DNONSTCPP $(OMBS)
+		OPTIMIZATION=-O5 -ftree-vectorize -funroll-all-loops -ffree-form \
+		-ffree-line-length-none $(OMP) -DNONSTCPP $(OMBS)
 	endif
 endif
 
@@ -87,7 +85,8 @@ PARAMO = xParamo
 ITOBS = xITobs
 
 # dependencies
-PARAMO_OBJ = misc.o pwl_integ.o h5_inout.o K2.o SRtoolkit.o anaFormulae.o magnetobrem.o radiation.o Paramo.o paramo_main.o
+PARAMO_OBJ = misc.o pwl_integ.o h5_inout.o K2.o SRtoolkit.o anaFormulae.o \
+	magnetobrem.o radiation.o Paramo.o paramo_main.o
 ITOBS_OBJ = misc.o h5_inout.o K2.o SRtoolkit.o pwl_integ.o IofTobs.o
 
 # rules
@@ -97,8 +96,8 @@ constants.o K2.o pwl_integ.o misc.o h5_inout.o: data_types.o
 SRtoolkit.o: data_types.o constants.o K2.o
 magnetobrem.o: data_types.o constants.o h5_inout.o misc.o anaFormulae.o pwl_integ.o
 IofTobs.o: data_types.o h5_inout.o SRtoolkit.o pwl_integ.o
-Paramo.o: data_types.o constants.o misc.o pwl_integ.o h5_inout.o SRtoolkit.o anaFormulae.o magnetobrem.o\
-	radiation.o
+Paramo.o: data_types.o constants.o misc.o pwl_integ.o h5_inout.o SRtoolkit.o \
+	anaFormulae.o magnetobrem.o radiation.o
 paramo_main.o: data_types.o misc.o magnetobrem.o
 anaFormulae.o: data_types.o constants.o misc.o pwl_integ.o
 radiation.o: data_types.o constants.o misc.o pwl_integ.o SRtoolkit.o anaFormulae.o magnetobrem.o

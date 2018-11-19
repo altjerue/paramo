@@ -14,7 +14,7 @@ program IofTobs
    integer(HID_T) :: file_id, group_id
 
    real(dp) :: B, R, d_L, z, Gbulk, theta, mu_obs, mu_com, D, tob_min, &
-      tob_max, sind, edge, factor
+      tob_max, sind, edge, factor, abu
    real(dp), allocatable, dimension(:) :: t, t_obs, nu, s
    real(dp), allocatable, dimension(:, :) :: jnut, Iobs
 
@@ -66,14 +66,18 @@ program IofTobs
    write(*, *) '--> Moving to the observer frame'
 
    Iobs = 0d0
+   R = 1e10
+   !!!!!!!!!!! WARNING: The edge here and the 2d0 factor before variable 's' is
+   !!!!!!!!!!! set for old versions of output files in which the path of light
+   !!!!!!!!!!! was t * c * mu, instead of 2 * t * c * mu
    edge = 2d0 * R * mu_com
    factor = 1d0 / (Gbulk * mu_com * (mu_obs - bofg(Gbulk)) * D)
    print*, mu_com
-   i_edge = minloc(abs(edge - s), dim = 1, mask = edge >= s)
+   i_edge = minloc(abs(edge - 2d0 * s), dim = 1, mask = edge >= s)
    ! if ( i_edge == 0 ) i_edge = numdt + 1
 
    !$OMP PARALLEL DO ORDERED COLLAPSE(2) SCHEDULE(AUTO) DEFAULT(SHARED) &
-   !$OMP& PRIVATE(tob_min, tob_max, ii, sind, i_start)
+   !$OMP& PRIVATE(tob_min, tob_max, abu, ii, sind, i_start)
    freq_loop: do j = 1, numdf
       obs_loop: do i = 1, numdt
          if ( i <= i_edge ) then
@@ -84,24 +88,27 @@ program IofTobs
          int_loop: do ii = i_start, i
             if ( ii == 1 ) then
                tob_min = t_com_f(t_obs(i), z, Gbulk, 0d0, mu_obs)
-               tob_max = t_com_f(t_obs(i), z, Gbulk, t(1) * cLight * mu_com, mu_obs)
-               Iobs(j, i) = dabs(tob_max - tob_min) * jnut(j, 1)
+               tob_max = t_com_f(t_obs(i), z, Gbulk, 2d0 * (R * mu_com - s(1)), mu_obs)
             else
-               tob_min = t_com_f(t_obs(i), z, Gbulk, t(ii - 1) * cLight * mu_com, mu_obs)
-               tob_max = t_com_f(t_obs(i), z, Gbulk, t(ii    ) * cLight * mu_com, mu_obs)
-               if ( jnut(j, ii) > 1d-100 .and. jnut(j, ii - 1) > 1d-100 ) then
-                  sind = -dlog(jnut(j, ii) / jnut(j, ii - 1)) / dlog(tob_max / tob_min)
-                  if ( sind < -8d0 ) sind = -8d0
-                  if ( sind > 8d0 ) sind = 8d0
-                  Iobs(j, i) = Iobs(j, i) + jnut(j, ii - 1) * tob_min * Pinteg(tob_max / tob_min, sind, 1d-6) * factor
-               end if
+               tob_min = t_com_f(t_obs(i), z, Gbulk, 2d0 * (R * mu_com - s(ii - 1)), mu_obs)
+               tob_max = t_com_f(t_obs(i), z, Gbulk, 2d0 * (R * mu_com - s(ii)), mu_obs)
+            !    ! abu = tob_max / tob_min
+            !    ! if ( jnut(j, ii) > 1d-100 .and. jnut(j, ii - 1) > 1d-100 ) then
+            !    !    sind = -dlog( jnut(j, ii) / jnut(j, ii - 1) ) / dlog( abu )
+            !    !    if ( sind < -8d0 ) sind = -8d0
+            !    !    if ( sind > 8d0 ) sind = 8d0
+            !    !    Iobs(j, i) = Iobs(j, i) + jnut(j, ii - 1) * tob_min * Pinteg(abu, sind, 1d-6) * factor
+            !    ! end if
             end if
+            ! abu = dabs(tob_max - tob_min)
+            Iobs(j, i) = Iobs(j, i) + jnut(j, ii) * dabs(tob_max - tob_min)
          end do int_loop
+         Iobs(j, i) = Iobs(j, i) * cLight * factor
       end do obs_loop
    end do freq_loop
    !$OMP END PARALLEL DO
 
-   Iobs = cLight * Iobs
+   ! Iobs = cLight * Iobs
 
    call h5lexists_f(file_id, 'Iobs', Iobs_exists, herror)
    if ( Iobs_exists ) call h5ldelete_f(file_id, 'Iobs', herror)

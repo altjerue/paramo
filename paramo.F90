@@ -181,8 +181,7 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc, mbs_o
 
 
       !   ----->   Then we compute the light path
-      sen_lum(i) = sum(dt(:i)) * cLight * mu_com
-      ! sen_lum(i) = dmin1( sum(dt(:i)) * cLight, 2d0 * R )* mu_com
+      sen_lum(i) = sum(dt(:i)) * cLight
 
       !  #####    ##   #####  #   ##   ##### #  ####  #    #
       !  #    #  #  #  #    # #  #  #    #   # #    # ##   #

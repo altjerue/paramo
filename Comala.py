@@ -40,7 +40,6 @@ class parameters(object):
         self.numdf = 256                # number of frequencies
         self.cool_kind = 1              # kind of cooling
         self.time_grid = 1              # kind of cooling
-
         self.params_file = 'input.par'  # name of the parameters file
 
     def __init__(self, **kwargs):
@@ -135,6 +134,7 @@ class compiler(object):
         os.system("make clean")
         os.chdir(self.cwd)
 
+
 #
 #  #####  #    # #    #
 #  #    # #    # ##   #
@@ -142,8 +142,6 @@ class compiler(object):
 #  #####  #    # #  # #
 #  #   #  #    # #   ##
 #  #    #  ####  #    #
-
-
 class Paramo(object):
 
     def __init__(self, wCool=False, wAbs=False, wSSC=False, flabel='DriverTest', par_kw={}, comp_kw={}):
