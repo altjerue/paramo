@@ -500,7 +500,7 @@ contains
             dexp(a) * ssc_integrand(fi, fou, dexp(a), g, n) + &
             dexp(b) * ssc_integrand(fi, fou, dexp(b), g, n) )
          else
-            it = 2**(n - 2)
+            it = 2**(m - 2)
             del = (b - a) / dble(it)
             x = a + 0.5d0 * del
             fsum = 0d0
