@@ -190,10 +190,8 @@ contains
          else
             res = pi * dexp(-x) * (1d0 - 11d0 / (18d0 * x)) ! 99/162 = 11/18
          end if
-         return
       else
          res = 0d0
-         return
       end if
    end function RMA_new
 
@@ -212,10 +210,8 @@ contains
             cs = x**(-2d0/3d0) / ( 0.869d0 + x**(1d0/3d0) * dexp(x) )
          end if
          res = x * cs !* pi * sqrt(3d0) / 8d0
-         return
       else
          res = 0d0
-         return
       end if
    end function RMA
 

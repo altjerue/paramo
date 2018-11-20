@@ -26,15 +26,18 @@ contains
       integer :: j, k, kglob
       real(dp) :: qq, n_globgmx
       real(dp), dimension(size(freqs)) :: jnu
-      !$OMP PARALLEL DO ORDERED COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
-      !$OMP& PRIVATE(qq, k)
+      jnu = 0d0
+      !$OMP PARALLEL DO ORDERED COLLAPSE(2) SCHEDULE(AUTO) DEFAULT(SHARED) &
+      !$OMP& PRIVATE(qq)
       freqs_loop: do j=1, size(freqs)
-         jnu(j) = 0d0
-         !$OMP ORDERED
+         ! jnu(j) = 0d0
+         ! !$OMP ORDERED
          calc_jnu: do k=1, size(gg) - 1
             if ( nn(k) > 1d-100 .and. nn(k + 1) > 1d-100) then
                qq = -dlog(nn(k + 1) / nn(k)) / dlog(gg(k + 1) / gg(k))
-               if (mbs_or_syn) then
+               if ( qq > 8d0 ) qq = 8d0
+               if ( qq < -8d0 ) qq = -8d0
+               if ( mbs_or_syn ) then
                   if ( qq < SS(1) ) qq = SS(1)
                   if ( qq > SS(numSS) ) qq = SS(numSS)
                   if ( freqs(j) > dexp(XX(numXX)) * nuconst * B ) then
@@ -56,14 +59,13 @@ contains
                      end if
                   end if
                else
-                  if ( qq > 8d0 ) qq = 8d0
-                  if ( qq < -8d0 ) qq = -8d0
-                     jnu(j) = jnu(j) + j_mb_qromb(freqs(j), B, nn(k), gg(k), gg(k + 1), qq, 1d0, RMA_new)
+                  jnu(j) = jnu(j) + j_mb_qromb(freqs(j), B, nn(k), gg(k), gg(k + 1), qq, 1d0, RMA_new)
                end if
             end if
+            if ( jnu(j) < 1d-100 ) jnu(j) = 0d0
          end do calc_jnu
-         !$OMP END ORDERED
-         if ( jnu(j) < 1d-100 ) jnu(j) = 0d0
+         ! !$OMP END ORDERED
+         ! if ( jnu(j) < 1d-100 ) jnu(j) = 0d0
       end do freqs_loop
       !$OMP END PARALLEL DO
    end function mbs_emissivity
@@ -193,9 +195,9 @@ contains
    end subroutine solRadTrans_pathIndep
 
 #if 0
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    subroutine solRadTrans_lumPath(Inu, s, jnu, anu)
       ! Description:
       !
@@ -343,9 +345,9 @@ contains
          end if
       end function blob_integrand
    end subroutine solRadTrans_lumPath
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 #endif
 
 

@@ -277,7 +277,7 @@ contains
    end function j_mb
    
    
-   function j_mb_qromb(nu,B,n0,gmin,gmax,qq,c0,RMAfunc) result(emiss)
+   function j_mb_qromb(nu, B, n0, gmin, gmax, qq, c0, RMAfunc) result(emiss)
       implicit none
       interface
          function RMAfunc(c,g) result(res)
@@ -293,7 +293,7 @@ contains
       nu_b = nuconst * B
       chi = nu / nu_b
       I2 = c0 * RMA_qromb(chi, qq, dlog(gmin), dlog(gmax), 1d0, RMAfunc)
-      emiss = dmax1(1d-200, jmbconst2 * nu_b * n0 * I2 * gmin**qq)
+      emiss = jmbconst2 * nu_b * n0 * I2 * gmin**qq
    end function j_mb_qromb
 
 
