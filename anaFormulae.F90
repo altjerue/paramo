@@ -170,25 +170,33 @@ contains
          if (x < c1) then
             res = 1.8084180211028020864d0 * x**(1d0 / 3d0)
          else if (x >= c1 .and. x <= c2) then
-            res = dexp(-0.7871626401625178d0 - 0.7050933708504841d0 * LN1(x, 1d-9) &
-            - 0.35531869295610624d0 * LN2(x, 1d-9) - 0.06503312461868385d0 &
-            * LN3(x, 1d-9) - 0.0060901233982264096d0 * LN4(x, 1d-9) &
-            - 0.00022764616638053332d0 * LN5(x, 1d-9))
-            ! res = 10d0**( -0.35564612225908254d0 - 0.3421635631371654d0 * &
-            !      dlog(x) - 0.18290602166517914d0 * dlog(x)**2 - &
-            !      0.03776013298031654d0 * dlog(x)**3 - 0.004040039762244288d0 * &
-            !      dlog(x)**4 - 0.0001732560180040394d0 * dlog(x)**5 )
+            res = dexp( -0.7871626401625178d0 &
+               - 0.7050933708504841d0 * dlog(x) &
+               - 0.35531869295610624d0 * dlog(x)**2 &
+               - 0.06503312461868385d0 * dlog(x)**3 &
+               - 0.0060901233982264096d0 * dlog(x)**4 &
+               - 0.00022764616638053332d0 * dlog(x)**5 )
+            ! res = 10d0**( -0.35564612225908254d0 &
+            !    - 0.3421635631371654d0 * dlog10(x) &
+            !    - 0.18290602166517914d0 * dlog10(x)**2 &
+            !    - 0.03776013298031654d0 * dlog10(x)**3 &
+            !    - 0.004040039762244288d0 * dlog10(x)**4 &
+            !    - 0.0001732560180040394d0 * dlog10(x)**5 )
          else if (x > c2 .and. x <= c3) then
-            res = dexp(-0.8236455154570651d0 - 0.831668613094906d0 * LN1(x, 1d-9)&
-            - 0.525630345887699d0 * LN2(x, 1d-9) - 0.22039314697105414d0 &
-            * LN3(x, 1d-9) + 0.01669179529512499d0 * LN4(x, 1d-9) &
-            - 0.028650695862677572d0 * LN5(x, 1d-9))
-            ! res = 10d0**( -0.357998258501421d0 - 0.36360117602083497d0 * &
-            !      dlog(x) - 0.21939774566168257d0 * dlog(x)**2 - &
-            !      0.10439150658509294d0 * dlog(x)**3 + 0.010445217874656604d0 * &
-            !      dlog(x)**4 - 0.012831897130695337d0 * dlog(x)**5 )
+            res = dexp( -0.8236455154570651d0 &
+               - 0.831668613094906d0 * dlog(x) &
+               - 0.525630345887699d0 * dlog(x)**2 &
+               - 0.22039314697105414d0 * dlog(x)**3 &
+               + 0.01669179529512499d0 * dlog(x)**4 &
+               - 0.028650695862677572d0 * dlog(x)**5 )
+            ! res = 10d0**( -0.357998258501421d0 &
+            !    - 0.36360117602083497d0 * dlog10(x) &
+            !    - 0.21939774566168257d0 * dlog10(x)**2 &
+            !    - 0.10439150658509294d0 * dlog10(x)**3 &
+            !    + 0.010445217874656604d0 * dlog10(x)**4 &
+            !    - 0.012831897130695337d0 * dlog10(x)**5 )
          else
-            res = pi * dexp(-x) * (1d0 - 11d0 / (18d0 * x)) ! 99/162 = 11/18
+            res = pi * dexp(-x) * (1d0 - (11d0 / 18d0) / x) ! 99/162 = 11/18
          end if
       else
          res = 0d0
@@ -286,10 +294,10 @@ contains
    !!! emissivity
 
    ! ::::: Trapezoid method :::::
-   subroutine RMA_trapzd(chi, q, lga, lgb, s, n, globg, RMAfunc)
+   subroutine RMA_trapzd(chi, q, ga, gb, s, n, RMAfunc)
       implicit none
       interface
-         function RMAfunc(c,g) result(res)
+         function RMAfunc(c, g) result(res)
             use data_types
             real(dp) :: res
             real(dp), intent(in) :: c,g
@@ -297,26 +305,21 @@ contains
       end interface
       integer :: it,i
       integer, intent(in) :: n
-      real(dp), intent(in) :: chi,q,lga,lgb,globg
+      real(dp), intent(in) :: chi, q, ga, gb
       real(dp), intent(inout) :: s
-      real(dp) :: del,fsum,lg,fa,fb,ega,egb,eg!,temp_sl,temp_eq,temp_mul
-      if (n.eq.1) then
-         ega = dexp(lga)
-         egb = dexp(lgb)
-         fa = ega**(1d0 - q) * dmax1(RMAfunc(chi, ega * globg), 1d-200)
-         fb = egb**(1d0 - q) * dmax1(RMAfunc(chi, egb * globg), 1d-200)
-         s = 0.5d0 * (lgb - lga) * (fa + fb)
+      real(dp) :: del, fsum, g, fa, fb
+      if ( n /= 1 ) then
+         fa = ga**(-q) * RMAfunc(chi, ga)
+         fb = gb**(-q) * RMAfunc(chi, gb)
+         s = 0.5d0 * (gb - ga) * (fa + fb)
       else
          it = 2**(n - 2)
-         del = (lgb - lga) / dble(it)
-         lg = lga + 0.5d0 * del
-         eg = dexp(lg)
+         del = (gb - ga) / dble(it)
+         g = ga + 0.5d0 * del
          fsum = 0d0
          itloop: do i=1,it
-            if (lg >= 0d0) exit itloop
-            fsum = fsum + eg**(1d0 - q) * dmax1(RMAfunc(chi, eg * globg), 1d-200)
-            lg = lg + del
-            eg = dexp(lg)
+            fsum = fsum + g**(-q) * RMAfunc(chi, g)
+            g = g + del
          end do itloop
          s = 0.5d0 * (s + del * fsum) ! del = (lgb - lga) / it
       end if
@@ -325,28 +328,28 @@ contains
    !
    ! :::: Romberg ::::
    !
-   function RMA_qromb(chi, q, lga, lgb, globg, RMAfunc) result(qromb)
+   function RMA_qromb(chi, q, ga, gb, RMAfunc) result(qromb)
       implicit none
       interface
-         function RMAfunc(c,g) result(res)
+         function RMAfunc(c, g) result(res)
             use data_types
             real(dp) :: res
-            real(dp), intent(in) :: c,g
+            real(dp), intent(in) :: c, g
          end function RMAfunc
       end interface
-      real(dp), intent(in) :: chi,q,lga,lgb,globg
-      real(dp) :: qromb!,temp_s
-      integer, parameter :: JMAX=100,JMAXP=JMAX+1,K=10,KM=K-1
-      real(dp), parameter :: EPS=1d-5
-      real(dp), dimension(JMAXP) :: h,s
+      real(dp), intent(in) :: chi, q, ga, gb
+      real(dp) :: qromb
+      integer, parameter :: JMAX = 25, JMAXP = JMAX + 1, K = 5, KM = K - 1
+      real(dp), parameter :: EPS = 1d-4
+      real(dp), dimension(JMAXP) :: h, s
       real(dp) :: dqromb
       integer :: j
       h(1) = 1d0
       do j=1,JMAX
-         call RMA_trapzd(chi, q, lga, lgb, s(j), j, globg, RMAfunc)
+         call RMA_trapzd(chi, q, ga, gb, s(j), j, RMAfunc)
          if (j >= K) then
             call polint(h(j-KM:j), s(j-KM:j), 0d0, qromb, dqromb)
-            if (dabs(dqromb).le.EPS*dabs(qromb)) return
+            if (dabs(dqromb) <= EPS*dabs(qromb)) return
          end if
          s(j+1) = s(j)
          h(j+1) = 0.25d0 * h(j)
@@ -354,8 +357,8 @@ contains
       print*,'RMA_qromb error'
       print*,'chi    =', chi
       print*,'q      =', q
-      print*,'ga     =', dexp(lga)
-      print*,'gb     =', dexp(lgb)
+      print*,'ga     =', ga
+      print*,'gb     =', gb
       print*,'qromb  =', qromb
       print*,'dqromb =', dqromb
       !print*,'h      =', h

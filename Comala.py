@@ -94,6 +94,7 @@ class compiler(object):
         self.arch = ''           # compile with specific arch flag
         self.OMP = False         # compile with OpenMP
         self.DBG = False         # compile for debugging
+        self.FBAR = False        # Progress bar
         self.rules = 'all'       # rule to compile
         self.compile_dir = './'  # address to Paramo, must end with '/'
 
@@ -120,6 +121,9 @@ class compiler(object):
 
         if self.MBS:
             make += ' MBS=1'
+
+        if self.FBAR:
+            make += ' FBAR=1'
 
         os.chdir(self.compile_dir)
         print("--> Running Makefile:\n   ", make, "\n")

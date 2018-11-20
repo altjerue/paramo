@@ -32,7 +32,7 @@ program paramo_main
 #ifdef MBS
    call load_mb_table("disTable.h5")
    mbs_or_syn = .true.
-   ! print*, globgmax, chunche_c100g20, chunche_c100g100
+   print*, globgmax, chunche_c100g20, chunche_c100g100
 #else
    mbs_or_syn = .false.
 #endif

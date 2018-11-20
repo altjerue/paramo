@@ -191,7 +191,7 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc, mbs_o
       !  #    # #    # #####  # #    #   #   #  ####  #    #
 
       !!!*   First we compute the emissivity
-      jmbs(:, i) = mbs_emissivity(freqs, gg, nn(i, :), B, mbs_or_syn)
+      call mbs_emissivity(freqs, gg, nn(i, :), B, jmbs(:, i))
 
       !!!*   We first compute (or not) the MBS absorption
       if ( with_abs ) then

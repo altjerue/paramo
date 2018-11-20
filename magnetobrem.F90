@@ -275,24 +275,24 @@ contains
       emiss = dmax1(1d-200, jmbconst2 * nu_b * n0 * I2 * gmin**qq)
 
    end function j_mb
-   
-   
+
+
    function j_mb_qromb(nu, B, n0, gmin, gmax, qq, c0, RMAfunc) result(emiss)
       implicit none
       interface
-         function RMAfunc(c,g) result(res)
+         function RMAfunc(c, g) result(res)
             use data_types
             real(dp) :: res
-            real(dp), intent(in) :: c,g
+            real(dp), intent(in) :: c, g
          end function RMAfunc
       end interface
-      real(dp), intent(in) :: nu,B,gmin,gmax,qq,n0,c0
+      real(dp), intent(in) :: nu, B, gmin, gmax, qq, n0, c0
       integer :: i
-      real(dp) :: emiss,chi,nu_b,I2,jmbconst2
+      real(dp) :: emiss, chi, nu_b, I2, jmbconst2
       jmbconst2 = 0.25d0 * jmbconst ! <- missing 1/4 factor
       nu_b = nuconst * B
       chi = nu / nu_b
-      I2 = c0 * RMA_qromb(chi, qq, dlog(gmin), dlog(gmax), 1d0, RMAfunc)
+      I2 = c0 * RMA_qromb(chi, qq, gmin, gmax, RMAfunc)
       emiss = jmbconst2 * nu_b * n0 * I2 * gmin**qq
    end function j_mb_qromb
 
