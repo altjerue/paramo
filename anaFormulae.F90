@@ -292,9 +292,10 @@ contains
 
 
    !!! emissivity
-
+   !
    ! ::::: Trapezoid method :::::
-   subroutine RMA_trapzd(chi, q, ga, gb, s, n, RMAfunc)
+   !
+   subroutine RMA_trapzd(chi, q, lga, lgb, s, n, globg, RMAfunc)
       implicit none
       interface
          function RMAfunc(c, g) result(res)
@@ -305,30 +306,37 @@ contains
       end interface
       integer :: it,i
       integer, intent(in) :: n
-      real(dp), intent(in) :: chi, q, ga, gb
+      real(dp), intent(in) :: chi, q, lga, lgb, globg
       real(dp), intent(inout) :: s
-      real(dp) :: del, fsum, g, fa, fb
+      real(dp) :: del, fsum, lg, fa, fb, ega, egb, eg
       if ( n /= 1 ) then
-         fa = ga**(-q) * RMAfunc(chi, ga)
-         fb = gb**(-q) * RMAfunc(chi, gb)
-         s = 0.5d0 * (gb - ga) * (fa + fb)
+         ega = dexp(lga)
+         egb = dexp(lgb)
+         fa = ega**(1d0 - q) * RMAfunc(chi, ega * globg)
+         fb = egb**(1d0 - q) * RMAfunc(chi, egb * globg)
+         s = 0.5d0 * (lgb - lga) * (fa + fb)
+
       else
          it = 2**(n - 2)
-         del = (gb - ga) / dble(it)
-         g = ga + 0.5d0 * del
+         del = (lgb - lga) / dble(it)
+         lg = lga + 0.5d0 * del
+         eg = dexp(lg)
          fsum = 0d0
          itloop: do i=1,it
-            fsum = fsum + g**(-q) * RMAfunc(chi, g)
-            g = g + del
+            if ( globg /= 1d0 .and. lg >= 0d0 ) exit itloop
+            fsum = fsum + eg**(1d0 - q) * RMAfunc(chi, eg * globg)
+            lg = lg + del
+            eg = dexp(lg)
          end do itloop
-         s = 0.5d0 * (s + del * fsum) ! del = (lgb - lga) / it
+         s = 0.5d0 * (s + del * fsum)
       end if
    end subroutine RMA_trapzd
+
 
    !
    ! :::: Romberg ::::
    !
-   function RMA_qromb(chi, q, ga, gb, RMAfunc) result(qromb)
+   function RMA_qromb(chi, q, lga, lgb, globg, RMAfunc) result(qromb)
       implicit none
       interface
          function RMAfunc(c, g) result(res)
@@ -337,7 +345,7 @@ contains
             real(dp), intent(in) :: c, g
          end function RMAfunc
       end interface
-      real(dp), intent(in) :: chi, q, ga, gb
+      real(dp), intent(in) :: chi, q, lga, lgb, globg
       real(dp) :: qromb
       integer, parameter :: JMAX = 25, JMAXP = JMAX + 1, K = 5, KM = K - 1
       real(dp), parameter :: EPS = 1d-4
@@ -345,32 +353,30 @@ contains
       real(dp) :: dqromb
       integer :: j
       h(1) = 1d0
-      do j=1,JMAX
-         call RMA_trapzd(chi, q, ga, gb, s(j), j, RMAfunc)
-         if (j >= K) then
+      do j=1, JMAX
+         call RMA_trapzd(chi, q, lga, lgb, s(j), j, globg, RMAfunc)
+         if ( j >= K ) then
             call polint(h(j-KM:j), s(j-KM:j), 0d0, qromb, dqromb)
-            if (dabs(dqromb) <= EPS*dabs(qromb)) return
+            if ( dabs(dqromb) <= EPS * dabs(qromb) ) return
          end if
-         s(j+1) = s(j)
-         h(j+1) = 0.25d0 * h(j)
+         s(j + 1) = s(j)
+         h(j + 1) = 0.25d0 * h(j)
       end do
       print*,'RMA_qromb error'
       print*,'chi    =', chi
       print*,'q      =', q
-      print*,'ga     =', ga
-      print*,'gb     =', gb
+      print*,'ga     =', dexp(lga)
+      print*,'gb     =', dexp(lgb)
       print*,'qromb  =', qromb
       print*,'dqromb =', dqromb
-      !print*,'h      =', h
-      !print*,'s      =', s
       call an_error('RMA_qromb: too many steps')
    end function RMA_qromb
-   
-   
-   
+
+
    !!! absorption
-   
+   !
    ! ::::: Trapezoid method :::::
+   !
    subroutine ARMA_trapzd(chi,q,lga,lgb,s,n,globg,RMAfunc)
       implicit none
       interface
