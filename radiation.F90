@@ -430,7 +430,7 @@ contains
       fout_loop: do k=1,Nf
          fin_loop: do j=1,Nf
             g1 = dmax1(dsqrt(0.25d0 * fout(k) / fin(j)), gmin)
-            g2 = dmin1(0.75d0 * mass_e * cLight**2 / (hPlanck * fin(j)), gmax)
+            g2 = dmin1(0.75d0 * mass_e * cLight2 / (hPlanck * fin(j)), gmax)
             if ( g1 >= g2 ) then
                I0(j) = 0d0
             else
@@ -454,7 +454,7 @@ contains
          implicit none
          real(dp), intent(in) :: fi, fou, a, b
          real(dp), intent(in), dimension(:) :: n, g
-         integer,         parameter :: jmax = 25, jmaxp = jmax + 1, kq = 6, km = kq - 1
+         integer, parameter :: jmax = 25, jmaxp = jmax + 1, kq = 6, km = kq - 1
          real(dp), parameter :: eps=1d-4
          integer :: jq
          real(dp) :: dqromb, qromb
@@ -509,13 +509,11 @@ contains
          real(dp), intent(in) :: fi, fou, gev
          real(dp), intent(in), dimension(:) :: g, n
          integer :: kk,Ng
-         integer, dimension(1) :: keval
          real(dp) :: fIC, nnev, beta, integrand, qq, foutfin, bplus, bminus
          Ng = ubound(g, dim=1)
-         keval = minloc(dabs(gev - g))
-         kk = keval(1)
-
-         if ( n(kk) < 1d-100 ) then
+         kk = minloc(dabs(gev - g), dim=1)
+         if ( gev < g(kk) ) kk = kk - 1
+         if ( n(kk) < 1d-100 .or. gev > g(Ng) ) then
             integrand = 0d0
             return
          end if
@@ -534,20 +532,19 @@ contains
             return
          end if
 
-         if ( any(dabs(gev - g) == 0d0) ) then
+         if ( dabs(gev - g(kk)) <= 1d-12 ) then
             integrand = one_over_gb2(gev) * n(kk) * fIC
             return
          else
-            if ( gev < g(kk) .or. gev > g(Ng) ) then
-               qq = dlog(n(kk) / n(kk - 1)) / dlog(g(kk) / g(kk - 1))
-            else
+            if ( n(kk + 1) < 1d-100  ) then
                qq = dlog(n(kk + 1) / n(kk)) / dlog(g(kk + 1) / g(kk))
+               if ( qq < -8d0 ) qq = -8d0
+               if ( qq >  8d0 ) qq =  8d0
+               nnev = n(kk) * (gev / g(kk))**qq
+               integrand = one_over_gb2(gev) * nnev * fIC
+            else
+               integrand = 0d0
             end if
-            if ( qq < -8d0 ) qq = -8d0
-            if ( qq >  8d0 ) qq =  8d0
-
-            nnev = n(kk) * (gev / g(kk))**qq
-            integrand = one_over_gb2(gev) * nnev * fIC
             return
          end if
       end function ssc_integrand
@@ -720,7 +717,7 @@ contains
             end if injection
 
          enddo contrib_loop
-         nn(kk) = dmax1(1d-200, nn(kk))
+         !nn(kk) = dmax1(1d-200, nn(kk))
       end do gloop
       !$OMP END PARALLEL DO
 
