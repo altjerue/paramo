@@ -75,9 +75,8 @@ contains
    !============================================================================
    function chtab_int(chi,lor,q,chtab) result(res)
       implicit none
-      
-      real(dp), dimension(:), intent(in):: chtab
       real(dp), intent(in) :: chi,lor,q
+      real(dp), dimension(:), intent(in):: chtab
       integer :: i,j
       real(dp) :: cx,cl,cq,u,v,u1,v1,res
       real(dp) :: valij,valipj,valijp,valipjp
@@ -180,7 +179,7 @@ contains
    !  #      #    # #      #      #
    !  #      #    # # #    # #    #
    !  ###### #    # #  ####   ####
-   function j_mb(nu,B,n0,gmin,gmax,qq,RMAfunc,c0,jmbtab) result(emiss)
+   function j_mb(nu, B, n0, gmin, gmax, qq, RMAfunc, c0, jmbtab) result(emiss)
       ! ========================================================================
       !   j_mb:
       !   -----
@@ -196,10 +195,10 @@ contains
       ! ========================================================================
       implicit none
       interface
-         function RMAfunc(c,g) result(res)
+         function RMAfunc(c, g) result(res)
             use data_types
-            real(dp) :: res
             real(dp), intent(in) :: c, g
+            real(dp) :: res
          end function RMAfunc
       end interface
       real(dp), intent(in) :: nu, B, gmin, gmax, qq, n0, c0
@@ -212,7 +211,7 @@ contains
       nu_b = nuconst * B
       chi = nu / nu_b
 
-      if (chi < dexp(XX(1))) then
+      if ( chi < dexp(XX(1)) ) then
          write(*,*) 'chi =', chi
          call an_error('j_nu: nu below table limits in emissivity')
       end if
@@ -292,7 +291,7 @@ contains
       jmbconst2 = 0.25d0 * jmbconst ! <- missing 1/4 factor
       nu_b = nuconst * B
       chi = nu / nu_b
-      I2 = c0 * RMA_qromb(chi, qq, gmin, gmax, RMAfunc)
+      I2 = c0 * RMA_qromb(chi, qq, dlog(gmin), dlog(gmax), 1d0, RMAfunc)
       emiss = jmbconst2 * nu_b * n0 * I2 * gmin**qq
    end function j_mb_qromb
 
@@ -320,8 +319,8 @@ contains
       interface
          function aRMAfunc(c, g) result(res)
             use data_types
+            real(dp), intent(in) :: c, g
             real(dp) :: res
-            real(dp), intent(in) :: c,g
          end function aRMAfunc
       end interface
       integer :: i
@@ -334,7 +333,6 @@ contains
       nu_b = nuconst * B
       chi = nu / nu_b
 
-
       if ( chi < dexp(XX(1)) ) then
          !!$   A2 = dmax1(1d-200, ARMA_qromb(chi, qq, dlog(gmin), dlog(gmax), 1d0,  RMAfunc))
          !!$   absor = dmax1(1d-200, ambconst2 * nu_b * n0 * A2 * gmin**qq)
@@ -346,7 +344,7 @@ contains
       loggmin = dlog(gmin / globgmax)
       loggmax = dlog(gmax / globgmax)
 
-      if (LLmin(i) >= loggmax) then
+      if ( LLmin(i) >= loggmax ) then
          absor = 0d0
          return
       else if (LLmin(i) >= loggmin .and. LLmin(i) < loggmax) then

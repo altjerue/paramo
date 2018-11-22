@@ -10,7 +10,6 @@ module radiation
    implicit none
 
 contains
-
    !
    ! #    # #####   ####     ###### #    # #  ####   ####
    ! ##  ## #    # #         #      ##  ## # #      #
@@ -19,43 +18,52 @@ contains
    ! #    # #    # #    #    #      #    # # #    # #    #
    ! #    # #####   ####     ###### #    # #  ####   ####
    !
-   subroutine mbs_emissivity(nus, g, n, B, jnu)
+   function mbs_emissivity(freqs, gg, nn, B, mbs_or_syn) result(jnu)
       implicit none
       real(dp), intent(in) :: B
-      real(dp), intent(in), dimension(:) :: nus, g, n
-      real(dp), intent(out), dimension(:) :: jnu
-      integer :: j, k
-      real(dp) :: q
+      real(dp), intent(in), dimension(:) :: freqs, gg, nn
+      logical, intent(in) :: mbs_or_syn
+      integer :: j, k, kglob
+      real(dp) :: qq, n_globgmx
+      real(dp), dimension(size(freqs)) :: jnu
       jnu = 0d0
       !$OMP PARALLEL DO ORDERED COLLAPSE(2) SCHEDULE(AUTO) DEFAULT(SHARED) &
-      !$OMP& PRIVATE(q)
-      freqs_loop: do j=1, size(nus)
-         calc_jnu: do k=1, size(g) - 1
-            if ( n(k) > 1d-100 .and. n(k + 1) > 1d-100) then
-               q = -dlog(n(k + 1) / n(k)) / dlog(g(k + 1) / g(k))
-               if ( q > 8d0 ) q = 8d0
-               if ( q < -8d0 ) q = -8d0
-               jnu(j) = jnu(j) + j_integ(nus(j), n(k), g(k), g(k + 1), q, B)
+      !$OMP& PRIVATE(qq)
+      freqs_loop: do j=1, size(freqs)
+         calc_jnu: do k=1, size(gg) - 1
+            if ( nn(k) > 1d-100 .and. nn(k + 1) > 1d-100) then
+               qq = -dlog(nn(k + 1) / nn(k)) / dlog(gg(k + 1) / gg(k))
+               if ( mbs_or_syn ) then
+                  if ( qq < SS(1) ) qq = SS(1)
+                  if ( qq > SS(numSS) ) qq = SS(numSS)
+                  if ( freqs(j) > dexp(XX(numXX)) * nuconst * B ) then
+                     jnu(j) = jnu(j) + &
+                        j_mb_qromb(freqs(j), B, nn(k), gg(k), gg(k + 1), qq, chunche_c100g20, RMA_new)
+                  else
+                     if ( gg(k) < globgmax .and. gg(k + 1) <= globgmax ) then
+                        jnu(j) = jnu(j) + &
+                           j_mb(freqs(j), B, nn(k), gg(k), gg(k + 1), qq, RMA_new, chunche_c100g20, jtable)
+                     else if (gg(k) < globgmax .and. gg(k + 1) > globgmax) then
+                        kglob = locate(gg, globgmax, in_bounds = .true.)
+                        n_globgmx = nn(kglob) * (gg(kglob + 1) / gg(kglob))**qq
+                        jnu(j) = jnu(j) + &
+                           j_mb(freqs(j), B, nn(k), gg(k), globgmax, qq, RMA_new, chunche_c100g20, jtable) + &
+                           j_mb_qromb(freqs(j), B, n_globgmx, globgmax, gg(k + 1), qq, chunche_c100g20, RMA_new)
+                     else
+                        jnu(j) = jnu(j) + &
+                           j_mb_qromb(freqs(j), B, nn(k), gg(k), gg(k + 1), qq, chunche_c100g20, RMA_new)
+                     end if
+                  end if
+               else
+                  if ( qq > 8d0 ) qq = 8d0
+                  if ( qq < -8d0 ) qq = -8d0
+                  jnu(j) = jnu(j) + j_mb_qromb(freqs(j), B, nn(k), gg(k), gg(k + 1), qq, 1d0, RMA_new)
+               end if
             end if
          end do calc_jnu
       end do freqs_loop
       !$OMP END PARALLEL DO
-
-   contains
-
-      function j_integ(nu, n0, gmin, gmax, qq, Bf) result(emiss)
-         implicit none
-         real(dp), intent(in) :: nu, gmin, gmax, n0, qq, Bf
-         integer :: i
-         real(dp) :: emiss, chi, nu_b, I2, jmbconst2
-         jmbconst2 = 0.25d0 * jmbconst ! <- missing 1/4 factor
-         nu_b = nuconst * Bf
-         chi = nu / nu_b
-         I2 = RMA_qromb(chi, qq, gmin, gmax, RMA_new)
-         emiss = jmbconst * nu_b * n0 * I2 * gmin**qq
-      end function j_integ
-
-   end subroutine mbs_emissivity
+   end function mbs_emissivity
 
 
    !

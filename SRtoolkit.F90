@@ -310,9 +310,9 @@ contains
       xcom = cLight * ( (t / Doppler(gamma, mu)) - (tobs / (1d0 + z)) ) / ( gamma * (mu - bofg(gamma)) )
    end function x_com_s
 
-   function x_com_v(t, tobs, z, gamma, x, mu) result(xcom)
+   function x_com_v(t, tobs, z, gamma, mu) result(xcom)
       implicit none
-      real(dp), intent(in) :: z,gamma, x, mu, tobs
+      real(dp), intent(in) :: z, gamma, mu, tobs
       real(dp), intent(in), dimension(:) :: t
       real(dp), dimension(size(t)) :: xcom
       xcom = cLight * ( (t / Doppler(gamma, mu)) - (tobs / (1d0 + z)) ) / ( gamma * (mu - bofg(gamma)) )
