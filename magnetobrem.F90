@@ -386,7 +386,7 @@ contains
          end if
          if (A2 > 1d5) A2 = c0*ARMA_qromb(chi, qq, dlog(gmin/globgmax), dlog(gmax/globgmax), globgmax, RMAfunc)
       end if
-#endif      
+#endif
       absor = dmax1(1d-200, ambconst2 * nu_b * n0 * A2 * gmin**qq / nu**2)
 
    end function a_mb

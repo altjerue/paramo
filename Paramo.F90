@@ -18,7 +18,7 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc, mbs_o
    character(len=*), parameter :: on_screen = &
       "(' Time iteration:', I6, ' | Time =', ES15.7, ' | Time step =', ES15.7, ' | nu_0(g_max) =', ES15.7, ' | Ntot =', ES15.7)"
    integer :: i, j, k, kg2, numbins, numdf, numdt, ios
-   integer :: time_grid, cool_kind, herror
+   integer :: time_grid, cool_kind, herror, tstop
    integer(HID_T) :: file_id, group_id
    real(dp) :: uB, R, Q0, gmin, gmax, numin, numax, qind, B, dtacc, g1, &
       g2, nu0_B, tstep, zetae, Qth, Qnth, theta_e, tmax, d_lum, z, D, &
@@ -67,10 +67,10 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc, mbs_o
    allocate(t(0:numdt), gg(numbins), freqs(numdf), dg(numbins), Ntot(numdt),&
       aux_zero_arr(numbins - 1), dfreqs(numdf), dtimes(numdt), &
       sen_lum(numdt), dt(numdt), nu_obs(numdf), t_obs(numdt), to_com(numdt))
-   allocate(nn(numdt,numbins), Qinj(numdt,numbins), nu0(numdt,numbins), &
-      ambs(numdf,numdt), jmbs(numdf,numdt), jnut(numdf,numdt), &
-      jssc(numdf,numdt), Imbs(numdf,numdt), Inut(numdf,numdt), &
-      Issc(numdf,numdt), anut(numdf,numdt), Iobs(numdf,numdt))
+   allocate(nn(numdt, numbins), Qinj(numdt, numbins), nu0(numdt, numbins), &
+      ambs(numdf, numdt), jmbs(numdf, numdt), jnut(numdf, numdt), &
+      jssc(numdf, numdt), Imbs(numdf, numdt), Inut(numdf, numdt), &
+      Issc(numdf, numdt), anut(numdf, numdt), Iobs(numdf, numdt))
 
    dfreqs = 1d0
    dtimes = 1d0
@@ -149,6 +149,7 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc, mbs_o
    ! #       #  #  #    # #      #    #   #   # #    # #   ##
    ! ######   ##    ####  ######  ####    #   #  ####  #    #
    !
+   tstop = numdt
    time_loop: do i=1, numdt
 
       select case(time_grid)
@@ -156,6 +157,10 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc, mbs_o
          t(i) = tstep * ( (tmax / tstep)**(dble(i - 1) / dble(numdt - 1)) )
       case(2)
          t(i) = t(i - 1) + tstep / (nu0(max0(1, i - 1), kg2) * g2)
+         if ( t(i) > tmax ) then
+            tstop = i
+            exit time_loop
+         end if
       case(3)
          t(i) = ((tmax - tstep)) * (dble(i) / dble(numdt - 1))
       case default
@@ -330,28 +335,32 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc, mbs_o
    call h5io_closeg(group_id, herror)
 
    ! ------  Saving data  ------
+   call h5io_wint0(file_id, 't_stop', tstop, herror)
+
    call h5io_wdble0(file_id, 'Q_th', Qth, herror)
    call h5io_wdble0(file_id, 'Q_nth', Qnth, herror)
    call h5io_wdble0(file_id, 'u_B', uB, herror)
    call h5io_wdble0(file_id, 'nu0_B', nu0_B, herror)
-   call h5io_wdble1(file_id, 'time', t(1:), herror)
-   call h5io_wdble1(file_id, 't_obs', t_obs, herror)
-   call h5io_wdble1(file_id, 'Ntot', Ntot, herror)
-   call h5io_wdble1(file_id, 'sen_lum', sen_lum, herror)
+
+   call h5io_wdble1(file_id, 'time', t(1:tstop), herror)
+   call h5io_wdble1(file_id, 't_obs', t_obs(:tstop), herror)
+   call h5io_wdble1(file_id, 'Ntot', Ntot(:tstop), herror)
+   call h5io_wdble1(file_id, 'sen_lum', sen_lum(:tstop), herror)
    call h5io_wdble1(file_id, 'frequency', freqs, herror)
    call h5io_wdble1(file_id, 'nu_obs', nu_obs, herror)
    call h5io_wdble1(file_id, 'gamma', gg, herror)
-   call h5io_wdble2(file_id, 'jnut', jnut, herror)
+
+   call h5io_wdble2(file_id, 'jnut', jnut(:, :tstop), herror)
    ! call h5io_wdble2(file_id, 'jmbs', jmbs, herror)
    ! call h5io_wdble2(file_id, 'jssc', jssc, herror)
    ! call h5io_wdble2(file_id, 'ambs', ambs, herror)
-   call h5io_wdble2(file_id, 'anut', anut, herror)
+   call h5io_wdble2(file_id, 'anut', anut(:, :tstop), herror)
    ! call h5io_wdble2(file_id, 'Imbs', Imbs, herror)
    ! call h5io_wdble2(file_id, 'Issc', Issc, herror)
-   call h5io_wdble2(file_id, 'Inut', Inut, herror)
-   call h5io_wdble2(file_id, 'Qinj', Qinj, herror)
-   call h5io_wdble2(file_id, 'distrib', nn, herror)
-   call h5io_wdble2(file_id, 'nu0_tot', nu0, herror)
+   call h5io_wdble2(file_id, 'Inut', Inut(:, :tstop), herror)
+   call h5io_wdble2(file_id, 'Qinj', Qinj(:tstop, :), herror)
+   call h5io_wdble2(file_id, 'distrib', nn(:tstop, :), herror)
+   call h5io_wdble2(file_id, 'nu0_tot', nu0(:tstop, :), herror)
 
    ! ------  Closing output file  ------
    call h5io_closef(file_id, herror)
