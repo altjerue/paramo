@@ -2,7 +2,7 @@ program IofTobs
    use data_types
    use constants
 #ifdef FBAR
-   use, intrinsic :: iso_fortran_env, only : I4P=>int32, R8P=>real64
+   use, intrinsic :: iso_fortran_env, only : I4P => int32, R8P => real64
    use forbear, only : bar_object
 #endif
    use misc
@@ -80,7 +80,7 @@ program IofTobs
    factor = 1d0 / (Gbulk * mu_com * (mu_obs - bofg(Gbulk)) * D)
    i_edge = minloc(abs(edge - s), dim = 1, mask = edge >= s)
 
-   write(*, *) '-> Solving Rad. Trans. Eq.'
+   write(*, *) '-> Solving Radiative Transfer Equation'
 
 #ifdef FBAR
    cur = 0
@@ -97,43 +97,44 @@ program IofTobs
    call bar%start
 #endif
 
-   !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(tob_min, tob_max, abu, ii, sind, i_start)
+   !$OMP PARALLEL DO ORDERED COLLAPSE(1) DEFAULT(SHARED) PRIVATE(tob_min, tob_max, abu, ii, sind, i_start)
    freq_loop: do j = 1, numdf
-      !$OMP DO SCHEDULE(AUTO)
       obs_loop: do i = 1, numdt
          if ( i <= i_edge ) then
             i_start = 1
          else
             i_start = i - i_edge
          end if
+         !$OMP ORDERED
          int_loop: do ii = i_start, i
             if ( ii == 1 ) then
-               tob_min = t_com_f(t_obs(i), z, Gbulk, 0d0, mu_obs)
+               tob_min = t_com_f(t_obs(i), z, Gbulk, edge, mu_obs)
                tob_max = t_com_f(t_obs(i), z, Gbulk, edge - s(1), mu_obs)
-               abu = dabs(tob_max - tob_min)
+               abu = tob_max - tob_min
                Iobs(j, i) = Iobs(j, i) + jnut(j, 1) * abu
             else
                tob_min = t_com_f(t_obs(i), z, Gbulk, edge - s(ii - 1), mu_obs)
                tob_max = t_com_f(t_obs(i), z, Gbulk, edge - s(ii), mu_obs)
-               abu = tob_min / tob_max
+               abu = tob_max / tob_min
                if ( jnut(j, ii) > 1d-100 .and. jnut(j, ii - 1) > 1d-100 ) then
                   sind = -dlog( jnut(j, ii) / jnut(j, ii - 1) ) / dlog( abu )
                   if ( sind < -8d0 ) sind = -8d0
                   if ( sind > 8d0 ) sind = 8d0
-                  Iobs(j, i) = Iobs(j, i) + jnut(j, ii - 1) * tob_min * Pinteg(abu, sind, 1d-6) * factor
+                  ! NOTE: The sign is minus because we are integrating back in time
+                  Iobs(j, i) = Iobs(j, i) - jnut(j, ii - 1) * tob_min * Pinteg(abu, sind, 1d-6) * factor
                end if
             end if
          end do int_loop
+         !$OMP END ORDERED
          Iobs(j, i) = Iobs(j, i) * cLight
       end do obs_loop
-      !$OMP END DO
 #ifdef FBAR
-      !$OMP MASTER
+      !$OMP CRITICAL
       if ( j < numdf ) call bar%update(current=real(j, R8P))
-      !$OMP END MASTER
+      !$OMP END CRITICAL
 #endif
    end do freq_loop
-   !$OMP END PARALLEL
+   !$OMP END PARALLEL DO
 
    write(*, *) '-> Saving'
    call h5lexists_f(file_id, 'Iobs', Iobs_exists, herror)

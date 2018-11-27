@@ -23,14 +23,16 @@ contains
       real(dp), intent(in) :: B
       real(dp), intent(in), dimension(:) :: freqs, gg, nn
       logical, intent(in) :: mbs_or_syn
-      integer :: j, k, kglob
+      integer :: j, k, kglob, Ng, Nf
       real(dp) :: qq, n_globgmx
       real(dp), dimension(size(freqs)) :: jnu
       jnu = 0d0
-      !$OMP PARALLEL DO ORDERED COLLAPSE(2) SCHEDULE(DYNAMIC) DEFAULT(SHARED) &
+      Ng = size(gg, dim=1)
+      Nf = size(freqs, dim=1)
+      !$OMP PARALLEL DO ORDERED COLLAPSE(2) SCHEDULE(STATIC) DEFAULT(SHARED) &
       !$OMP& PRIVATE(qq)
-      freqs_loop: do j=1, size(freqs)
-         calc_jnu: do k=1, size(gg) - 1
+      freqs_loop: do j = 1, Nf
+         calc_jnu: do k = 1, Ng - 1
             if ( nn(k) > 1d-100 .and. nn(k + 1) > 1d-100) then
                qq = -dlog(nn(k + 1) / nn(k)) / dlog(gg(k + 1) / gg(k))
                if ( mbs_or_syn ) then
