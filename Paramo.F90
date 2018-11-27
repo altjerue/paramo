@@ -156,7 +156,11 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc, mbs_o
       case(1)
          t(i) = tstep * ( (tmax / tstep)**(dble(i - 1) / dble(numdt - 1)) )
       case(2)
-         t(i) = t(i - 1) + tstep / (nu0(max0(1, i - 1), kg2) * g2)
+         if ( i == 1 ) then
+            t(i) = t(i - 1) + dmin1(tstep / (nu0(max0(1, i - 1), kg2) * g2), 1e-2 * tstep)
+         else
+            t(i) = t(i - 1) + tstep / (nu0(max0(1, i - 1), kg2) * g2)
+         end if
          if ( t(i) > tmax ) then
             tstop = i
             exit time_loop
