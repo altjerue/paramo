@@ -392,17 +392,16 @@ contains
       real(dp), intent(in) :: gmin, gmax
       real(dp), intent(in), dimension(:) :: gg, nn, Imbs, fout
       real(dp), intent(out), dimension(:) :: emiss
-      integer :: j,k,Nf
-      real(dp) :: g1,g2,jbol0
-      real(dp), dimension(size(fout)) :: fin,I0
+      integer :: j, k, Nf
+      real(dp) :: g1, g2, jbol0
+      real(dp), dimension(size(fout)) :: fin, I0
 
       Nf = size(fout)
       fin = fout
 
+      !$OMP  PARALLEL DO COLLAPSE(1) SCHEDULE(DYNAMIC) DEFAULT(SHARED) &
+      !$OMP& PRIVATE(j, g1, g2, I0, jbol0)
       fout_loop: do k=1,Nf
-
-         !$OMP  PARALLEL DO COLLAPSE(1) SCHEDULE(DYNAMIC) DEFAULT(SHARED) &
-         !$OMP& PRIVATE(g1, g2)
          fin_loop: do j=1,Nf
             g1 = dmax1(dsqrt(0.25d0 * fout(k) / fin(j)), gmin)
             g2 = dmin1(0.75d0 * mass_e * cLight2 / (hPlanck * fin(j)), gmax)
@@ -412,121 +411,118 @@ contains
                I0(j) = Imbs(j) * ssc_qromb(fin(j), fout(k), g1, g2, gg, nn) / fin(j)**2
             end if
          end do fin_loop
-         !$OMP END PARALLEL DO
-
-         !  :::::  trapezoidal rule  :::::
+         !  :::::  improvised trapezoidal rule  :::::
          jbol0 = fin(1) * I0(1) + fin(Nf) * I0(Nf)
          jbol0 = 0.5d0 * dlog(fin(Nf) / fin(1)) * &
             (jbol0 + 2d0 * sum(fin(2:Nf - 1) * I0(2:Nf - 1))) / dble(Nf - 1)
-         emiss(k) = dmax1(1d-200, 0.25d0 * fout(k) * sigmaT * jbol0)
-
+         emiss(k) = 0.25d0 * fout(k) * sigmaT * jbol0
       end do fout_loop
-
-   contains
-
-      !
-      !   ----------{   Romberg integrator   }----------
-      !
-      function ssc_qromb(fi, fou, a, b, g, n) result(qromb)
-         implicit none
-         real(dp), intent(in) :: fi, fou, a, b
-         real(dp), intent(in), dimension(:) :: n, g
-         integer, parameter :: jmax = 25, jmaxp = jmax + 1, kq = 6, km = kq - 1
-         real(dp), parameter :: eps=1d-4
-         integer :: jq
-         real(dp) :: dqromb, qromb
-         real(dp), dimension(jmaxp) :: h, s
-         h(1) = 1d0
-         do jq=1,jmax
-            call ssc_trapzd(fi, fou, dlog(a), dlog(b), s(jq), jq, g, n)
-            if ( jq >= kq ) then
-               call polint(h(jq - km:jq), s(jq - km:jq), 0.0d0, qromb, dqromb)
-               if ( dabs(dqromb) <= eps * dabs(qromb) ) return
-            end if
-            s(jq + 1) = s(jq)
-            h(jq + 1) = 0.25d0 * h(jq)
-         end do
-         print*, fi, fou, a, b, qromb, dqromb
-         call an_error('ssc_qromb: too many steps')
-      end function ssc_qromb
-
-      !
-      !   ----------{   Trapezoid   }----------
-      !
-      subroutine ssc_trapzd(fi, fou, a, b, s, m, g, n)
-         implicit none
-         integer, intent(in) :: m
-         real(dp), intent(in) :: a, b, fou, fi
-         real(dp), intent(in), dimension(:) :: g, n
-         real(dp), intent(inout) :: s
-         integer :: it, jt
-         real(dp) :: del, fsum, x
-         if ( m == 1 ) then
-            s = 0.5d0 * (b - a) * ( &
-            dexp(a) * ssc_integrand(fi, fou, dexp(a), g, n) + &
-            dexp(b) * ssc_integrand(fi, fou, dexp(b), g, n) )
-         else
-            it = 2**(m - 2)
-            del = (b - a) / dble(it)
-            x = a + 0.5d0 * del
-            fsum = 0d0
-            do jt=1,it
-               fsum = fsum + dexp(x) * ssc_integrand(fi, fou, dexp(x), g, n)
-               x = x + del
-            end do
-            s = 0.5d0 * (s + del * fsum)
-         end if
-      end subroutine ssc_trapzd
-
-      !
-      !   ----------{   Dispersion function   }----------
-      !
-      function ssc_integrand(fi, fou, gev, g, n) result(integrand)
-         implicit none
-         real(dp), intent(in) :: fi, fou, gev
-         real(dp), intent(in), dimension(:) :: g, n
-         integer :: kk,Ng
-         real(dp) :: fIC, nnev, beta, integrand, qq, foutfin, bplus, bminus
-         Ng = ubound(g, dim=1)
-         kk = minloc(dabs(gev - g), dim=1)
-         if ( gev < g(kk) ) kk = kk - 1
-         if ( n(kk) < 1d-100 .or. gev > g(Ng) ) then
-            integrand = 0d0
-            return
-         end if
-
-         beta = bofg(gev)
-         foutfin = fou / fi
-         bplus = 1d0 + beta
-         bminus = 1d0 - beta
-
-         if ( bminus / bplus <= foutfin .and. foutfin <= 1d0 ) then
-            fIC = bplus * foutfin - bminus
-         else if ( 1d0 <= foutfin .and. foutfin <= bplus / bminus ) then
-            fIC = bplus - bminus * foutfin
-         else
-            integrand = 0d0
-            return
-         end if
-
-         if ( dabs(gev - g(kk)) <= 1d-12 ) then
-            integrand = one_over_gb2(gev) * n(kk) * fIC
-            return
-         else
-            if ( n(kk + 1) < 1d-100  ) then
-               qq = dlog(n(kk + 1) / n(kk)) / dlog(g(kk + 1) / g(kk))
-               if ( qq < -8d0 ) qq = -8d0
-               if ( qq >  8d0 ) qq =  8d0
-               nnev = n(kk) * (gev / g(kk))**qq
-               integrand = one_over_gb2(gev) * nnev * fIC
-            else
-               integrand = 0d0
-            end if
-            return
-         end if
-      end function ssc_integrand
+      !$OMP END PARALLEL DO
 
    end subroutine ssc_emissivity
+
+   !
+   !   ----------{   Romberg integrator   }----------
+   !
+   function ssc_qromb(fin, fout, a, b, gg, nn) result(qromb)
+      implicit none
+      real(dp), intent(in) :: fin, fout, a, b
+      real(dp), intent(in), dimension(:) :: nn, gg
+      integer, parameter :: jmax = 25, jmaxp = jmax + 1, kq = 6, km = kq - 1
+      real(dp), parameter :: eps = 1d-4
+      integer :: jq
+      real(dp) :: dqromb, qromb
+      real(dp), dimension(jmaxp) :: h, s
+      h(1) = 1d0
+      do jq = 1, jmax
+         call ssc_trapzd(fin, fout, dlog(a), dlog(b), s(jq), jq, gg, nn)
+         if ( jq >= kq ) then
+            call polint(h(jq - km:jq), s(jq - km:jq), 0.0d0, qromb, dqromb)
+            if ( dabs(dqromb) <= eps * dabs(qromb) ) return
+         end if
+         s(jq + 1) = s(jq)
+         h(jq + 1) = 0.25d0 * h(jq)
+      end do
+      print*, fin, fout, a, b, qromb, dqromb
+      call an_error('ssc_qromb: too many steps')
+   end function ssc_qromb
+
+   !
+   !   ----------{   Trapezoid   }----------
+   !
+   subroutine ssc_trapzd(fin, fout, a, b, s, n, gg, nn)
+      implicit none
+      integer, intent(in) :: n
+      real(dp), intent(in) :: a, b, fout, fin
+      real(dp), intent(in), dimension(:) :: gg, nn
+      real(dp), intent(inout) :: s
+      integer :: it, jt
+      real(dp) :: del, fsum, x
+      if ( n == 1 ) then
+         s = 0.5d0 * (b - a) * ( &
+         dexp(a) * ssc_integrand(fin, fout, dexp(a), gg, nn) + &
+         dexp(b) * ssc_integrand(fin, fout, dexp(b), gg, nn) )
+      else
+         it = 2**(n - 2)
+         del = (b - a) / dble(it)
+         x = a + 0.5d0 * del
+         fsum = 0d0
+         do jt=1,it
+            fsum = fsum + dexp(x) * ssc_integrand(fin, fout, dexp(x), gg, nn)
+            x = x + del
+         end do
+         s = 0.5d0 * (s + del * fsum)
+      end if
+   end subroutine ssc_trapzd
+
+   !
+   !   ----------{   Dispersion function   }----------
+   !
+   function ssc_integrand(fin, fout, gev, gg, nn) result(integrand)
+      implicit none
+      real(dp), intent(in) :: fin, fout, gev
+      real(dp), intent(in), dimension(:) :: gg, nn
+      integer :: kk, Ng
+      real(dp) :: fIC, nnev, beta, integrand, qq, foutfin, bplus, bminus
+      Ng = size(gg, dim=1)
+      kk = minloc(dabs(gev - gg), dim=1)
+
+      if ( nn(kk) < 1d-100 ) then
+         integrand = 0d0
+         return
+      end if
+
+      beta = bofg(gev)
+      foutfin = fout / fin
+      bplus = 1d0 + beta
+      bminus = 1d0 - beta
+
+      if ( bminus / bplus <= foutfin .and. foutfin <= 1d0 ) then
+         fIC = bplus * foutfin - bminus
+      else if ( 1d0 <= foutfin .and. foutfin <= bplus / bminus ) then
+         fIC = bplus - bminus * foutfin
+      else
+         integrand = 0d0
+         return
+      end if
+
+      if ( any(dabs(gev - gg) == 0d0) ) then
+         integrand = one_over_gb2(gev) * nn(kk) * fIC
+         return
+      else
+         if ( gev < gg(kk) .or. gev > gg(Ng) ) then
+            qq = dlog(nn(kk) / nn(kk - 1)) / dlog(gg(kk) / gg(kk - 1))
+         else
+            qq = dlog(nn(kk + 1) / nn(kk)) / dlog(gg(kk + 1) / gg(kk))
+         end if
+         if ( qq < -8d0 ) qq = -8d0
+         if ( qq >  8d0 ) qq =  8d0
+
+         nnev = nn(kk) * (gev / gg(kk))**qq
+         integrand = one_over_gb2(gev) * nnev * fIC
+         return
+      end if
+   end function ssc_integrand
 
 
    !
