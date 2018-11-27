@@ -75,20 +75,16 @@ program IofTobs
    D = Doppler(Gbulk, mu_obs)
 
    Iobs = 0d0
-   ! R = 1e10
-   !!!!!!!!!!! WARNING: Changes made ad hoc
-   !!!!!!!!!!!
-   !!!!!!!!!!! TODO: Change things according to new definition of light path on Paramo
-   edge = R * mu_com
+   edge = 2d0 * R * mu_com
+   s = 2d0 * s * mu_com
    factor = 1d0 / (Gbulk * mu_com * (mu_obs - bofg(Gbulk)) * D)
-   ! print*, mu_com
    i_edge = minloc(abs(edge - s), dim = 1, mask = edge >= s)
 
    write(*, *) '-> Solving Rad. Trans. Eq.'
 
 #ifdef FBAR
    cur = 0
-   call bar%initialize(width=48, max_value=real(numdf, R8P),                         &
+   call bar%initialize(width=48, max_value=real(numdf, R8P),                          &
       bracket_left_string='|', bracket_left_color_fg='blue',                          &
       empty_char_string=' ', empty_char_color_fg='blue', empty_char_color_bg='white', &
       filled_char_string=' ', filled_char_color_bg='blue',                            &
@@ -113,18 +109,18 @@ program IofTobs
          int_loop: do ii = i_start, i
             if ( ii == 1 ) then
                tob_min = t_com_f(t_obs(i), z, Gbulk, 0d0, mu_obs)
-               tob_max = t_com_f(t_obs(i), z, Gbulk, 2d0 * (edge - s(1)), mu_obs)
+               tob_max = t_com_f(t_obs(i), z, Gbulk, edge - s(1), mu_obs)
                abu = dabs(tob_max - tob_min)
                Iobs(j, i) = Iobs(j, i) + jnut(j, 1) * abu
             else
-               tob_min = t_com_f(t_obs(i), z, Gbulk, 2d0 * (edge - s(ii)), mu_obs)
-               tob_max = t_com_f(t_obs(i), z, Gbulk, 2d0 * (edge - s(ii - 1)), mu_obs)
-               abu = tob_max / tob_min
+               tob_min = t_com_f(t_obs(i), z, Gbulk, edge - s(ii - 1), mu_obs)
+               tob_max = t_com_f(t_obs(i), z, Gbulk, edge - s(ii), mu_obs)
+               abu = tob_min / tob_max
                if ( jnut(j, ii) > 1d-100 .and. jnut(j, ii - 1) > 1d-100 ) then
-                  sind = -dlog( jnut(j, ii - 1) / jnut(j, ii) ) / dlog( abu )
+                  sind = -dlog( jnut(j, ii) / jnut(j, ii - 1) ) / dlog( abu )
                   if ( sind < -8d0 ) sind = -8d0
                   if ( sind > 8d0 ) sind = 8d0
-                  Iobs(j, i) = Iobs(j, i) + jnut(j, ii) * tob_min * Pinteg(abu, sind, 1d-6) * factor
+                  Iobs(j, i) = Iobs(j, i) + jnut(j, ii - 1) * tob_min * Pinteg(abu, sind, 1d-6) * factor
                end if
             end if
          end do int_loop

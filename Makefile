@@ -101,7 +101,7 @@ ITOBS=xITobs
 
 # -----  dependencies  -----
 PARAMO_OBJ = misc.o pwl_integ.o h5_inout.o K2.o SRtoolkit.o anaFormulae.o \
-	magnetobrem.o radiation.o Paramo.o paramo_main.o
+	magnetobrem.o radiation.o dist_evol.o Paramo.o paramo_main.o
 ITOBS_OBJ = misc.o h5_inout.o K2.o SRtoolkit.o pwl_integ.o IofTobs.o
 
 # -----  rules  -----
@@ -114,11 +114,12 @@ magnetobrem.o: data_types.o constants.o h5_inout.o misc.o anaFormulae.o \
 	pwl_integ.o
 IofTobs.o: data_types.o h5_inout.o SRtoolkit.o pwl_integ.o
 Paramo.o: data_types.o constants.o misc.o pwl_integ.o h5_inout.o SRtoolkit.o \
-	anaFormulae.o magnetobrem.o radiation.o
+	anaFormulae.o magnetobrem.o radiation.o dist_evol.o
 paramo_main.o: data_types.o misc.o magnetobrem.o Paramo.o
 anaFormulae.o: data_types.o constants.o misc.o pwl_integ.o
 radiation.o: data_types.o constants.o misc.o pwl_integ.o SRtoolkit.o \
 	anaFormulae.o magnetobrem.o
+dist_evol.o: data_types.o constants.o misc.o pwl_integ.o SRtoolkit.o
 
 # executables
 $(PARAMO): data_types.o constants.o $(PARAMO_OBJ)

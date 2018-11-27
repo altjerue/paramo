@@ -10,6 +10,7 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc, mbs_o
 #ifdef MBS
    use magnetobrem
 #endif
+   use dist_evol
    use radiation
    implicit none
    character(len=*), intent(in) :: output_file, params_file
