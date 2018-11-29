@@ -75,16 +75,6 @@ program IofTobs
    D = Doppler(Gbulk, mu_obs)
 
    Iobs = 0d0
-   !!!! WARNING: This is just temporal
-   call h5ldelete_f(file_id, 'time', herror)
-   call h5ldelete_f(file_id, 't_obs', herror)
-   call h5ldelete_f(file_id, 'sen_lum', herror)
-   call h5ldelete_f(file_id, 'jnut', herror)
-   call h5io_wdble1(file_id, 'time', t(:numdt - 1), herror)
-   call h5io_wdble1(file_id, 't_obs', t_obs(:numdt - 1), herror)
-   call h5io_wdble1(file_id, 'sen_lum', s(:numdt - 1), herror)
-   call h5io_wdble2(file_id, 'jnut', jnut(:, :numdt - 1), herror)
-   !!!!!!!!!!!!!!!!!!!!!!!!!!
    ! --> Light path from origin to the observer: 2 s mu_com
    ! --> Edge of the blob: 2 R mu_com
    ! --> Position at which we will measure the radiation:
