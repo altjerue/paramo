@@ -24,7 +24,7 @@ program IofTobs
 
    real(dp) :: B, R, d_L, z, Gbulk, theta, mu_obs, mu_com, D, tob_min, &
       tob_max, sind, edge, factor, abu
-   real(dp), allocatable, dimension(:) :: t, t_obs, nu, s
+   real(dp), allocatable, dimension(:) :: t, t_obs, nu, s, pos
    real(dp), allocatable, dimension(:, :) :: jnut, Iobs
 
    character(len=256) :: paramo_fname
@@ -56,10 +56,9 @@ program IofTobs
    call h5io_rdble0(group_id, 'redshift', z, herror)
    call h5io_rdble0(group_id, 'gamma_bulk', Gbulk, herror)
    call h5io_rdble0(group_id, 'view-angle', theta, herror)
-   call h5io_closeg(group_id, herror)
    call h5io_rint0(file_id, 't_stop', numdt, herror)
 
-   allocate(t(numdt), nu(numdf), s(numdt), t_obs(numdt))
+   allocate(t(numdt), nu(numdf), s(numdt), t_obs(numdt), pos(numdt))
    allocate(jnut(numdf, numdt), Iobs(numdf, numdt))
 
    !   ----->   Reading data
@@ -75,10 +74,18 @@ program IofTobs
    D = Doppler(Gbulk, mu_obs)
 
    Iobs = 0d0
-   edge = 2d0 * R * mu_com
-   s = 2d0 * s * mu_com
-   factor = 1d0 / (Gbulk * mu_com * (mu_obs - bofg(Gbulk)) * D)
-   i_edge = minloc(abs(edge - s), dim = 1, mask = edge >= s)
+   !!!! WARNING: This is just temporal
+   R = 1e7
+   call h5ldelete_f(group_id, 'R', herror)
+   call h5io_wdble0(group_id, 'R', R, herror)
+   call h5io_closeg(group_id, herror)
+   !!!!!!!!!!!!!!!!!!!!!!!!!!
+   ! --> Light path from origin to the observer: 2 s mu_com
+   ! --> Edge of the blob: 2 R mu_com
+   ! --> Position at which we will measure the radiation:
+   pos = 2d0 * (R - s) * mu_com
+   factor = 1d0 / (2d0 * Gbulk * mu_com * (mu_obs - bofg(Gbulk)) * D) ! <--- ds' / (c dt')
+   i_edge = minloc(pos, dim = 1, mask = pos >= 0d0)
 
    write(*, *) '-> Solving Radiative Transfer Equation'
 
@@ -108,19 +115,19 @@ program IofTobs
          end if
          int_loop: do ii = i_start, i
             if ( ii == 1 ) then
-               tob_min = t_com_f(t_obs(i), z, Gbulk, edge, mu_obs)
-               tob_max = t_com_f(t_obs(i), z, Gbulk, edge - s(1), mu_obs)
+               tob_min = t_com_f(t_obs(i), z, Gbulk, 0d0, mu_obs)
+               tob_max = t_com_f(t_obs(i), z, Gbulk, pos(1), mu_obs)
                abu = tob_max - tob_min
                Iobs(j, i) = Iobs(j, i) + jnut(j, 1) * abu
             else
-               tob_min = t_com_f(t_obs(i), z, Gbulk, edge - s(ii - 1), mu_obs)
-               tob_max = t_com_f(t_obs(i), z, Gbulk, edge - s(ii), mu_obs)
+               tob_min = t_com_f(t_obs(i), z, Gbulk, pos(ii - 1), mu_obs)
+               tob_max = t_com_f(t_obs(i), z, Gbulk, pos(ii), mu_obs)
                abu = tob_max / tob_min
                if ( jnut(j, ii) > 1d-100 .and. jnut(j, ii - 1) > 1d-100 ) then
                   sind = -dlog( jnut(j, ii) / jnut(j, ii - 1) ) / dlog( abu )
                   if ( sind < -8d0 ) sind = -8d0
                   if ( sind > 8d0 ) sind = 8d0
-                  ! NOTE: The sign is minus because we are integrating back in time
+                  ! NOTE: We do a substraction because we are integrating back in time
                   Iobs(j, i) = Iobs(j, i) - jnut(j, ii - 1) * tob_min * Pinteg(abu, sind, 1d-6) * factor
                end if
             end if
