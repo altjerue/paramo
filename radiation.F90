@@ -26,12 +26,12 @@ contains
       integer :: j, k, kglob, Ng, Nf
       real(dp) :: qq, n_globgmx
       real(dp), dimension(size(freqs)) :: jnu
-      jnu = 0d0
       Ng = size(gg, dim=1)
       Nf = size(freqs, dim=1)
-      !$OMP PARALLEL DO ORDERED COLLAPSE(2) SCHEDULE(AUTO) DEFAULT(SHARED) &
-      !$OMP& PRIVATE(qq)
+      !$OMP PARALLEL DO ORDERED COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
+      !$OMP& PRIVATE(qq, j, k)
       freqs_loop: do j = 1, Nf
+         jnu(j) = 0d0
          calc_jnu: do k = 1, Ng - 1
             if ( nn(k) > 1d-100 .and. nn(k + 1) > 1d-100) then
                qq = -dlog(nn(k + 1) / nn(k)) / dlog(gg(k + 1) / gg(k))
@@ -63,6 +63,7 @@ contains
                end if
             end if
          end do calc_jnu
+         if ( jnu(j) < 1d-100 ) jnu(j) = 0d0
       end do freqs_loop
       !$OMP END PARALLEL DO
    end function mbs_emissivity
@@ -83,13 +84,12 @@ contains
       logical, intent(in) :: mbs_or_syn
       integer :: j,k,kglob
       real(dp) :: qq,n_globgmx
-      real(dp), dimension(size(freqs)) :: anu,aa
+      real(dp), dimension(size(freqs)) :: anu
 
-      !$OMP PARALLEL DO ORDERED COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
-      !$OMP& PRIVATE(qq,k)
+      !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
+      !$OMP& PRIVATE(qq, j, k)
       freqs_loop: do j=1, size(freqs)
-         aa(j) = 0d0
-         !$OMP ORDERED
+         anu(j) = 0d0
          calc_jnu: do k=1, size(gg) - 1
             if ( nn(k) > 1d-100 ) then
                qq = -dlog(nn(k + 1) / nn(k)) / dlog(gg(k + 1) / gg(k))
@@ -97,32 +97,30 @@ contains
                   if ( qq < SS(1) ) qq = SS(1)
                   if ( qq > SS(numSS) ) qq = SS(numSS)
                   if ( freqs(j) > dexp(XX(numXX)) * nuconst * B ) then
-                     aa(j) = aa(j) + a_mb_qromb(freqs(j), B, nn(k), gg(k), gg(k + 1), qq, chunche_c100g20, RMA_new)
+                     anu(j) = anu(j) + a_mb_qromb(freqs(j), B, nn(k), gg(k), gg(k + 1), qq, chunche_c100g20, RMA_new)
                   else
                      if ( gg(k) < globgmax .and. gg(k + 1) <= globgmax ) then
-                        aa(j) = aa(j) + &
+                        anu(j) = anu(j) + &
                            a_mb(freqs(j), B, nn(k), gg(k), gg(k + 1), qq, RMA_new, chunche_c100g20, jtable)
                      else if ( gg(k) < globgmax .and. gg(k + 1) > globgmax ) then
                         kglob = locate(gg, globgmax, in_bounds=.true.)
                         n_globgmx = nn(kglob) * ( gg(kglob + 1) / gg(kglob) )**qq
-                        aa(j) = aa(j) + &
+                        anu(j) = anu(j) + &
                            a_mb(freqs(j), B, nn(k), gg(k), globgmax, qq, RMA_new, chunche_c100g20, jtable) + &
                            a_mb_qromb(freqs(j), B, n_globgmx, globgmax, gg(k + 1), qq, chunche_c100g20, RMA_new)
                      else
-                        aa(j) = aa(j) + &
+                        anu(j) = anu(j) + &
                            a_mb_qromb(freqs(j), B, nn(k), gg(k), gg(k + 1), qq, chunche_c100g20, RMA_new)
                      end if
                   end if
                else
                   if ( qq > 8d0 ) qq = 8d0
                   if ( qq < 8d0 ) qq = -8d0
-                  aa(j) = aa(j) + a_mb_qromb(freqs(j), B, nn(k), gg(k), gg(k + 1), qq, 1d0, RMA_new)
+                  anu(j) = anu(j) + a_mb_qromb(freqs(j), B, nn(k), gg(k), gg(k + 1), qq, 1d0, RMA_new)
                end if
             end if
          end do calc_jnu
-         !$OMP END ORDERED
-         if ( aa(j) < 1d-100 ) aa(j) = 0d0
-         anu(j) = aa(j)
+         if ( anu(j) < 1d-100 ) anu(j) = 0d0
       end do freqs_loop
       !$OMP END PARALLEL DO
    end function mbs_absorption

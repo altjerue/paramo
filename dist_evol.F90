@@ -89,7 +89,7 @@ contains
       enddo
 
       !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
-      !$OMP& PRIVATE(i,k,tup,tdw,glow,ghigh,g,g0)
+      !$OMP& PRIVATE(i, k, tup, tdw, glow, ghigh, g, g0)
       gloop: do kk = 1, Ng
          !
          !  #    # #####  #    #   ##   #####  #####   ####
