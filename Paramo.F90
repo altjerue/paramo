@@ -162,8 +162,8 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc, mbs_o
          else
             t(i) = t(i - 1) + tstep / (nu0(max0(1, i - 1), kg2) * g2)
          end if
-         if ( t(i) > tmax ) then
-            tstop = i
+         if ( t(i - 1) >= tmax ) then
+            tstop = i - 1
             exit time_loop
          end if
       case(3)

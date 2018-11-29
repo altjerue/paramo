@@ -50,7 +50,6 @@ program IofTobs
    call h5io_openf(paramo_fname, file_id, herror)
    call h5io_openg(file_id, 'Parameters', group_id, herror)
    call h5io_rint0(group_id, 'numdf', numdf, herror)
-   call h5io_rint0(group_id, 'numdt', numdt, herror)
    call h5io_rdble0(group_id, 'Bfield', B, herror)
    call h5io_rdble0(group_id, 'R', R, herror)
    call h5io_rdble0(group_id, 'd_lum', d_L, herror)
@@ -58,6 +57,7 @@ program IofTobs
    call h5io_rdble0(group_id, 'gamma_bulk', Gbulk, herror)
    call h5io_rdble0(group_id, 'view-angle', theta, herror)
    call h5io_closeg(group_id, herror)
+   call h5io_rint0(file_id, 't_stop', numdt, herror)
 
    allocate(t(numdt), nu(numdf), s(numdt), t_obs(numdt))
    allocate(jnut(numdf, numdt), Iobs(numdf, numdt))
