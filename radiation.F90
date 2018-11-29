@@ -29,7 +29,7 @@ contains
       jnu = 0d0
       Ng = size(gg, dim=1)
       Nf = size(freqs, dim=1)
-      !$OMP PARALLEL DO ORDERED COLLAPSE(2) SCHEDULE(STATIC) DEFAULT(SHARED) &
+      !$OMP PARALLEL DO ORDERED COLLAPSE(2) SCHEDULE(AUTO) DEFAULT(SHARED) &
       !$OMP& PRIVATE(qq)
       freqs_loop: do j = 1, Nf
          calc_jnu: do k = 1, Ng - 1
@@ -85,7 +85,7 @@ contains
       real(dp) :: qq,n_globgmx
       real(dp), dimension(size(freqs)) :: anu,aa
 
-      !$OMP PARALLEL DO ORDERED COLLAPSE(1) SCHEDULE(DYNAMIC) DEFAULT(SHARED) &
+      !$OMP PARALLEL DO ORDERED COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
       !$OMP& PRIVATE(qq,k)
       freqs_loop: do j=1, size(freqs)
          aa(j) = 0d0
@@ -401,7 +401,7 @@ contains
       Nf = size(fout)
       fin = fout
 
-      !$OMP  PARALLEL DO COLLAPSE(1) SCHEDULE(DYNAMIC) DEFAULT(SHARED) &
+      !$OMP  PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
       !$OMP& PRIVATE(j, g1, g2, I0, jbol0)
       fout_loop: do k=1,Nf
          fin_loop: do j=1,Nf

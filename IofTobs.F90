@@ -97,7 +97,8 @@ program IofTobs
    call bar%start
 #endif
 
-   !$OMP PARALLEL DO ORDERED COLLAPSE(1) DEFAULT(SHARED) PRIVATE(tob_min, tob_max, abu, ii, sind, i_start)
+   !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED)&
+   !$OMP& PRIVATE(tob_min, tob_max, abu, i, j, ii, sind, i_start)
    freq_loop: do j = 1, numdf
       obs_loop: do i = 1, numdt
          if ( i <= i_edge ) then
@@ -105,7 +106,6 @@ program IofTobs
          else
             i_start = i - i_edge
          end if
-         !$OMP ORDERED
          int_loop: do ii = i_start, i
             if ( ii == 1 ) then
                tob_min = t_com_f(t_obs(i), z, Gbulk, edge, mu_obs)
@@ -125,12 +125,12 @@ program IofTobs
                end if
             end if
          end do int_loop
-         !$OMP END ORDERED
          Iobs(j, i) = Iobs(j, i) * cLight
       end do obs_loop
 #ifdef FBAR
       !$OMP CRITICAL
-      if ( j < numdf ) call bar%update(current=real(j, R8P))
+      cur = cur + 1
+      if ( cur < numdf ) call bar%update(current=real(cur, R8P))
       !$OMP END CRITICAL
 #endif
    end do freq_loop
