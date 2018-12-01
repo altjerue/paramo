@@ -188,7 +188,7 @@ contains
       implicit none
       real(dp), intent(in) :: gamma, mu
       real(dp) :: D
-      D = 1d0 / (gamma * (1d0 + bofg(gamma) * mu))
+      D = 1d0 / (gamma * (1d0 - bofg(gamma) * mu))
    end function Doppler
 
 

@@ -117,13 +117,13 @@ program IofTobs
             else
                tob_min = t_com_f(t_obs(i), z, Gbulk, pos(ii - 1), mu_obs)
                tob_max = t_com_f(t_obs(i), z, Gbulk, pos(ii), mu_obs)
-               abu = tob_max / tob_min
+               abu = tob_min / tob_max
                if ( jnut(j, ii) > 1d-100 .and. jnut(j, ii - 1) > 1d-100 ) then
-                  sind = -dlog( jnut(j, ii) / jnut(j, ii - 1) ) / dlog( abu )
+                  sind = -dlog( jnut(j, ii - 1) / jnut(j, ii) ) / dlog( abu )
                   if ( sind < -8d0 ) sind = -8d0
                   if ( sind > 8d0 ) sind = 8d0
                   ! NOTE: We do a substraction because we are integrating back in time
-                  Iobs(j, i) = Iobs(j, i) - jnut(j, ii - 1) * tob_min * Pinteg(abu, sind, 1d-6) * factor
+                  Iobs(j, i) = Iobs(j, i) + jnut(j, ii) * tob_max * Pinteg(abu, sind, 1d-6) * factor
                end if
             end if
          end do int_loop
