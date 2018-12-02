@@ -12,3 +12,4 @@ x*
 *.pyc
 *.log
 __pycache__
+*__genmod*
