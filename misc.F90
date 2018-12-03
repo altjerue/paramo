@@ -311,7 +311,8 @@ contains
       real(dp), dimension(n) :: a
       a = 0d0
    end function zeros1D
-   
+
+#if 0
    ! ====================================================================
    !  First derivative of the Bessel function of the first kind of order
    !  nu of z
@@ -329,5 +330,5 @@ contains
          dbj = - dbesjn(nu + 1, z) + dble(nu) * dbesjn(nu, z) / z
       end if
    end function dbesseljn
-   
+#endif
 end module misc

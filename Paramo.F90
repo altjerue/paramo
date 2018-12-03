@@ -136,7 +136,7 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc, mbs_o
    write(*, *) '---> Calculating the emission'
    write(*, *) ''
    write(*, "(' Using tstep = ', F5.3)") tstep
-   write(*, "(' Acceleration period = ',ES12.6)") dtacc
+   write(*, "(' Acceleration period = ',ES15.7)") dtacc
    write(*, "(' Initial synchrotron cooling time scale:', ES15.7)") 1d0 / (nu0_B * g2)
    write(*, *) 'Wrting data in: ', trim(output_file)
    write(*, *) ''

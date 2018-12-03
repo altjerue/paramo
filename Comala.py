@@ -126,6 +126,7 @@ class compiler(object):
             make += ' FBAR=1'
 
         os.chdir(self.compile_dir)
+        os.system('git pull')
         print("--> Running Makefile:\n   ", make, "\n")
         log = strftime("%a, %d %b %Y %H:%M:%S %Z", localtime())
         os.system(make)
@@ -139,6 +140,54 @@ class compiler(object):
         os.system("make clean")
         os.chdir(self.cwd)
 
+
+# 
+#  #####  #####   ####     ###### # #      ######
+#  #    # #    # #         #      # #      #
+#  #    # #####   ####     #####  # #      #####
+#  #####  #    #      #    #      # #      #
+#  #      #    # #    #    #      # #      #
+#  #      #####   ####     #      # ###### ######
+def PBSfile(jname, qname, xname, args=None, pream=None, depen=None, nodes=None, cores=None, mail=None, htime=None):
+    from datetime import timedelta as td
+    if htime is None:
+        t = str(td(hours=2.0))
+    else:
+        t = str(td(hours=htime))
+    sname = "{0}.sub".format(jname)
+    if nodes is None:
+        n = 1
+    else:
+        n = nodes
+    if cores is None:
+        c = 1
+    else:
+        c = cores
+    with open(sname, 'w') as f:
+        print("#!/bin/sh -l\n", file=f)
+        print("# FILENAME: {0}\n".format(sname), file=f)
+        print("#PBS -q " + qname, file=f)
+        print("#PBS -l nodes={0:d}:ppn={1:d},nacesspolicy=singleuser".format(n, c), file=f)
+        print("#PBS -l walltime={0}".format(t), file=f)
+        print("#PBS -N " + jname, file=f)
+        print("#PBS -o /home/jruedabe/joboutput/{0}.out".format(jname), file=f)
+        print("#PBS -e /home/jruedabe/joboutput/{0}.err".format(jname), file=f)
+        if depen is not None:
+            print("#PBS -W depend=afterok:{0}".format(depen), file=f)
+        if mail is not None:
+            print("#PBS -M {0}".format(mail), file=f)
+            print("#PBS -m bae", file=f)
+        print("\n# Run command:", file=f)
+        if pream is not None:
+            xname = "{0} {1}".format(pream, xname)
+
+        if args is None:
+            print(xname, file=f)
+        else:
+            print("{0} {1}".format(xname, " ".join(args)), file=f)
+    return sname
+
+
 #
 #  #####  #    # #    #
 #  #    # #    # ##   #
@@ -146,8 +195,6 @@ class compiler(object):
 #  #####  #    # #  # #
 #  #   #  #    # #   ##
 #  #    #  ####  #    #
-
-
 class Paramo(object):
 
     def __init__(self, wCool=False, wAbs=False, wSSC=False, flabel='DriverTest', par_kw={}, comp_kw={}):
@@ -163,7 +210,7 @@ class Paramo(object):
 
     def output_file(self):
         outf = ''
-        argv = ''
+        argv = []
         if self.comp.HYB:
             outf += 'H'
         else:
@@ -176,38 +223,52 @@ class Paramo(object):
 
         if self.wCool:
             outf += 'V'
-            argv += ' T'
+            argv.append('T')
         else:
             outf += 'C'
-            argv += ' F'
+            argv.append('F')
 
         if self.wAbs:
             outf += 'O'
-            argv += ' T'
+            argv.append('T')
         else:
             outf += 'T'
-            argv += ' F'
+            argv.append('F')
 
         if self.wSSC:
-            outf += 'wSSC'
-            argv += ' T'
+            outf += 'wS'
+            argv.append('T')
         else:
-            outf += 'oSSC'
-            argv += ' F'
+            outf += 'oS'
+            argv.append('F')
 
         return outf + '-' + self.flabel + '.jp.h5', argv
 
     def run_Paramo(self, pream=None):
         self.comp.compile()
-        self.outfile, self.argv = self.output_file()
+        outfile, argv = self.output_file()
         if pream is None:
-            run_cmd = '{0}xParamo {1}{2} {3}'.format(self.comp.compile_dir, self.par.params_file, self.argv, self.outfile)
+            run_cmd = '{0}xParamo {1} {2} {3}'.format(self.comp.compile_dir, self.par.params_file, " ".join(argv), outfile)
         else:
-            run_cmd = '{0} {1}xParamo {2}{3} {4}'.format(pream, self.comp.compile_dir, self.par.params_file, self.argv, self.outfile)
+            run_cmd = '{0} {1}xParamo {2}{3} {4}'.format(pream, self.comp.compile_dir, self.par.params_file, " ".join(argv), outfile)
         print("\n--> Running:\n  ", run_cmd, "\n")
         os.system(run_cmd)
         print("\n--> Paramo finished")
         return self.outfile
+
+
+    def cl_Paramo(self, pream=None):
+        self.comp.compile()
+        self.outfile, self.argv = self.output_file()
+        if pream is None:
+            run_cmd = '{0}xParamo'.format(self.comp.compile_dir)
+        else:
+            run_cmd = '{0} {1}xParamo'.format(pream, self.comp.compile_dir)
+        args = []
+        args.append(self.par.params_file)
+        args += self.argv
+        args.append(self.outfile)
+        return run_cmd, args
 
 
 class ITobs(object):
@@ -226,3 +287,13 @@ class ITobs(object):
         print("\n--> Running:\n  ", run_cmd, "\n")
         os.system(run_cmd)
         print("\n--> Paramo finished")
+
+    def cl_ITobs(self, pream=None):
+        self.comp.compile()
+        if pream is None:
+            run_cmd = '{0}xITobs'.format(self.comp.compile_dir)
+        else:
+            run_cmd = '{0} {1}xITobs'.format(pream, self.comp.compile_dir)
+        args = []
+        args.append(self.Pfile)
+        return run_cmd, args

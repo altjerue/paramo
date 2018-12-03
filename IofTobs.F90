@@ -23,7 +23,7 @@ program IofTobs
    integer :: i, j, ii, numdf, numdt, i_edge, i_start
 
    real(dp) :: B, R, d_L, z, Gbulk, theta, mu_obs, mu_com, D, tob_min, &
-      tob_max, sind, edge, factor, abu
+      tob_max, sind, factor, abu!, edge
    real(dp), allocatable, dimension(:) :: t, t_obs, nu, s, pos
    real(dp), allocatable, dimension(:, :) :: jnut, Iobs
 

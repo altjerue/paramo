@@ -22,8 +22,22 @@ module anaFormulae
    use data_types
    use constants
    use misc
+#ifdef BRWN
+   use ISO_C_BINDING
+#endif
    use pwl_integ
    implicit none
+
+#ifdef BRWN
+   interface
+      function tgamma(y) bind(c)
+        use ISO_C_BINDING
+        real(c_double), value :: y
+        real(c_double) :: tgamma
+      end function tgamma
+   end interface
+#endif
+
 
 contains
 
@@ -36,10 +50,14 @@ contains
       integer, intent(in) :: m
       real(dp) :: cyclo
       real(dp), intent(in) :: beta,nu_b
-      
+
+#ifdef BRWN
+      cyclo = 8d0 * pi**2 * nu_b * dble( (m + 1) * ( m**(2 * m + 1) ) ) * &
+      beta**(2 * m) / tgamma(dble(2 * m + 2))
+#else
       cyclo = 8d0 * pi**2 * nu_b * dble( (m + 1) * ( m**(2 * m + 1) ) ) * &
       beta**(2 * m) / dgamma(dble(2 * m + 2))
-      
+#endif 
       if (cyclo.lt.1d-200) cyclo = 1d-200
       
    end function CyclotronLimit
@@ -58,7 +76,12 @@ contains
       !P_nu = 1.6d1 * pi * (chi/gam**2)**(1d0/3d0) * &
       !     dexp(- chi/gam**2) &
       !     / (2.7d1 * dgamma(4d0 / 3d0))
-      P_nu = 8d0 * beta**2 * chi_new**(1d0 / 3d0) * dexp(- chi_new) / (27d0 * dgamma(4d0 / 3d0))
+      P_nu = 8d0 * beta**2 * chi_new**(1d0 / 3d0) * dexp(- chi_new) &
+#ifdef BRWN
+           / (27d0 * tgamma(4d0 / 3d0))
+#else
+           / (27d0 * dgamma(4d0 / 3d0))
+#endif
       if (P_nu .lt. 1d-200) P_nu = 1d-200
    end function RJfAGN_eq340_pow
 

@@ -1,38 +1,53 @@
-ifeq ($(IFORT),1)
+ifeq ($(IFC),1)
+
 ifeq ($(MPI),1)
-	FC=ih5pfc
+FC=ih5pfc
 else  # MPI
-	FC=ih5fc
+FC=ih5fc
 endif # MPI
+
 else  # IFORT
+
 ifeq ($(MPI),1)
-	FC=h5pfc
+FC=h5pfc
 else  # MPI
-	FC=h5fc
+FC=h5fc
 endif # MPI
+
 endif # IFORT
 
 
+ifeq ($(BROWN),1)
+OBWN=-DBRWN
+# else
+# OBWN=-UBRWN
+endif
+
+
 ifeq ($(MBS),1)
+
 ifeq ($(HYB),1)
-	OMBS=-DMBS -DHYB
+OMBS=-DMBS -DHYB
 else  # HYB
-	OMBS=-DMBS -UHYB
+OMBS=-DMBS #-UHYB
 endif # HYB
+
 else  # MBS
+
 ifeq ($(HYB),1)
-	OMBS=-UMBS -DHYB
-else  # HYB
-	OMBS=-UMBS -UHYB
+OMBS=-DHYB #-UMBS
+#else  # HYB
+#OMBS=-UMBS -UHYB
 endif # HYB
+
 endif # MBS
 
 ifeq ($(FBAR),1)
-	OFB=-DFBAR
-	INCL=-I/Users/jesus/lib/Fortran/forbear/static/mod/
-	LIBS=-L/Users/jesus/lib/Fortran/forbear/static/ -lforbear
-else
-	OFB=-UFBAR
+OFB=-DFBAR
+INCL=-I/Users/jesus/lib/Fortran/forbear/static/mod/
+LIBS=-L/Users/jesus/lib/Fortran/forbear/static/ -lforbear
+#else
+#OFB=-UFBAR
 endif
 
 
@@ -40,14 +55,13 @@ endif
 ifeq ($(DBG),1)
 
 ifeq ($(IFORT),1)
-	OPTIMIZATION=-m64 -g -debug all -check all -implicitnone -warn unused \
-	-fp-stack-check -heap-arrays -ftrapuv -check pointers -check bounds \
-	-free
+OPTIMIZATION=-g -debug all -check all -check nostack -warn all -fp-stack-check -heap-arrays \
+	-ftrapuv -free $(OMBS) $(OBWN) $(OFB)
 else  # IFORT
-	OPTIMIZATION=-g -Wall -ffree-form -ffree-line-length-none -DNONSTCPP \
+OPTIMIZATION=-g -Wall -ffree-form -ffree-line-length-none -DNONSTCPP \
 	-mieee-fp -ffpe-trap=invalid,zero,overflow -fbacktrace -fcheck=all \
 	-fbounds-check -fno-unsafe-math-optimizations -frounding-math \
-	-fsignaling-nans $(OMBS) $(OFB)
+	-fsignaling-nans $(OMBS) $(OBWN) $(OFB)
 endif # IFORT
 
 else  # DBG
@@ -55,41 +69,46 @@ else  # DBG
 ifeq ($(IFORT),1)
 
 ifeq ($(IFAST),1)
-	FASTI=-fast
+FASTI=-fast
 else  # IFAST
-	FASTI=-O5
+FASTI=-O5
 endif # IFAST
-ifeq ($(IPAR),1)
-	PARI=-parallel
-endif
-ifeq ($(OPENMP),1)
-	OMP=-openmp
-endif
 
-	OPTIMIZATION=-mssse3 -xssse3 $(FASTI) $(PARI) $(OMP) -free $(OMBS) $(OFB)
+ifeq ($(IPAR),1)
+PARI=-parallel
+endif #IPAR
+
+ifeq ($(OPENMP),1)
+OMP=-qopenmp
+endif #OPENMP
+
+OPTIMIZATION=-mssse3 -xssse3 -free $(FASTI) $(PARI) $(OMP) $(OMBS) $(OFB) $(OBWN)
 
 else # IFORT
 
 ifeq ($(OPENMP),1)
-	OMP=-fopenmp
+OMP=-fopenmp
 endif # OPENMP
 
-	OPTIMIZATION=-O5 -ftree-vectorize \
-		-funroll-all-loops -ffree-form -ffree-line-length-none $(OMP) \
-		-DNONSTCPP $(OMBS) $(OFB)
+OPTIMIZATION=-O5 -ftree-vectorize -funroll-all-loops -ffree-form \
+	-ffree-line-length-none $(OMP) -DNONSTCPP $(OMBS) $(OFB) $(OBWN)
 
 endif # IFORT
 
-endif # DBG
-
-
 ifeq ($(COREI7),1)
-	OPTIMIZATION+=-march=corei7 -mtune=corei7
+OPTIMIZATION+=-march=corei7 -mtune=corei7
 endif
 
 ifeq ($(NATIVE),1)
-	OPTIMIZATION+=-march=native -mtune=native
+OPTIMIZATION+=-march=native -mtune=native
 endif
+
+ifeq ($(BROWN),1)
+OPTIMIZATION+=-arch ssse3 -mtune=corei7-avx
+endif
+
+endif # DBG
+
 
 
 COPT=-c $(OPTIMIZATION) $(INCL)
