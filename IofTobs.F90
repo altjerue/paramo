@@ -74,7 +74,6 @@ program IofTobs
    mu_com = mu_com_f(Gbulk, mu_obs)
    D = Doppler(Gbulk, mu_obs)
 
-   Iobs = 0d0
    ! --> Light path from origin to the observer: 2 s mu_com
    ! --> Edge of the blob: 2 R mu_com
    ! --> Position at which we will measure the radiation:
@@ -102,6 +101,7 @@ program IofTobs
    !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED)&
    !$OMP& PRIVATE(tob_min, tob_max, abu, i, j, ii, sind, i_start)
    freq_loop: do j = 1, numdf
+      Iobs(j, :) = 0d0
       obs_loop: do i = 1, numdt
          if ( i <= i_edge ) then
             i_start = 1

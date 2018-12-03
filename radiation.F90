@@ -28,7 +28,7 @@ contains
       real(dp), dimension(size(freqs)) :: jnu
       Ng = size(gg, dim=1)
       Nf = size(freqs, dim=1)
-      !$OMP PARALLEL DO ORDERED COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
+      !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
       !$OMP& PRIVATE(qq, j, k)
       freqs_loop: do j = 1, Nf
          jnu(j) = 0d0
@@ -82,22 +82,24 @@ contains
       real(dp), intent(in) :: B
       real(dp), intent(in), dimension(:) :: freqs,gg,nn
       logical, intent(in) :: mbs_or_syn
-      integer :: j,k,kglob
-      real(dp) :: qq,n_globgmx
+      integer :: j, k, kglob, Ng, Nf
+      real(dp) :: qq, n_globgmx
       real(dp), dimension(size(freqs)) :: anu
-
+      Ng = size(gg, dim=1)
+      Nf = size(freqs, dim=1)
       !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
       !$OMP& PRIVATE(qq, j, k)
-      freqs_loop: do j=1, size(freqs)
+      freqs_loop: do j = 1, Nf
          anu(j) = 0d0
-         calc_jnu: do k=1, size(gg) - 1
-            if ( nn(k) > 1d-100 ) then
+         calc_anu: do k = 1, Ng - 1
+            if ( nn(k) > 1d-100 .and. nn(k + 1) > 1d-100) then
                qq = -dlog(nn(k + 1) / nn(k)) / dlog(gg(k + 1) / gg(k))
                if ( mbs_or_syn ) then
                   if ( qq < SS(1) ) qq = SS(1)
                   if ( qq > SS(numSS) ) qq = SS(numSS)
                   if ( freqs(j) > dexp(XX(numXX)) * nuconst * B ) then
-                     anu(j) = anu(j) + a_mb_qromb(freqs(j), B, nn(k), gg(k), gg(k + 1), qq, chunche_c100g20, RMA_new)
+                     anu(j) = anu(j) + &
+                        a_mb_qromb(freqs(j), B, nn(k), gg(k), gg(k + 1), qq, chunche_c100g20, RMA_new)
                   else
                      if ( gg(k) < globgmax .and. gg(k + 1) <= globgmax ) then
                         anu(j) = anu(j) + &
@@ -119,7 +121,7 @@ contains
                   anu(j) = anu(j) + a_mb_qromb(freqs(j), B, nn(k), gg(k), gg(k + 1), qq, 1d0, RMA_new)
                end if
             end if
-         end do calc_jnu
+         end do calc_anu
          if ( anu(j) < 1d-100 ) anu(j) = 0d0
       end do freqs_loop
       !$OMP END PARALLEL DO
