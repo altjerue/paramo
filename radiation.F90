@@ -6,7 +6,6 @@ module radiation
    use SRtoolkit
    use anaFormulae
    !$ use omp_lib
-   use magnetobrem
    implicit none
 
    interface RadTrans
@@ -26,13 +25,12 @@ contains
    ! #    # #    #      #    #      #    # #      #      #
    ! #    # #    # #    #    #      #    # # #    # #    #
    ! #    # #####   ####     ###### #    # #  ####   ####
-   function mbs_emissivity(freqs, gg, nn, B, mbs_or_syn) result(jnu)
+   function mbs_emissivity(freqs, gg, nn, B) result(jnu)
       implicit none
       real(dp), intent(in) :: B
       real(dp), intent(in), dimension(:) :: freqs, gg, nn
-      logical, intent(in) :: mbs_or_syn
-      integer :: j, k, kglob, Ng, Nf
-      real(dp) :: qq, n_globgmx
+      integer :: j, k, Ng, Nf
+      real(dp) :: qq
       real(dp), dimension(size(freqs)) :: jnu
       Ng = size(gg, dim=1)
       Nf = size(freqs, dim=1)
@@ -43,32 +41,9 @@ contains
          calc_jnu: do k = 1, Ng - 1
             if ( nn(k) > 1d-100 .and. nn(k + 1) > 1d-100) then
                qq = -dlog(nn(k + 1) / nn(k)) / dlog(gg(k + 1) / gg(k))
-               if ( mbs_or_syn ) then
-                  if ( qq < SS(1) ) qq = SS(1)
-                  if ( qq > SS(numSS) ) qq = SS(numSS)
-                  if ( freqs(j) > dexp(XX(numXX)) * nuconst * B ) then
-                     jnu(j) = jnu(j) + &
-                        j_mb_qromb(freqs(j), B, nn(k), gg(k), gg(k + 1), qq, chunche_c100g20, RMA_new)
-                  else
-                     if ( gg(k) < globgmax .and. gg(k + 1) <= globgmax ) then
-                        jnu(j) = jnu(j) + &
-                           j_mb(freqs(j), B, nn(k), gg(k), gg(k + 1), qq, RMA_new, chunche_c100g20, jtable)
-                     else if (gg(k) < globgmax .and. gg(k + 1) > globgmax) then
-                        kglob = locate(gg, globgmax, in_bounds = .true.)
-                        n_globgmx = nn(kglob) * (gg(kglob + 1) / gg(kglob))**qq
-                        jnu(j) = jnu(j) + &
-                           j_mb(freqs(j), B, nn(k), gg(k), globgmax, qq, RMA_new, chunche_c100g20, jtable) + &
-                           j_mb_qromb(freqs(j), B, n_globgmx, globgmax, gg(k + 1), qq, chunche_c100g20, RMA_new)
-                     else
-                        jnu(j) = jnu(j) + &
-                           j_mb_qromb(freqs(j), B, nn(k), gg(k), gg(k + 1), qq, chunche_c100g20, RMA_new)
-                     end if
-                  end if
-               else
-                  if ( qq > 8d0 ) qq = 8d0
-                  if ( qq < -8d0 ) qq = -8d0
-                  jnu(j) = jnu(j) + j_mb_qromb(freqs(j), B, nn(k), gg(k), gg(k + 1), qq, 1d0, RMA_new)
-               end if
+               if ( qq > 8d0 ) qq = 8d0
+               if ( qq < -8d0 ) qq = -8d0
+               jnu(j) = jnu(j) + j_mb(freqs(j), B, nn(k), gg(k), gg(k + 1), qq, RMA_new)
             end if
          end do calc_jnu
          if ( jnu(j) < 1d-100 ) jnu(j) = 0d0
@@ -83,13 +58,12 @@ contains
    ! #    # #    #      #    ###### #    #      # #    # #####
    ! #    # #    # #    #    #    # #    # #    # #    # #   #
    ! #    # #####   ####     #    # #####   ####   ####  #    #
-   function mbs_absorption(freqs, gg, nn, B, mbs_or_syn) result(anu)
+   function mbs_absorption(freqs, gg, nn, B) result(anu)
       implicit none
       real(dp), intent(in) :: B
       real(dp), intent(in), dimension(:) :: freqs,gg,nn
-      logical, intent(in) :: mbs_or_syn
-      integer :: j, k, kglob, Ng, Nf
-      real(dp) :: qq, n_globgmx
+      integer :: j, k, Ng, Nf
+      real(dp) :: qq
       real(dp), dimension(size(freqs)) :: anu
       Ng = size(gg, dim=1)
       Nf = size(freqs, dim=1)
@@ -100,32 +74,9 @@ contains
          calc_anu: do k = 1, Ng - 1
             if ( nn(k) > 1d-100 .and. nn(k + 1) > 1d-100) then
                qq = -dlog(nn(k + 1) / nn(k)) / dlog(gg(k + 1) / gg(k))
-               if ( mbs_or_syn ) then
-                  if ( qq < SS(1) ) qq = SS(1)
-                  if ( qq > SS(numSS) ) qq = SS(numSS)
-                  if ( freqs(j) > dexp(XX(numXX)) * nuconst * B ) then
-                     anu(j) = anu(j) + &
-                        a_mb_qromb(freqs(j), B, nn(k), gg(k), gg(k + 1), qq, chunche_c100g20, RMA_new)
-                  else
-                     if ( gg(k) < globgmax .and. gg(k + 1) <= globgmax ) then
-                        anu(j) = anu(j) + &
-                           a_mb(freqs(j), B, nn(k), gg(k), gg(k + 1), qq, RMA_new, chunche_c100g20, jtable)
-                     else if ( gg(k) < globgmax .and. gg(k + 1) > globgmax ) then
-                        kglob = locate(gg, globgmax, in_bounds=.true.)
-                        n_globgmx = nn(kglob) * ( gg(kglob + 1) / gg(kglob) )**qq
-                        anu(j) = anu(j) + &
-                           a_mb(freqs(j), B, nn(k), gg(k), globgmax, qq, RMA_new, chunche_c100g20, jtable) + &
-                           a_mb_qromb(freqs(j), B, n_globgmx, globgmax, gg(k + 1), qq, chunche_c100g20, RMA_new)
-                     else
-                        anu(j) = anu(j) + &
-                           a_mb_qromb(freqs(j), B, nn(k), gg(k), gg(k + 1), qq, chunche_c100g20, RMA_new)
-                     end if
-                  end if
-               else
-                  if ( qq > 8d0 ) qq = 8d0
-                  if ( qq < 8d0 ) qq = -8d0
-                  anu(j) = anu(j) + a_mb_qromb(freqs(j), B, nn(k), gg(k), gg(k + 1), qq, 1d0, RMA_new)
-               end if
+               if ( qq > 8d0 ) qq = 8d0
+               if ( qq < 8d0 ) qq = -8d0
+               anu(j) = anu(j) + a_mb(freqs(j), B, nn(k), gg(k), gg(k + 1), qq, RMA_new)
             end if
          end do calc_anu
          if ( anu(j) < 1d-100 ) anu(j) = 0d0
@@ -168,25 +119,25 @@ contains
    ! # #  # #   #   #      #  # #      # #   #     #
    ! # #   ##   #   #      #   ## #    # #   #     #
    ! # #    #   #   ###### #    #  ####  #   #     #
-   subroutine RadTrans_v(Inu, s, jnu, anu, Is0)
+   subroutine RadTrans_v(Inu, s, jnu, anu, I0)
       ! Description:
       !   This function solves the radiative transfer equation.
       !
       implicit none
       real(dp), intent(in) :: s
-      real(dp), intent(in), dimension(:) :: Is0, jnu, anu
+      real(dp), intent(in), dimension(:) :: I0, jnu, anu
       real(dp), intent(out), dimension(:) :: Inu
-      optional :: jnu, anu, Is0
+      optional :: jnu, anu, I0
       integer :: j, Nf
       real(dp) :: Snu
       logical :: with_emiss, with_absor
       with_emiss = present(jnu)
       with_absor = present(anu)
-      if ( .not. with_emiss .and. .not. with_absor .and. .not. present(Is0) ) &
+      if ( .not. with_emiss .and. .not. with_absor .and. .not. present(I0) ) &
          call an_error("RadTrans_v: No argument provided. Radiative transfer equation cannot be solved.")
       Nf = size(jnu, dim=1)
-      if ( present(Is0) ) then
-         Inu = Is0
+      if ( present(I0) ) then
+         Inu = I0
       else
          Inu = 0d0
       end if
@@ -212,26 +163,26 @@ contains
    end subroutine RadTrans_v
 
 
-   subroutine RadTrans_m(Inu, s, jnu, anu, Is0)
+   subroutine RadTrans_m(Inu, s, jnu, anu, I0)
       ! Description:
       !   This function solves the radiative transfer equation.
       !
       implicit none
-      real(dp), intent(in), dimension(:) :: s, Is0
+      real(dp), intent(in), dimension(:) :: s, I0
       real(dp), intent(in), dimension(:, :) :: jnu, anu
       real(dp), intent(out), dimension(:) :: Inu
-      optional :: jnu, anu, Is0
+      optional :: jnu, anu, I0
       integer :: j, i, Nf, Ns
       real(dp) :: Snu
       logical :: with_emiss, with_absor
       with_emiss = present(jnu)
       with_absor = present(anu)
-      if ( .not. with_emiss .and. .not. with_absor .and. .not. present(Is0) ) &
+      if ( .not. with_emiss .and. .not. with_absor .and. .not. present(I0) ) &
          call an_error("RadTrans_m: No argument provided. Radiative transfer equation cannot be solved.")
       Nf = size(jnu, dim=1)
       Ns = size(s, dim=1)
-      if ( present(Is0) ) then
-         Inu = Is0
+      if ( present(I0) ) then
+         Inu = I0
       else
          Inu = 0d0
       end if

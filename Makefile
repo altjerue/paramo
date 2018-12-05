@@ -24,23 +24,9 @@ OBWN=-DBRWN
 endif
 
 
-ifeq ($(MBS),1)
-
 ifeq ($(HYB),1)
-OMBS=-DMBS -DHYB
-else  # HYB
-OMBS=-DMBS #-UHYB
-endif # HYB
-
-else  # MBS
-
-ifeq ($(HYB),1)
-OMBS=-DHYB #-UMBS
-#else  # HYB
-#OMBS=-UMBS -UHYB
-endif # HYB
-
-endif # MBS
+OHYB=-DHYB
+endif
 
 ifeq ($(FBAR),1)
 OFB=-DFBAR
@@ -56,12 +42,12 @@ ifeq ($(DBG),1)
 
 ifeq ($(IFORT),1)
 OPTIMIZATION=-g -debug all -check all -check nostack -warn all -fp-stack-check -heap-arrays \
-	-ftrapuv -free $(OMBS) $(OBWN) $(OFB)
+	-ftrapuv -free $(OHYB) $(OBWN) $(OFB)
 else  # IFORT
 OPTIMIZATION=-g -Wall -ffree-form -ffree-line-length-none -DNONSTCPP \
 	-mieee-fp -ffpe-trap=invalid,zero,overflow -fbacktrace -fcheck=all \
 	-fbounds-check -fno-unsafe-math-optimizations -frounding-math \
-	-fsignaling-nans $(OMBS) $(OBWN) $(OFB)
+	-fsignaling-nans $(OHYB) $(OBWN) $(OFB)
 endif # IFORT
 
 else # DBG
@@ -82,7 +68,7 @@ ifeq ($(OPENMP),1)
 OMP=-qopenmp
 endif #OPENMP
 
-OPTIMIZATION=-mssse3 -xssse3 -free $(FASTI) $(PARI) $(OMP) $(OMBS) $(OFB) $(OBWN)
+OPTIMIZATION=-mssse3 -xssse3 -free $(FASTI) $(PARI) $(OMP) $(OHYB) $(OFB) $(OBWN)
 
 else # IFORT
 
@@ -91,7 +77,7 @@ OMP=-fopenmp
 endif # OPENMP
 
 OPTIMIZATION=-O5 -ftree-vectorize -funroll-all-loops -ffree-form \
-	-ffree-line-length-none $(OMP) -DNONSTCPP $(OMBS) $(OFB) $(OBWN)
+	-ffree-line-length-none $(OMP) -DNONSTCPP $(OHYB) $(OFB) $(OBWN)
 
 endif # IFORT
 
@@ -120,8 +106,9 @@ ITOBS=xITobs
 
 # -----  dependencies  -----
 PARAMO_OBJ = misc.o pwl_integ.o h5_inout.o K2.o SRtoolkit.o anaFormulae.o \
-	magnetobrem.o radiation.o dist_evol.o Paramo.o paramo_main.o
-ITOBS_OBJ = misc.o h5_inout.o K2.o SRtoolkit.o pwl_integ.o IofTobs.o
+	radiation.o dist_evol.o Paramo.o paramo_main.o
+ITOBS_OBJ = misc.o h5_inout.o K2.o SRtoolkit.o pwl_integ.o anaFormulae.o \
+	radiation.o IofTobs.o
 
 # -----  rules  -----
 all: $(PARAMO) $(ITOBS)
@@ -131,7 +118,7 @@ constants.o K2.o pwl_integ.o misc.o h5_inout.o: data_types.o
 SRtoolkit.o: data_types.o constants.o K2.o
 magnetobrem.o: data_types.o constants.o h5_inout.o misc.o anaFormulae.o \
 	pwl_integ.o
-IofTobs.o: data_types.o h5_inout.o SRtoolkit.o pwl_integ.o
+IofTobs.o: data_types.o h5_inout.o SRtoolkit.o pwl_integ.o radiation.o
 Paramo.o: data_types.o constants.o misc.o pwl_integ.o h5_inout.o SRtoolkit.o \
 	anaFormulae.o magnetobrem.o radiation.o dist_evol.o
 paramo_main.o: data_types.o misc.o magnetobrem.o Paramo.o

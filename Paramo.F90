@@ -1,4 +1,4 @@
-subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc, mbs_or_syn)
+subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
    use data_types
    use constants
    use misc
@@ -7,27 +7,24 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc, mbs_o
    use h5_inout
    use SRtoolkit
    use anaFormulae
-#ifdef MBS
-   use magnetobrem
-#endif
    use dist_evol
    use radiation
    implicit none
    character(len=*), intent(in) :: output_file, params_file
-   logical, intent(in) :: with_cool, with_abs, with_ssc, mbs_or_syn
+   logical, intent(in) :: with_cool, with_abs, with_ssc
    integer, parameter :: nmod=100
    character(len=*), parameter :: on_screen = &
       "(' Time iteration:', I6, ' | Time =', ES15.7, ' | Time step =', ES15.7, ' | nu_0(g_max) =', ES15.7, ' | Ntot =', ES15.7)"
-   integer :: i, j, k, kg2, numbins, numdf, numdt, ios, i_start, time_grid, &
-      cool_kind, herror, tstop, i_edge
+   integer :: i, j, k, kg2, numbins, numdf, numdt, ios, time_grid, &
+      cool_kind, herror, tstop
    integer(HID_T) :: file_id, group_id
    real(dp) :: uB, R, Q0, gmin, gmax, numin, numax, qind, B, dtacc, g1, &
       g2, nu0_B, tstep, zetae, Qth, Qnth, theta_e, tmax, d_lum, z, D, &
       gamma_bulk, theta_obs, R0, Rinit, b_index, mu_obs, mu_com
    real(dp), allocatable, dimension(:) :: freqs, gg, t, dg, Ntot, &
-      aux_zero_arr, sen_lum, dfreqs, dtimes, dt, nu_obs, t_obs, to_com, pos
+      aux_zero_arr, sen_lum, dfreqs, dtimes, dt, nu_obs, t_obs, to_com
    real(dp), allocatable, dimension(:, :) :: nu0, nn, Qinj, jnut, jmbs, &
-      jssc, ambs, anut, Imbs, Inut
+      jssc, ambs, anut, Imbs
 
    open(unit=77, file=params_file, iostat=ios)
    if ( ios /= 0 ) call an_error("Paramo: Parameter file "//params_file//" could not be opened")
@@ -70,8 +67,7 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc, mbs_o
       sen_lum(numdt), dt(numdt), nu_obs(numdf), t_obs(numdt), to_com(numdt))
    allocate(nn(numdt, numbins), Qinj(numdt, numbins), nu0(numdt, numbins), &
       ambs(numdf, numdt), jmbs(numdf, numdt), jnut(numdf, numdt), &
-      jssc(numdf, numdt), Inut(numdf, numdt), &
-      Imbs(numdf, numdt), anut(numdf, numdt))
+      jssc(numdf, numdt), Imbs(numdf, numdt), anut(numdf, numdt))
 
    dfreqs = 1d0
    dtimes = 1d0
@@ -118,18 +114,9 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc, mbs_o
    end do build_g
    dg(numbins) = dg(numbins - 1)
 
-   ! build_t: do i=1, numdt
-   !    t_obs = tstep * ( (tmax / tstep)**(dble(i - 2) / dble(numdt - 2)) )
-   !    ! t(i) = dble(i) * tmax / dble(numdt)
-   ! end do build_t
-   ! do i=1,numdt
-   !    t_obs(i) = t(1) * ( t(numdt) / t(1))**(dble(i - 1) / dble(numdt - 1))
-   ! end do
-
    t(0) = 0d0
    nn = 1d-200
    jnut = 0d0
-   Inut = 0d0
    aux_zero_arr = 0d0
    kg2 = locate(gg, g2, .true.)
 
@@ -202,11 +189,11 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc, mbs_o
       !  #    # #    # #####  # #    #   #   #  ####  #    #
       !
       ! ----->>   magnetobrem   <<-----
-      jmbs(:, i) = mbs_emissivity(freqs, gg, nn(i, :), B, mbs_or_syn)
+      jmbs(:, i) = mbs_emissivity(freqs, gg, nn(i, :), B)
 
       if ( with_abs ) then
          ! ----->>   Absorption   <<-----
-         ambs(:, i) = mbs_absorption(freqs, gg, nn(i, :), B, mbs_or_syn)
+         ambs(:, i) = mbs_absorption(freqs, gg, nn(i, :), B)
          ! ----->>   Entering self-Compton   <<-----
          if ( with_ssc ) then
             !!! NOTE: The radius R is used following Chiaberge & Ghisellini (2009)
@@ -235,7 +222,6 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc, mbs_o
          anut(:, i) = ambs(:, i)
       end if
 
-      call RadTrans(Inut(:, i), R, jnu=jnut(:, i), anu=anut(:, i))
 
       !   ####   ####   ####  #      # #    #  ####
       !  #    # #    # #    # #      # ##   # #    #
@@ -276,27 +262,6 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc, mbs_o
          write(*, on_screen) i, t(i), dt(i), nu0(i, numbins), Ntot(i)
 
    end do time_loop
-
-
-   !  ### #    # ##### ###### #    #  ####  # ##### #   #
-   !   #  ##   #   #   #      ##   # #      #   #    # #
-   !   #  # #  #   #   #####  # #  #  ####  #   #     #
-   !   #  #  # #   #   #      #  # #      # #   #     #
-   !   #  #   ##   #   #      #   ## #    # #   #     #
-   !  ### #    #   #   ###### #    #  ####  #   #     #
-#if 0
-   pos = R - sen_lum
-   i_edge = minloc(pos, dim = 1, mask = pos >= 0d0)
-   pos = 2d0 * mu_com * pos
-   Inut_loop: do i = 1, numdt
-      if ( i <= i_edge ) then
-         i_start = 1
-      else
-         i_start = i - i_edge
-      end if
-      call RadTrans(Inut(:, i), pos(i_start:i), jnu=jnut(:, i_start:i), anu=anut(:, i_start:i))
-   end do Inut_loop
-#endif
 
 
    !  ####    ##   #    # # #    #  ####
@@ -360,11 +325,7 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc, mbs_o
    call h5io_wdble1(file_id, 'gamma', gg, herror)
 
    call h5io_wdble2(file_id, 'jnut', jnut(:, :tstop), herror)
-   ! call h5io_wdble2(file_id, 'jmbs', jmbs, herror)
-   ! call h5io_wdble2(file_id, 'jssc', jssc, herror)
    call h5io_wdble2(file_id, 'anut', anut(:, :tstop), herror)
-   ! call h5io_wdble2(file_id, 'ambs', ambs, herror)
-   call h5io_wdble2(file_id, 'Inut', Inut(:, :tstop), herror)
    call h5io_wdble2(file_id, 'Qinj', Qinj(:tstop, :), herror)
    call h5io_wdble2(file_id, 'distrib', nn(:tstop, :), herror)
    call h5io_wdble2(file_id, 'nu0_tot', nu0(:tstop, :), herror)

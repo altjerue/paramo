@@ -245,30 +245,6 @@ contains
    end function RMA
 
 
-   subroutine RMA_table(nc, ng, c, g, RMAtab, RMAfunc, c0)
-      implicit none
-      interface
-         function RMAfunc(c, g) result(res)
-            use data_types
-            real(dp) :: res
-            real(dp), intent(in) :: c,g
-         end function RMAfunc
-      end interface
-      integer, intent(in) :: nc,ng
-      real(dp), intent(in) :: c0
-      real(dp), intent(in), dimension(:) :: c
-      real(dp), intent(in), dimension(:,:) :: g
-      real(dp), intent(out), dimension(:,:) :: RMAtab
-      integer :: i,k
-      do i=1,nc
-         do k=1,ng
-            RMAtab(i, ng - k + 1) = dlog( dmax1(c0 * RMAfunc(c(i), g(i,k)), 1d-200) )
-         end do
-      end do
-      
-   end subroutine RMA_table
-
-
    ! ::::: Eq. 16 in Schlickeiser & Lerch (2007) :::::
    function SL07(chi, g) result(res)
       implicit none
@@ -312,10 +288,29 @@ contains
    end function SL07_alt
 
 
-   !!! emissivity
-   !
-   ! ::::: Trapezoid method :::::
-   !
+   !  ###### #    # #  ####   ####  # #    # # ##### #   #
+   !  #      ##  ## # #      #      # #    # #   #    # #
+   !  #####  # ## # #  ####   ####  # #    # #   #     #
+   !  #      #    # #      #      # # #    # #   #     #
+   !  #      #    # # #    # #    # #  #  #  #   #     #
+   !  ###### #    # #  ####   ####  #   ##   #   #     #
+   function j_mb(nu, B, n0, gmin, gmax, qq, RMAfunc) result(emiss)
+      implicit none
+      interface
+         function RMAfunc(c, g) result(res)
+            use data_types
+            real(dp) :: res
+            real(dp), intent(in) :: c, g
+         end function RMAfunc
+      end interface
+      real(dp), intent(in) :: nu, B, gmin, gmax, qq, n0
+      real(dp) :: emiss, chi, nu_b, I2
+      nu_b = nuconst * B
+      chi = nu / nu_b
+      I2 = RMA_qromb(chi, qq, dlog(gmin), dlog(gmax), 1d0, RMAfunc)
+      emiss = jmbconst * nu_b * n0 * I2 * gmin**qq
+   end function j_mb
+
    subroutine RMA_trapzd(chi, q, lga, lgb, s, n, globg, RMAfunc)
       implicit none
       interface
@@ -394,10 +389,30 @@ contains
    end function RMA_qromb
 
 
-   !!! absorption
-   !
-   ! ::::: Trapezoid method :::::
-   !
+   !    ##   #####   ####   ####  #####  #####  ##### #  ####  #    #
+   !   #  #  #    # #      #    # #    # #    #   #   # #    # ##   #
+   !  #    # #####   ####  #    # #    # #    #   #   # #    # # #  #
+   !  ###### #    #      # #    # #####  #####    #   # #    # #  # #
+   !  #    # #    # #    # #    # #   #  #        #   # #    # #   ##
+   !  #    # #####   ####   ####  #    # #        #   #  ####  #    #
+
+   function a_mb(nu, B, n0, gmin, gmax, qq, RMAfunc) result(absor)
+      implicit none
+      interface
+         function RMAfunc(c,g) result(res)
+            use data_types
+            real(dp) :: res
+            real(dp), intent(in) :: c,g
+         end function RMAfunc
+      end interface
+      real(dp) :: absor, chi, nu_b, A2
+      real(dp), intent(in) :: nu, B, gmin, gmax, qq, n0
+      nu_b = nuconst * B
+      chi = nu / nu_b
+      A2 = ARMA_qromb(chi, qq, dlog(gmin), dlog(gmax), 1d0, RMAfunc)
+      absor = ambconst * nu_b * n0 * A2 * gmin**qq / nu**2
+   end function a_mb
+
    subroutine ARMA_trapzd(chi,q,lga,lgb,s,n,globg,RMAfunc)
       implicit none
       interface

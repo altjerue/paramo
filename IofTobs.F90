@@ -11,20 +11,19 @@ program IofTobs
    !$ use omp_lib
    use SRtoolkit
    use pwl_integ
+   use radiation
    implicit none
 
 #ifdef FBAR
    type(bar_object) :: bar
    integer(I4P), volatile :: cur
-   ! real(R8P) :: curr
 #endif
    integer(HID_T) :: file_id, group_id
-   integer :: herror, numArgs, numtot, i, j, ii, numdf, numdt, i_edge, i_start
-
-   real(dp) :: B, R, d_L, z, Gbulk, theta, mu_obs, mu_com, D, tob_min, &
-      tob_max, sind, factor, abu, l_min, l_max, l0
+   integer :: herror, numArgs, i, ii, numdf, numdt, i_edge, i_start
+   real(dp) :: B, R, d_L, z, Gbulk, theta, mu_obs, mu_com, D, factor, &
+      abu, s_min, s_max
    real(dp), allocatable, dimension(:) :: t, t_obs, nu, s, pos
-   real(dp), allocatable, dimension(:, :) :: jnut, anut, Iobs, Inut
+   real(dp), allocatable, dimension(:, :) :: jnut, anut, Iobs
 
    character(len=256) :: paramo_fname
    character(len=*), parameter :: args_error = "Usage:"//new_line('A')//&
@@ -59,15 +58,13 @@ program IofTobs
    call h5io_rint0(file_id, 't_stop', numdt, herror)
 
    allocate(t(numdt), nu(numdf), s(numdt), t_obs(numdt), pos(numdt))
-   allocate(jnut(numdf, numdt), anut(numdf, numdt), Iobs(numdf, numdt), &
-      Inut(numdf, numdt))
+   allocate(jnut(numdf, numdt), anut(numdf, numdt), Iobs(numdf, numdt))
 
    !   ----->   Reading data
    call h5io_rdble1(file_id, 'time', t, herror)
    call h5io_rdble1(file_id, 't_obs', t_obs, herror)
    call h5io_rdble1(file_id, 'sen_lum', s, herror)
    call h5io_rdble1(file_id, 'nu_obs', nu, herror)
-   call h5io_rdble2(file_id, 'Inut', Inut, herror)
    call h5io_rdble2(file_id, 'jnut', jnut, herror)
    call h5io_rdble2(file_id, 'anut', anut, herror)
 
@@ -83,13 +80,11 @@ program IofTobs
    factor = 1d0 / (2d0 * Gbulk * mu_com * (mu_obs - bofg(Gbulk)) * D) ! <--- ds' / (c dt')
    i_edge = minloc(2d0 * R - s, dim = 1, mask = 2d0 * R - s >= 0d0)
    pos = 2d0 * mu_com * pos
-
    write(*, *) '-> Solving Radiative Transfer Equation'
 
 #ifdef FBAR
    cur = 0
-   numtot = numdf * numdt
-   call bar%initialize(width=48, max_value=real(numtot, R8P),                          &
+   call bar%initialize(width=48, max_value=real(numdt, R8P),                          &
       bracket_left_string='|', bracket_left_color_fg='blue',                          &
       empty_char_string=' ', empty_char_color_fg='blue', empty_char_color_bg='white', &
       filled_char_string=' ', filled_char_color_bg='blue',                            &
@@ -101,83 +96,36 @@ program IofTobs
       add_scale_bar=.false., scale_bar_color_fg='blue', scale_bar_style='underline_on')
    call bar%start
 #endif
-   l0 = 2d0 * R / cLight
-   !$OMP PARALLEL DO COLLAPSE(2) SCHEDULE(AUTO) DEFAULT(SHARED)&
-   !$OMP& PRIVATE(l_min, l_max, i, j, ii, i_start)
-   do j = 1, numdf
-      do i = 1, numdt
-         if ( i <= i_edge ) then
-            i_start = 1
-         else
-            i_start = i - i_edge
-         end if
-         Iobs(j, i) = 0d0
-         lam_loop: do ii = 1, numdt
-            if ( t_com_f(t_obs(i), z, Gbulk, dmin1(s(ii), 2d0 * R), mu_obs) - l_max * l0 < 0d0 ) cycle lam_loop
-            if ( ii == 1 ) then
-               l_min = 0d0
-               l_max = s(ii) * 0.5d0 / R
-               Iobs(j, i) = Inut(j, 1) * (l_max - l_max**2) * (l_max - l_min)! * heaviside(t(ii) - l_max * l0)
-            else
-               l_min = s(ii - 1) * 0.5d0 / R
-               l_max = s(ii) * 0.5d0 / R
-               Iobs(j, i) = (Inut(j, ii - 1) * (l_min - l_min**2) * heaviside(t(ii) - l_min * l0) + &
-                  Inut(j, ii) * (l_max - l_max**2)) * (l_max - l_min)! * heaviside(t(ii) - l_max * l0)
-            end if
-            l_min = l_max
-         end do lam_loop
-         Iobs(j, i) = 3d0 * Iobs(j, i)
-#ifdef FBAR
-         !$OMP CRITICAL
-         cur = cur + 1
-         if ( cur < numtot ) call bar%update(current=real(cur, R8P))
-         !$OMP END CRITICAL
-#endif
-      end do
-   end do
-   !$OMP END PARALLEL DO
 
-#if 0
    !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED)&
-   !$OMP& PRIVATE(tob_min, tob_max, abu, i, j, ii, sind, i_start)
-   freq_loop: do j = 1, numdf
-      Iobs(j, :) = 0d0
-      obs_loop: do i = 1, numdt
-         if ( i <= i_edge ) then
-            i_start = 1
+   !$OMP& PRIVATE(s_min, s_max, abu, i, j, ii, sind, i_start)
+   tobs_loop: do i = 1, numdt
+      if ( i <= i_edge ) then
+         i_start = 1
+      else
+         i_start = i - i_edge
+      end if
+      tcom_loop: do ii = i_start, i
+         if ( ii == 1 ) then
+            s_min = x_com_f(0d0, t_obs(i), z, Gbulk, mu_obs) / (2d0 * R * mu_com)
+            s_max = x_com_f(t(1), t_obs(i), z, Gbulk, mu_obs) / (2d0 * R * mu_com)
+            abu = s_max - s_min
+            call RadTrans(Iobs(:, i), abu, jnu=jnut(:, 1), anu=anut(:, 1))
          else
-            i_start = i - i_edge
+            s_min = x_com_f(t(ii - 1), t_obs(i), z, Gbulk, mu_obs) / (2d0 * R * mu_com)
+            s_max = x_com_f(t(ii), t_obs(i), z, Gbulk, mu_obs) / (2d0 * R * mu_com)
+            abu = s_max - s_min
+            call RadTrans(Iobs(:, i), abu, jnu=jnut(:, ii), anu=anut(:, ii), I0=Iobs(:, i))
          end if
-         int_loop: do ii = i_start, i
-            if ( ii == 1 ) then
-               tob_min = t_com_f(t_obs(i), z, Gbulk, 0d0, mu_obs)
-               tob_max = t_com_f(t_obs(i), z, Gbulk, pos(1), mu_obs)
-               abu = tob_max - tob_min
-               Iobs(j, i) = Iobs(j, i) + jnut(j, 1) * abu
-            else
-               tob_min = t_com_f(t_obs(i), z, Gbulk, pos(ii - 1), mu_obs)
-               tob_max = t_com_f(t_obs(i), z, Gbulk, pos(ii), mu_obs)
-               abu = tob_min / tob_max
-               if ( jnut(j, ii) > 1d-100 .and. jnut(j, ii - 1) > 1d-100 ) then
-                  sind = -dlog( jnut(j, ii - 1) / jnut(j, ii) ) / dlog( abu )
-                  if ( sind < -8d0 ) sind = -8d0
-                  if ( sind > 8d0 ) sind = 8d0
-                  ! NOTE: We do a substraction because we are integrating back in time
-                  Iobs(j, i) = Iobs(j, i) + jnut(j, ii) * tob_max * Pinteg(abu, sind, 1d-6) * factor
-               end if
-            end if
-         end do int_loop
-         Iobs(j, i) = Iobs(j, i) * cLight
-      end do obs_loop
+      end do tcom_loop
 #ifdef FBAR
-      !$OMP CRITICAL
-      cur = cur + 1
-      if ( cur < numdf ) call bar%update(current=real(cur, R8P))
-      !$OMP END CRITICAL
+   !$OMP CRITICAL
+   cur = cur + 1
+   if ( cur < numdt ) call bar%update(current=real(cur, R8P))
+   !$OMP END CRITICAL
 #endif
-   end do freq_loop
+   end do tobs_loop
    !$OMP END PARALLEL DO
-#endif
 
    write(*, *) '-> Saving'
    call h5lexists_f(file_id, 'Iobs', Iobs_exists, herror)
@@ -192,14 +140,5 @@ program IofTobs
       call system('h5repack '//trim(paramo_fname)//' tmp.h5')
       call system('mv tmp.h5 '//trim(paramo_fname))
    end if
-
-contains
-   function heaviside(x) result(h)
-      implicit none
-      real(dp), intent(in) :: x
-      real(dp) :: h
-      h = 0d0
-      if ( x >= 0d0 ) h = 1d0
-   end function heaviside
 
 end program IofTobs
