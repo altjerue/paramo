@@ -70,8 +70,8 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc, mbs_o
       sen_lum(numdt), dt(numdt), nu_obs(numdf), t_obs(numdt), to_com(numdt))
    allocate(nn(numdt, numbins), Qinj(numdt, numbins), nu0(numdt, numbins), &
       ambs(numdf, numdt), jmbs(numdf, numdt), jnut(numdf, numdt), &
-      jssc(numdf, numdt), Imbs(numdf, numdt), Inut(numdf, numdt), &
-      Issc(numdf, numdt), anut(numdf, numdt), Iobs(numdf, numdt))
+      jssc(numdf, numdt), Inut(numdf, numdt), Iobs(numdf, numdt), &
+      Imbs(numdf, numdt), anut(numdf, numdt))
 
    dfreqs = 1d0
    dtimes = 1d0
@@ -199,80 +199,63 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc, mbs_o
       !  #####  ###### #    # # ######   #   # #    # #  # #
       !  #   #  #    # #    # # #    #   #   # #    # #   ##
       !  #    # #    # #####  # #    #   #   #  ####  #    #
-
-      !!!*   First we compute the emissivity
+      !
+      ! ----->>   magnetobrem   <<-----
       jmbs(:, i) = mbs_emissivity(freqs, gg, nn(i, :), B, mbs_or_syn)
 
-      !!!*   We first compute (or not) the MBS absorption
       if ( with_abs ) then
-
+         ! ----->>   Absorption   <<-----
          ambs(:, i) = mbs_absorption(freqs, gg, nn(i, :), B, mbs_or_syn)
-         anut(:, i) = ambs(:, i)
-
-         !!!*   Then we compute the MBS radiation field
-         call solRadTrans_pathIndep(Imbs(:, i), dt(i) * cLight, jnu=jmbs(:, i), anu=ambs(:, i))
-
-         !!!*   Then we compute (or not) the MBS self-Compton
+         ! ----->>   Entering self-Compton   <<-----
          if ( with_ssc ) then
-            !!!*   We compute the MSC locally
+            !!! NOTE: The radius R is used following Chiaberge & Ghisellini (2009)
+            call RadTrans(Imbs(:, i), (/ R /), jnu=jmbs(:, i), anu=ambs(:, i))
             call ssc_emissivity(freqs, gmin, g2, gg, nn(i, :), Imbs(:, i), jssc(:, i))
-            !!!*   Then we compute the MSC radiation field
-            call solRadTrans_pathIndep(Issc(:, i), dt(i) * cLight, jnu=jssc(:, i), anu=anut(:, i))
          else
             jssc(:, i) = 0d0
-            Issc(:, i) = 0d0
          end if
-
-         !!!*   Then we compute the total emissivity
+         ! ----->>   Totals   <<-----
          jnut(:, i) = jmbs(:, i) + jssc(:, i)
-
-         !!!*   Then we solve the radiative transfer equation for the total intensity
-         call solRadTrans_pathIndep(Inut(:, i), dt(i) * cLight, jnu=jnut(:, i), anu=anut(:, i))
-
+         anut(:, i) = ambs(:, i)
       else
-
+         ! ----->>   Absorption   <<-----
          ambs(:, i) = 0d0
          anut(:, i) = 0d0
-
-         !!!*   Then we compute the MBS radiation field
-         call solRadTrans_pathIndep(Imbs(:, i), dt(i) * cLight, jnu=jmbs(:, i))
-
-         !!!*   Then we compute (or not) the MBS self-Compton
+         ! ----->>   Entering self-Compton   <<-----
          if ( with_ssc ) then
-            !!!*   We compute the MSC locally
+            !!! NOTE: The radius R is used following Chiaberge & Ghisellini (2009)
+            call RadTrans(Imbs(:, i), (/ R /), jnu=jmbs(:, i))
             call ssc_emissivity(freqs, gmin, g2, gg, nn(i,: ), Imbs(:, i), jssc(:, i))
-            !!!*   Then we compute the MSC intensity locally
-            call solRadTrans_pathIndep(Issc(:, i), dt(i) * cLight, jnu=jssc(:, i))
          else
             jssc(:, i) = 0d0
-            Issc(:, i) = 0d0
          end if
-
-         !!!*   Then we compute the total emissivity
+         ! ----->>   Totals   <<-----
          jnut(:, i) = jmbs(:, i) + jssc(:, i)
-
-         !!!*   Then we solve the radiative transfer equation for the total intensity
-         call solRadTrans_pathIndep(Inut(:, i), dt(i) * cLight, jnu=jnut(:, i))
-
+         anut(:, i) = ambs(:, i)
       end if
 
 
-      !!!*   With or without cooling
+      !   ####   ####   ####  #      # #    #  ####
+      !  #    # #    # #    # #      # ##   # #    #
+      !  #      #    # #    # #      # # #  # #
+      !  #      #    # #    # #      # #  # # #  ###
+      !  #    # #    # #    # #      # #   ## #    #
+      !   ####   ####   ####  ###### # #    #  ####
       if ( i < numdt ) then
          if ( with_cool ) then
             select case (cool_kind)
             case (1)
                !!!   ---{   Numerical radiative cooling
-               nu0(i, :) = ssc_cool_coef(nu0_B, gg, freqs, Inut(:,i))
+               nu0(i, :) = ssc_cool_coef(nu0_B, gg, freqs, R * jssc(:, i))
                !!!   }---
             case (2)
                !!!   ---{   Zacharias & Schlickeiser, 2012, 761, 110
                if (i == 1) write(*,*) "Using ZS12 cooling"
-               nu0(i, :) = ssccZS12(gg, nn(i,:), B, R)
+               nu0(i, :) = ssccZS12(gg, nn(i, :), B, R)
                !!!   }---
             case (3)
                !!!   ---{   Uhm & Zhang, 2014, Nat. Phys., 10, 351
-               if (i == 1) write(*,*) "Using power-law dacaying magnetic field"
+               if (i == 1) write(*, *) "Using power-law dacaying magnetic field"
                nu0(i, :) = nu0_B * ((Rinit + cLight * gamma_bulk * t(i)) / R0)**(-2d0 * b_index)
                !!!   }---
             case default
@@ -292,6 +275,7 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc, mbs_o
 
    end do time_loop
 
+   call solRadTrans_full(Inut, dt(i) * cLight, jnu=jnut(:, i), anu=anut(:, i))
 
    !
    !  ####    ##   #    # # #    #  ####
@@ -358,10 +342,8 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc, mbs_o
    call h5io_wdble2(file_id, 'jnut', jnut(:, :tstop), herror)
    ! call h5io_wdble2(file_id, 'jmbs', jmbs, herror)
    ! call h5io_wdble2(file_id, 'jssc', jssc, herror)
-   ! call h5io_wdble2(file_id, 'ambs', ambs, herror)
    call h5io_wdble2(file_id, 'anut', anut(:, :tstop), herror)
-   ! call h5io_wdble2(file_id, 'Imbs', Imbs, herror)
-   ! call h5io_wdble2(file_id, 'Issc', Issc, herror)
+   ! call h5io_wdble2(file_id, 'ambs', ambs, herror)
    call h5io_wdble2(file_id, 'Inut', Inut(:, :tstop), herror)
    call h5io_wdble2(file_id, 'Qinj', Qinj(:tstop, :), herror)
    call h5io_wdble2(file_id, 'distrib', nn(:tstop, :), herror)

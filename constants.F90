@@ -41,8 +41,8 @@ module constants
       Ggrav = 6.67408d-8, &                         ! c^3 / g / s^2
       eVolt = 1.60218d-12, &                        ! erg
       nuconst = 2.7992491077281560779657886d6, &    ! eCharge / (2 * pi * m_e * cLight)
-      jmbconst = 4.8352765842234213535181620d-29, & ! 2 * pi * eCharge**2 / cLight
-      ambconst = 2.6540088545187588392244135d-2  ! pi * eCharge**2 / (m_e * cLight)
+      jmbconst = 6.664569709819094d-30, & ! sqrt(3) * eCharge**2 / (2 * cLight)
+      ambconst = 3.6580794221267223d-3  ! sqrt(3) * eCharge**2 / (4 * m_e * cLight)
 
 
    !

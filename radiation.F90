@@ -9,6 +9,11 @@ module radiation
    use magnetobrem
    implicit none
 
+   interface RadTrans
+      module procedure RadTrans_v
+      module procedure RAdTrans_m
+   end interface RadTrans
+
 contains
    !
    ! #    # #####   ####     ###### #    # #  ####   ####
@@ -128,6 +133,27 @@ contains
    end function mbs_absorption
 
 
+   !   ####  #####  #####        #####  ###### #####  ##### #    #
+   !  #    # #    #   #          #    # #      #    #   #   #    #
+   !  #    # #    #   #          #    # #####  #    #   #   ######
+   !  #    # #####    #   ###    #    # #      #####    #   #    #
+   !  #    # #        #   ###    #    # #      #        #   #    #
+   !   ####  #        #   ###    #####  ###### #        #   #    #
+   function opt_depth(absor, s) result(tau)
+      implicit none
+      real(dp), intent(in), dimension(:) :: absor, s
+      integer :: Ns
+      real(dp) :: tau
+      Ns = size(s, dim=1)
+      if ( Ns == 1 ) then
+         tau = absor(1) * s(1)
+      else
+         tau = s(1) * absor(1) + s(Ns) * absor(Ns)
+         tau = 0.5d0 * dlog(s(Ns) / s(1)) * (tau + 2d0 * sum(s(2:Ns - 1) * absor(2:Ns - 1))) / dble(Ns - 1)
+      end if
+   end function opt_depth
+
+
    !
    ! # #    # ##### ###### #    #  ####  # ##### #   #
    ! # ##   #   #   #      ##   # #      #   #    # #
@@ -136,216 +162,94 @@ contains
    ! # #   ##   #   #      #   ## #    # #   #     #
    ! # #    #   #   ###### #    #  ####  #   #     #
    !
-   subroutine solRadTrans_pathIndep(Inu, s, jnu, anu, Is0)
+   subroutine RadTrans_v(Inu, s, jnu, anu, Is0)
       ! Description:
+      !   This function solves the radiative transfer equation.
       !
-      !   This function solves the radiative transfer equation assuming that
-      !   the emissivity and absorption are independent of the path. We take
-      !   Eq. (1.30) of Rybicki & Lightman (1979) and make
-      !
-      !        tau_nu = s * alpha_nu
-      !
-      !   for the optically thick case.
       implicit none
-      real(dp), intent(in) :: s
-      real(dp), intent(in), dimension(:) :: jnu, anu, Is0
+      real(dp), intent(in), dimension(:) :: s, Is0
+      real(dp), intent(in), dimension(:, :) :: jnu, anu
       real(dp), intent(out), dimension(:) :: Inu
       optional :: jnu, anu, Is0
-      integer :: j
+      integer :: j, i, Nf, Ns
       real(dp) :: Snu
-      logical :: with_emiss, with_absor, with_inten
+      logical :: with_emiss, with_absor
       with_emiss = present(jnu)
       with_absor = present(anu)
-      with_inten = present(Is0)
-      do j=1,size(jnu)
-         if ( with_emiss .and. jnu(j) > 1d-100 ) then
-            if ( with_absor .and. anu(j) > 1d-100) then
-               Snu = jnu(j) / anu(j)
-               if ( with_inten ) then
-                  Inu(j) = Snu + dexp(-anu(j) * s) * (Is0(j) - Snu)
+      Nf = size(jnu, dim=1)
+      Ns = size(s, dim=1)
+      if ( present(Is0) ) then
+         Inu = Is0
+      else
+         Inu = 0d0
+      end if
+      !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED)&
+      !$OMP& PRIVATE(j, i, Snu)
+      do j = 1, Nf
+         do i = 1, Ns
+            if ( with_emiss .and. jnu(j, i) > 1d-100 ) then
+               if ( with_absor .and. anu(j, i) > 1d-100 ) then
+                  Snu = jnu(j, i) / anu(j, i)
+                  Inu(j) = Snu + dexp(-opacity(anu(j, i), s(i))) * (Inu(j) - Snu)
                else
-                  Inu(j) = Snu * (1d0 - dexp(-anu(j) * s))
+                  Inu(j) = Inu(j) + s(i) * jnu(j, i)
                end if
             else
-               if ( with_inten ) then
-                  Inu(j) = Is0(j) + s * jnu(j)
+               if ( with_absor .and. anu(j) > 1d-100) then
+                  Inu(j) = Inu(j) * dexp(-opacity(anu(j, i), s(i)))
                else
-                  Inu(j) = s * jnu(j)
+                  Inu(j) = Inu(j)
                end if
             end if
-         else
-            if ( with_absor .and. anu(j) > 1d-100) then
-               if ( with_inten ) then
-                  Inu(j) = Is0(j) * dexp(-anu(j) * s)
-               else
-                  Inu(j) = 0d0
-               end if
-            else
-               if ( with_inten ) then
-                  Inu(j) = Is0(j)
-               else
-                  Inu(j) = 0d0
-               end if
-            end if
-         end if
+         end do
       end do
-   end subroutine solRadTrans_pathIndep
+      !$OMP END PARALLEL DO
+   end subroutine RadTrans_v
 
-#if 0
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   subroutine solRadTrans_lumPath(Inu, s, jnu, anu)
+
+   subroutine RadTrans_m(Inu, s, jnu, anu, Is0)
       ! Description:
+      !   This function solves the radiative transfer equation.
       !
-      !   This function solves the radiative transfer equation assuming that
-      !   the emissivity and absorption are independent of the path. We take
-      !   Eq. (1.30) of Rybicki & Lightman (1979) and make
-      !
-      !        tau_nu = s * alpha_nu
-      !
-      !   for the optically thick case.
       implicit none
       real(dp), intent(in), dimension(:) :: s
       real(dp), intent(in), dimension(:, :) :: jnu, anu, Is0
       real(dp), intent(out), dimension(:, :) :: Inu
       optional :: jnu, anu, Is0
-      integer :: j, i
+      integer :: j, i, Nf, Ns
       real(dp) :: Snu
-      logical :: with_emiss, with_absor, with_inten
+      logical :: with_emiss, with_absor
       with_emiss = present(jnu)
       with_absor = present(anu)
-      with_inten = present(Is0)
-      do j=1,size(jnu)
-         do i=1,size(s)
-         if ( with_emiss .and. jnu(j) > 1d-100 ) then
-            if ( with_absor .and. anu(j) > 1d-100) then
-               Snu = jnu(j) / anu(j)
-               if ( with_inten ) then
-                  Inu(j) = Snu + dexp(-anu(j) * s) * (Is0(j) - Snu)
+      Nf = size(jnu, dim=1)
+      Ns = size(s, dim=1)
+      if ( present(Is0) ) then
+         Inu(:, 1) = Is0
+      else
+         Inu = 0d0
+      end if
+      !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED)&
+      !$OMP& PRIVATE(j, i, Snu)
+      do j = 1, Nf
+         do i = 1, Ns
+            if ( with_emiss .and. jnu(j, i) > 1d-100 ) then
+               if ( with_absor .and. anu(j, i) > 1d-100 ) then
+                  Snu = jnu(j, i) / anu(j, i)
+                  Inu(j, i) = Snu + dexp(-opacity(anu(j, i), s(i))) * (Inu(j, i) - Snu)
                else
-                  Inu(j) = Snu * (1d0 - dexp(-anu(j) * s))
+                  Inu(j, i) = Inu(j, i) + s(i) * jnu(j, i)
                end if
             else
-               if ( with_inten ) then
-                  Inu(j) = Is0(j) + s * jnu(j)
+               if ( with_absor .and. anu(j) > 1d-100) then
+                  Inu(j) = Inu(j, i) * dexp(-opacity(anu(j, i), s(i)))
                else
-                  Inu(j) = s * jnu(j)
+                  Inu(j) = Inu(j, i)
                end if
             end if
-         else
-            if ( with_absor .and. anu(j) > 1d-100) then
-               if ( with_inten ) then
-                  Inu(j) = Is0(j) * dexp(-anu(j) * s)
-               else
-                  Inu(j) = 0d0
-               end if
-            else
-               if ( with_inten ) then
-                  Inu(j) = Is0(j)
-               else
-                  Inu(j) = 0d0
-               end if
-            end if
-         end if
-      end do
-   end do
-
-   contains
-
-      !
-      !   ----------{   Romberg integrator   }----------
-      !
-      function blob_qromb(tini, tfin, emiss, tem) result(qromb)
-         implicit none
-         real(dp), intent(in) :: tini, tfin
-         real(dp), intent(in), dimension(:) :: tem, emiss
-         integer, parameter :: jmax = 25, jmaxp = jmax + 1, kq = 6, km = kq - 1
-         integer :: jq
-         real(dp), parameter :: eps = 1d-3
-         real(dp), dimension(jmaxp) :: h, s
-         real(dp) :: dqromb, qromb
-         if ( tini == tfin ) then
-            qromb = 0d0
-            return
-         end if
-         h(1) = 1d0
-         do jq=1,jmax
-            call blob_trapzd(dlog(tini), dlog(tfin), s(jq), jq, emiss, tem)
-            ! call blob_trapzd(dlog(tini), dlog(tfin), s(jq), jq, dlog(emiss), dlog(tem))
-            if ( jq >= kq ) then
-               call polint(h(jq - km:jq), s(jq - km:jq), 0.0d0, qromb, dqromb)
-               if ( dabs(dqromb) <= eps * dabs(qromb) ) return
-            end if
-            s(jq + 1) = s(jq)
-            h(jq + 1) = 0.25d0 * h(jq)
          end do
-         print*,qromb,dqromb
-         call an_error('blob_qromb: too many steps')
-      end function blob_qromb
-
-      !
-      !   ----------{   Trapezoid   }----------
-      !
-      subroutine blob_trapzd(tini, tfin, s, n, emiss, tem)
-         implicit none
-         real(dp), intent(in) :: tini, tfin
-         real(dp), intent(in), dimension(:) :: tem, emiss
-         real(dp), intent(inout) :: s
-         integer, intent(in) :: n
-         real(dp) :: del, fsum, x, jini, jfin, jx, dj
-         integer :: it, jt
-         if ( n == 1 ) then
-            ! call polint(tem, emiss, dexp(tini), jini, dj)
-            ! call polint(tem, emiss, dexp(tfin), jfin, dj)
-            ! call polint(tem, emiss, tini, jini, dj)
-            ! call polint(tem, emiss, tfin, jfin, dj)
-            s = 0.5d0 * (tfin - tini) * ( &
-               dexp(tini) * blob_integrand(dexp(tini), emiss, tem) + &
-               dexp(tfin) * blob_integrand(dexp(tfin), emiss, tem) )
-               ! dexp(tini) * jini + dexp(tfin) * jfin )
-               ! dexp(tini) * dexp(jini) + dexp(tfin) * dexp(jfin) )
-         else
-            it = 2**(n - 2)
-            del = (tfin - tini) / dble(it)
-            x = tini + 0.5d0 * del
-            fsum = 0d0
-            do jt = 1, it
-               ! call polint(tem, emiss, dexp(x), jx, dj)
-               ! call polint(tem, emiss, x, jx, dj)
-               ! fsum = fsum + dexp(x) * jx
-               ! fsum = fsum + dexp(x) * dexp(jx)
-               fsum = fsum + dexp(x) * blob_integrand(dexp(x), emiss, tem)
-               x = x + del
-            end do
-            s = 0.5d0 * (s + del * fsum)
-         end if
-      end subroutine blob_trapzd
-
-      function blob_integrand(t, em, te) result(res)
-         implicit none
-         double precision, intent(in) :: t
-         double precision, intent(in), dimension(:) :: te, em
-         integer :: t_pos, Nt
-         double precision :: res, sind
-         Nt = size(te)
-         t_pos = locate(te, t, .true.)
-         if ( t_pos >= Nt ) then
-            t_pos = Nt - 1
-            ! res = 0d0
-         end if
-         if ( em(t_pos) > 1d-100 .and. em(t_pos + 1) > 1d-100 ) then
-            sind = -dlog(em(t_pos + 1) / em(t_pos)) / dlog(te(t_pos + 1) / te(t_pos))
-            res = em(t_pos) * (t / te(t_pos))**sind
-         else
-            res = 0d0
-         end if
-      end function blob_integrand
-   end subroutine solRadTrans_lumPath
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#endif
+      end do
+      !$OMP END PARALLEL DO
+   end subroutine RadTrans_m
 
 
    !

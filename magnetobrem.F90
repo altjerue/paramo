@@ -287,12 +287,11 @@ contains
       end interface
       real(dp), intent(in) :: nu, B, gmin, gmax, qq, n0, c0
       integer :: i
-      real(dp) :: emiss, chi, nu_b, I2, jmbconst2
-      jmbconst2 = 0.25d0 * jmbconst ! <- missing 1/4 factor
+      real(dp) :: emiss, chi, nu_b, I2
       nu_b = nuconst * B
       chi = nu / nu_b
       I2 = c0 * RMA_qromb(chi, qq, dlog(gmin), dlog(gmax), 1d0, RMAfunc)
-      emiss = jmbconst2 * nu_b * n0 * I2 * gmin**qq
+      emiss = jmbconst * nu_b * n0 * I2 * gmin**qq
    end function j_mb_qromb
 
 
@@ -392,7 +391,7 @@ contains
    end function a_mb
 
 
-   function a_mb_qromb(nu,B,n0,gmin,gmax,qq,c0,RMAfunc) result(absor)
+   function a_mb_qromb(nu, B, n0, gmin, gmax, qq, c0, RMAfunc) result(absor)
       implicit none
       interface
          function RMAfunc(c,g) result(res)
@@ -401,14 +400,12 @@ contains
             real(dp), intent(in) :: c,g
          end function RMAfunc
       end interface
-      real(dp) :: absor,chi,nu_b,A2,ambconst2
-      real(dp), intent(in) :: nu,B,gmin,gmax,qq,n0,c0
-
-      ambconst2 = 2.5d-1 * 1.5625d-2 * ambconst ! <- missing 1/64/4 factor
+      real(dp) :: absor, chi, nu_b, A2
+      real(dp), intent(in) :: nu, B, gmin, gmax, qq, n0, c0
       nu_b = nuconst * B
       chi = nu / nu_b
       A2 = c0 * ARMA_qromb(chi, qq, dlog(gmin), dlog(gmax), 1d0, RMAfunc)
-      absor = ambconst2 * nu_b * n0 * A2 * gmin**qq / nu**2
+      absor = ambconst * nu_b * n0 * A2 * gmin**qq / nu**2
    end function a_mb_qromb
 
 end module magnetobrem

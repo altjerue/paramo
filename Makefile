@@ -64,7 +64,7 @@ OPTIMIZATION=-g -Wall -ffree-form -ffree-line-length-none -DNONSTCPP \
 	-fsignaling-nans $(OMBS) $(OBWN) $(OFB)
 endif # IFORT
 
-else  # DBG
+else # DBG
 
 ifeq ($(IFORT),1)
 
