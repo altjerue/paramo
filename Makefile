@@ -16,25 +16,14 @@ endif # MPI
 
 endif # IFORT
 
+# definitions
 
 ifeq ($(BROWN),1)
-OBWN=-DBRWN
-# else
-# OBWN=-UBRWN
+
 endif
 
 
-ifeq ($(HYB),1)
-OHYB=-DHYB
-endif
 
-ifeq ($(FBAR),1)
-OFB=-DFBAR
-INCL=-I/Users/jesus/lib/Fortran/forbear/static/mod/
-LIBS=-L/Users/jesus/lib/Fortran/forbear/static/ -lforbear
-#else
-#OFB=-UFBAR
-endif
 
 
 # optimization level
@@ -42,12 +31,12 @@ ifeq ($(DBG),1)
 
 ifeq ($(IFORT),1)
 OPTIMIZATION=-g -debug all -check all -check nostack -warn all -fp-stack-check -heap-arrays \
-	-ftrapuv -free $(OHYB) $(OBWN) $(OFB)
+	-ftrapuv -free
 else  # IFORT
 OPTIMIZATION=-g -Wall -ffree-form -ffree-line-length-none -DNONSTCPP \
 	-mieee-fp -ffpe-trap=invalid,zero,overflow -fbacktrace -fcheck=all \
 	-fbounds-check -fno-unsafe-math-optimizations -frounding-math \
-	-fsignaling-nans $(OHYB) $(OBWN) $(OFB)
+	-fsignaling-nans
 endif # IFORT
 
 else # DBG
@@ -68,7 +57,7 @@ ifeq ($(OPENMP),1)
 OMP=-qopenmp
 endif #OPENMP
 
-OPTIMIZATION=-mssse3 -xssse3 -free $(FASTI) $(PARI) $(OMP) $(OHYB) $(OFB) $(OBWN)
+OPTIMIZATION=-mssse3 -xssse3 -free $(FASTI) $(PARI) $(OMP)
 
 else # IFORT
 
@@ -77,7 +66,7 @@ OMP=-fopenmp
 endif # OPENMP
 
 OPTIMIZATION=-O5 -ftree-vectorize -funroll-all-loops -ffree-form \
-	-ffree-line-length-none $(OMP) -DNONSTCPP $(OHYB) $(OFB) $(OBWN)
+	-ffree-line-length-none $(OMP) -DNONSTCPP
 
 endif # IFORT
 
@@ -91,14 +80,17 @@ endif
 
 ifeq ($(BROWN),1)
 OPTIMIZATION+=-arch ssse3 -mtune=corei7-avx
+DEFS+=-DBRWN
 endif
 
 endif # DBG
 
+ifeq ($(HYB),1)
+DEFS+=-DHYB
+endif
 
-
-COPT=-c $(OPTIMIZATION) $(INCL)
-LOPT=$(OPTIMIZATION) $(LIBS)
+COPT=-c $(OPTIMIZATION) $(DEFS) $(INCL)
+LOPT=$(OPTIMIZATION) $(DEFS) $(LIBS)
 
 # -----  executables  -----
 PARAMO=xParamo

@@ -91,22 +91,27 @@ contains
    !   ####  #        #   ###    #####  ###### #        #   #    #
    function opt_depth_s(absor, s) result(tau)
       implicit none
-      real(dp), intent(in) :: absor, s
-      real(dp) :: tau
+      real(dp), intent(in) :: s
+      real(dp), intent(in), dimension(:) :: absor
+      real(dp), dimension(size(absor, dim=1)) :: tau
       tau = absor * s
    end function opt_depth_s
-   
+
+
    function opt_depth_v(absor, s) result(tau)
       implicit none
-      real(dp), intent(in), dimension(:) :: absor, s
-      integer :: Ns
-      real(dp) :: tau
+      real(dp), intent(in), dimension(:) :: s
+      real(dp), intent(in), dimension(:, :) :: absor
+      integer :: Ns, j, Nf
+      real(dp), dimension(size(absor, dim=1)) :: tau
       Ns = size(s, dim=1)
+      Nf = size(absor, dim=1)
       if ( Ns == 1 ) then
-         tau = absor(1) * s(1)
+         tau = absor(:, 1) * s(1)
       else
-         tau = s(1) * absor(1) + s(Ns) * absor(Ns)
-         tau = 0.5d0 * dlog(s(Ns) / s(1)) * (tau + 2d0 * sum(s(2:Ns - 1) * absor(2:Ns - 1))) / dble(Ns - 1)
+         do j = 1, Nf
+            tau = 0.5d0 * sum( (absor(j, :Ns - 1) + absor(j, 2:)) * (s(2:) - s(:Ns - 1)) )
+         end do
       end if
    end function opt_depth_v
 
@@ -125,33 +130,34 @@ contains
       real(dp), intent(in) :: s
       real(dp), intent(in), dimension(:) :: I0, jnu, anu
       real(dp), intent(out), dimension(:) :: Inu
-      optional :: jnu, anu, I0
+      optional :: anu, I0
       integer :: j, Nf
       real(dp) :: Snu
-      logical :: with_emiss, with_absor
-      with_emiss = present(jnu)
-      with_absor = present(anu)
-      if ( .not. with_emiss .and. .not. with_absor .and. .not. present(I0) ) &
-         call an_error("RadTrans_v: No argument provided. Radiative transfer equation cannot be solved.")
+      real(dp), dimension(size(jnu, dim=1)) :: tau
       Nf = size(jnu, dim=1)
       if ( present(I0) ) then
          Inu = I0
       else
          Inu = 0d0
       end if
-      !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED)&
+      if ( present(anu) ) then
+         tau = opt_depth(anu, s)
+      else
+         tau = 0d0
+      end if
+      !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
       !$OMP& PRIVATE(j, Snu)
       do j = 1, Nf
-         if ( with_emiss .and. jnu(j) > 1d-100 ) then
-            if ( with_absor .and. anu(j) > 1d-100 ) then
+         if ( jnu(j) > 1d-100 ) then
+            if ( tau(j) >= 1d0 ) then
                Snu = jnu(j) / anu(j)
-               Inu(j) = Snu + dexp(-opt_depth(anu(j), s)) * (Inu(j) - Snu)
+               Inu(j) = Snu + dexp(-tau(j)) * (Inu(j) - Snu)
             else
                Inu(j) = Inu(j) + s * jnu(j)
             end if
          else
-            if ( with_absor .and. anu(j) > 1d-100) then
-               Inu(j) = Inu(j) * dexp(-opt_depth(anu(j), s))
+            if ( tau(j) >= 1d0 ) then
+               Inu(j) = Inu(j) * dexp(-tau(j))
             else
                Inu(j) = Inu(j)
             end if
@@ -169,14 +175,10 @@ contains
       real(dp), intent(in), dimension(:) :: s, I0
       real(dp), intent(in), dimension(:, :) :: jnu, anu
       real(dp), intent(out), dimension(:) :: Inu
-      optional :: jnu, anu, I0
-      integer :: j, i, Nf, Ns
+      optional :: anu, I0
+      integer :: j, Nf, Ns, i
       real(dp) :: Snu
-      logical :: with_emiss, with_absor
-      with_emiss = present(jnu)
-      with_absor = present(anu)
-      if ( .not. with_emiss .and. .not. with_absor .and. .not. present(I0) ) &
-         call an_error("RadTrans_m: No argument provided. Radiative transfer equation cannot be solved.")
+      real(dp), dimension(size(jnu, dim=1)) :: tau
       Nf = size(jnu, dim=1)
       Ns = size(s, dim=1)
       if ( present(I0) ) then
@@ -184,20 +186,25 @@ contains
       else
          Inu = 0d0
       end if
-      !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED)&
-      !$OMP& PRIVATE(j, i, Snu)
+      if ( present(anu) ) then
+         tau = opt_depth(anu, s)
+      else
+         tau = 0d0
+      end if
+      !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
+      !$OMP& PRIVATE(i, j, Snu)
       do j = 1, Nf
          do i = 1, Ns
-            if ( with_emiss .and. jnu(j, i) > 1d-100 ) then
-               if ( with_absor .and. anu(j, i) > 1d-100 ) then
+            if ( jnu(j, i) > 1d-100 ) then
+               if ( tau(j) >= 1d0 ) then
                   Snu = jnu(j, i) / anu(j, i)
-                  Inu(j) = Snu + dexp(-opt_depth(anu(j, i), s(i))) * (Inu(j) - Snu)
+                  Inu(j) = Snu + dexp(-tau(j)) * (Inu(j) - Snu)
                else
                   Inu(j) = Inu(j) + s(i) * jnu(j, i)
                end if
             else
-               if ( with_absor .and. anu(j, i) > 1d-100) then
-                  Inu(j) = Inu(j) * dexp(-opt_depth(anu(j, i), s(i)))
+               if ( tau(j) >= 1d0 ) then
+                  Inu(j) = Inu(j) * dexp(-tau(j))
                else
                   Inu(j) = Inu(j)
                end if

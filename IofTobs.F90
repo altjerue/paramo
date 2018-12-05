@@ -1,10 +1,6 @@
 program IofTobs
    use data_types
    use constants
-#ifdef FBAR
-   use, intrinsic :: iso_fortran_env, only : I4P => int32, R8P => real64
-   use forbear, only : bar_object
-#endif
    use misc
    use hdf5
    use h5_inout
@@ -14,14 +10,9 @@ program IofTobs
    use radiation
    implicit none
 
-#ifdef FBAR
-   type(bar_object) :: bar
-   integer(I4P), volatile :: cur
-#endif
    integer(HID_T) :: file_id, group_id
    integer :: herror, numArgs, i, ii, numdf, numdt, i_edge, i_start
-   real(dp) :: B, R, d_L, z, Gbulk, theta, mu_obs, mu_com, D, factor, &
-      abu, s_min, s_max
+   real(dp) :: B, R, d_L, z, Gbulk, theta, mu_obs, mu_com, D, abu, s_min, s_max
    real(dp), allocatable, dimension(:) :: t, t_obs, nu, s, pos
    real(dp), allocatable, dimension(:, :) :: jnut, anut, Iobs
 
@@ -76,27 +67,8 @@ program IofTobs
    ! --> Light path from origin to the observer: 2 s mu_com
    ! --> Edge of the blob: 2 R mu_com
    ! --> Position at which we will measure the radiation:
-   pos = R - s
-   factor = 1d0 / (2d0 * Gbulk * mu_com * (mu_obs - bofg(Gbulk)) * D) ! <--- ds' / (c dt')
-   i_edge = minloc(2d0 * R - s, dim = 1, mask = 2d0 * R - s >= 0d0)
-   pos = 2d0 * mu_com * pos
+   i_edge = minloc(R - s, dim = 1, mask = R - s >= 0d0)
    write(*, *) '-> Solving Radiative Transfer Equation'
-
-#ifdef FBAR
-   cur = 0
-   call bar%initialize(width=48, max_value=real(numdt, R8P),                          &
-      bracket_left_string='|', bracket_left_color_fg='blue',                          &
-      empty_char_string=' ', empty_char_color_fg='blue', empty_char_color_bg='white', &
-      filled_char_string=' ', filled_char_color_bg='blue',                            &
-      bracket_right_string='|', bracket_right_color_fg='blue',                        &
-      prefix_string='progress ', prefix_color_fg='red',                               &
-      add_progress_percent=.true., progress_percent_color_fg='yellow',                &
-      add_progress_speed=.false., progress_speed_color_fg='green',                    &
-      add_date_time=.true., date_time_color_fg='magenta',                             &
-      add_scale_bar=.false., scale_bar_color_fg='blue', scale_bar_style='underline_on')
-   call bar%start
-#endif
-
    !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED)&
    !$OMP& PRIVATE(s_min, s_max, abu, i, ii, i_start)
    tobs_loop: do i = 1, numdt
@@ -118,12 +90,6 @@ program IofTobs
             call RadTrans(Iobs(:, i), abu, jnu=jnut(:, ii), anu=anut(:, ii), I0=Iobs(:, i))
          end if
       end do tcom_loop
-! #ifdef FBAR
-!    !$OMP CRITICAL
-!    cur = cur + 1
-!    if ( cur < numdt ) call bar%update(current=real(cur, R8P))
-!    !$OMP END CRITICAL
-! #endif
    end do tobs_loop
    !$OMP END PARALLEL DO
 
