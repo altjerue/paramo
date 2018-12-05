@@ -98,7 +98,7 @@ program IofTobs
 #endif
 
    !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED)&
-   !$OMP& PRIVATE(s_min, s_max, abu, i, j, ii, sind, i_start)
+   !$OMP& PRIVATE(s_min, s_max, abu, i, ii, i_start)
    tobs_loop: do i = 1, numdt
       if ( i <= i_edge ) then
          i_start = 1
