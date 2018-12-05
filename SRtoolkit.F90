@@ -69,6 +69,11 @@ module SRtoolkit
       module procedure t_com_v
    end interface t_com_f
 
+   interface x_com_f
+      module procedure x_com_s
+      module procedure x_com_v
+   end interface x_com_f
+
 contains
    
    !

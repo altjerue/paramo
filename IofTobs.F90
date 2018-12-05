@@ -19,13 +19,12 @@ program IofTobs
    ! real(R8P) :: curr
 #endif
    integer(HID_T) :: file_id, group_id
-   integer :: herror, numArgs
-   integer :: i, j, ii, numdf, numdt, i_edge, i_start
+   integer :: herror, numArgs, numtot, i, j, ii, numdf, numdt, i_edge, i_start
 
    real(dp) :: B, R, d_L, z, Gbulk, theta, mu_obs, mu_com, D, tob_min, &
-      tob_max, sind, factor, abu!, edge
+      tob_max, sind, factor, abu, l_min, l_max, l0
    real(dp), allocatable, dimension(:) :: t, t_obs, nu, s, pos
-   real(dp), allocatable, dimension(:, :) :: jnut, Iobs
+   real(dp), allocatable, dimension(:, :) :: jnut, anut, Iobs, Inut
 
    character(len=256) :: paramo_fname
    character(len=*), parameter :: args_error = "Usage:"//new_line('A')//&
@@ -60,14 +59,17 @@ program IofTobs
    call h5io_rint0(file_id, 't_stop', numdt, herror)
 
    allocate(t(numdt), nu(numdf), s(numdt), t_obs(numdt), pos(numdt))
-   allocate(jnut(numdf, numdt), Iobs(numdf, numdt))
+   allocate(jnut(numdf, numdt), anut(numdf, numdt), Iobs(numdf, numdt), &
+      Inut(numdf, numdt))
 
    !   ----->   Reading data
    call h5io_rdble1(file_id, 'time', t, herror)
    call h5io_rdble1(file_id, 't_obs', t_obs, herror)
    call h5io_rdble1(file_id, 'sen_lum', s, herror)
    call h5io_rdble1(file_id, 'nu_obs', nu, herror)
+   call h5io_rdble2(file_id, 'Inut', Inut, herror)
    call h5io_rdble2(file_id, 'jnut', jnut, herror)
+   call h5io_rdble2(file_id, 'anut', anut, herror)
 
 
    mu_obs = dcos(theta * pi / 180d0)
@@ -77,15 +79,17 @@ program IofTobs
    ! --> Light path from origin to the observer: 2 s mu_com
    ! --> Edge of the blob: 2 R mu_com
    ! --> Position at which we will measure the radiation:
-   pos = 2d0 * (R - s) * mu_com
+   pos = R - s
    factor = 1d0 / (2d0 * Gbulk * mu_com * (mu_obs - bofg(Gbulk)) * D) ! <--- ds' / (c dt')
-   i_edge = minloc(pos, dim = 1, mask = pos >= 0d0)
+   i_edge = minloc(2d0 * R - s, dim = 1, mask = 2d0 * R - s >= 0d0)
+   pos = 2d0 * mu_com * pos
 
    write(*, *) '-> Solving Radiative Transfer Equation'
 
 #ifdef FBAR
    cur = 0
-   call bar%initialize(width=48, max_value=real(numdf, R8P),                          &
+   numtot = numdf * numdt
+   call bar%initialize(width=48, max_value=real(numtot, R8P),                          &
       bracket_left_string='|', bracket_left_color_fg='blue',                          &
       empty_char_string=' ', empty_char_color_fg='blue', empty_char_color_bg='white', &
       filled_char_string=' ', filled_char_color_bg='blue',                            &
@@ -97,7 +101,43 @@ program IofTobs
       add_scale_bar=.false., scale_bar_color_fg='blue', scale_bar_style='underline_on')
    call bar%start
 #endif
+   l0 = 2d0 * R / cLight
+   !$OMP PARALLEL DO COLLAPSE(2) SCHEDULE(AUTO) DEFAULT(SHARED)&
+   !$OMP& PRIVATE(l_min, l_max, i, j, ii, i_start)
+   do j = 1, numdf
+      do i = 1, numdt
+         if ( i <= i_edge ) then
+            i_start = 1
+         else
+            i_start = i - i_edge
+         end if
+         Iobs(j, i) = 0d0
+         lam_loop: do ii = 1, numdt
+            if ( t_com_f(t_obs(i), z, Gbulk, dmin1(s(ii), 2d0 * R), mu_obs) - l_max * l0 < 0d0 ) cycle lam_loop
+            if ( ii == 1 ) then
+               l_min = 0d0
+               l_max = s(ii) * 0.5d0 / R
+               Iobs(j, i) = Inut(j, 1) * (l_max - l_max**2) * (l_max - l_min)! * heaviside(t(ii) - l_max * l0)
+            else
+               l_min = s(ii - 1) * 0.5d0 / R
+               l_max = s(ii) * 0.5d0 / R
+               Iobs(j, i) = (Inut(j, ii - 1) * (l_min - l_min**2) * heaviside(t(ii) - l_min * l0) + &
+                  Inut(j, ii) * (l_max - l_max**2)) * (l_max - l_min)! * heaviside(t(ii) - l_max * l0)
+            end if
+            l_min = l_max
+         end do lam_loop
+         Iobs(j, i) = 3d0 * Iobs(j, i)
+#ifdef FBAR
+         !$OMP CRITICAL
+         cur = cur + 1
+         if ( cur < numtot ) call bar%update(current=real(cur, R8P))
+         !$OMP END CRITICAL
+#endif
+      end do
+   end do
+   !$OMP END PARALLEL DO
 
+#if 0
    !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED)&
    !$OMP& PRIVATE(tob_min, tob_max, abu, i, j, ii, sind, i_start)
    freq_loop: do j = 1, numdf
@@ -137,6 +177,7 @@ program IofTobs
 #endif
    end do freq_loop
    !$OMP END PARALLEL DO
+#endif
 
    write(*, *) '-> Saving'
    call h5lexists_f(file_id, 'Iobs', Iobs_exists, herror)
@@ -152,5 +193,13 @@ program IofTobs
       call system('mv tmp.h5 '//trim(paramo_fname))
    end if
 
+contains
+   function heaviside(x) result(h)
+      implicit none
+      real(dp), intent(in) :: x
+      real(dp) :: h
+      h = 0d0
+      if ( x >= 0d0 ) h = 1d0
+   end function heaviside
 
 end program IofTobs

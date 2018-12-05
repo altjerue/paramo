@@ -14,15 +14,18 @@ module radiation
       module procedure RAdTrans_m
    end interface RadTrans
 
+   interface opt_depth
+      module procedure opt_depth_s
+      module procedure opt_depth_v
+   end interface opt_depth
+
 contains
-   !
    ! #    # #####   ####     ###### #    # #  ####   ####
    ! ##  ## #    # #         #      ##  ## # #      #
    ! # ## # #####   ####     #####  # ## # #  ####   ####
    ! #    # #    #      #    #      #    # #      #      #
    ! #    # #    # #    #    #      #    # # #    # #    #
    ! #    # #####   ####     ###### #    # #  ####   ####
-   !
    function mbs_emissivity(freqs, gg, nn, B, mbs_or_syn) result(jnu)
       implicit none
       real(dp), intent(in) :: B
@@ -74,14 +77,12 @@ contains
    end function mbs_emissivity
 
 
-   !
    ! #    # #####   ####       ##   #####   ####   ####  #####
    ! ##  ## #    # #          #  #  #    # #      #    # #    #
    ! # ## # #####   ####     #    # #####   ####  #    # #    #
    ! #    # #    #      #    ###### #    #      # #    # #####
    ! #    # #    # #    #    #    # #    # #    # #    # #   #
    ! #    # #####   ####     #    # #####   ####   ####  #    #
-   !
    function mbs_absorption(freqs, gg, nn, B, mbs_or_syn) result(anu)
       implicit none
       real(dp), intent(in) :: B
@@ -139,7 +140,14 @@ contains
    !  #    # #####    #   ###    #    # #      #####    #   #    #
    !  #    # #        #   ###    #    # #      #        #   #    #
    !   ####  #        #   ###    #####  ###### #        #   #    #
-   function opt_depth(absor, s) result(tau)
+   function opt_depth_s(absor, s) result(tau)
+      implicit none
+      real(dp), intent(in) :: absor, s
+      real(dp) :: tau
+      tau = absor * s
+   end function opt_depth_s
+   
+   function opt_depth_v(absor, s) result(tau)
       implicit none
       real(dp), intent(in), dimension(:) :: absor, s
       integer :: Ns
@@ -151,18 +159,60 @@ contains
          tau = s(1) * absor(1) + s(Ns) * absor(Ns)
          tau = 0.5d0 * dlog(s(Ns) / s(1)) * (tau + 2d0 * sum(s(2:Ns - 1) * absor(2:Ns - 1))) / dble(Ns - 1)
       end if
-   end function opt_depth
+   end function opt_depth_v
 
 
-   !
    ! # #    # ##### ###### #    #  ####  # ##### #   #
    ! # ##   #   #   #      ##   # #      #   #    # #
    ! # # #  #   #   #####  # #  #  ####  #   #     #
    ! # #  # #   #   #      #  # #      # #   #     #
    ! # #   ##   #   #      #   ## #    # #   #     #
    ! # #    #   #   ###### #    #  ####  #   #     #
-   !
    subroutine RadTrans_v(Inu, s, jnu, anu, Is0)
+      ! Description:
+      !   This function solves the radiative transfer equation.
+      !
+      implicit none
+      real(dp), intent(in) :: s
+      real(dp), intent(in), dimension(:) :: Is0, jnu, anu
+      real(dp), intent(out), dimension(:) :: Inu
+      optional :: jnu, anu, Is0
+      integer :: j, Nf
+      real(dp) :: Snu
+      logical :: with_emiss, with_absor
+      with_emiss = present(jnu)
+      with_absor = present(anu)
+      if ( .not. with_emiss .and. .not. with_absor .and. .not. present(Is0) ) &
+         call an_error("RadTrans_v: No argument provided. Radiative transfer equation cannot be solved.")
+      Nf = size(jnu, dim=1)
+      if ( present(Is0) ) then
+         Inu = Is0
+      else
+         Inu = 0d0
+      end if
+      !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED)&
+      !$OMP& PRIVATE(j, Snu)
+      do j = 1, Nf
+         if ( with_emiss .and. jnu(j) > 1d-100 ) then
+            if ( with_absor .and. anu(j) > 1d-100 ) then
+               Snu = jnu(j) / anu(j)
+               Inu(j) = Snu + dexp(-opt_depth(anu(j), s)) * (Inu(j) - Snu)
+            else
+               Inu(j) = Inu(j) + s * jnu(j)
+            end if
+         else
+            if ( with_absor .and. anu(j) > 1d-100) then
+               Inu(j) = Inu(j) * dexp(-opt_depth(anu(j), s))
+            else
+               Inu(j) = Inu(j)
+            end if
+         end if
+      end do
+      !$OMP END PARALLEL DO
+   end subroutine RadTrans_v
+
+
+   subroutine RadTrans_m(Inu, s, jnu, anu, Is0)
       ! Description:
       !   This function solves the radiative transfer equation.
       !
@@ -176,6 +226,8 @@ contains
       logical :: with_emiss, with_absor
       with_emiss = present(jnu)
       with_absor = present(anu)
+      if ( .not. with_emiss .and. .not. with_absor .and. .not. present(Is0) ) &
+         call an_error("RadTrans_m: No argument provided. Radiative transfer equation cannot be solved.")
       Nf = size(jnu, dim=1)
       Ns = size(s, dim=1)
       if ( present(Is0) ) then
@@ -190,60 +242,15 @@ contains
             if ( with_emiss .and. jnu(j, i) > 1d-100 ) then
                if ( with_absor .and. anu(j, i) > 1d-100 ) then
                   Snu = jnu(j, i) / anu(j, i)
-                  Inu(j) = Snu + dexp(-opacity(anu(j, i), s(i))) * (Inu(j) - Snu)
+                  Inu(j) = Snu + dexp(-opt_depth(anu(j, i), s(i))) * (Inu(j) - Snu)
                else
                   Inu(j) = Inu(j) + s(i) * jnu(j, i)
                end if
             else
-               if ( with_absor .and. anu(j) > 1d-100) then
-                  Inu(j) = Inu(j) * dexp(-opacity(anu(j, i), s(i)))
+               if ( with_absor .and. anu(j, i) > 1d-100) then
+                  Inu(j) = Inu(j) * dexp(-opt_depth(anu(j, i), s(i)))
                else
                   Inu(j) = Inu(j)
-               end if
-            end if
-         end do
-      end do
-      !$OMP END PARALLEL DO
-   end subroutine RadTrans_v
-
-
-   subroutine RadTrans_m(Inu, s, jnu, anu, Is0)
-      ! Description:
-      !   This function solves the radiative transfer equation.
-      !
-      implicit none
-      real(dp), intent(in), dimension(:) :: s
-      real(dp), intent(in), dimension(:, :) :: jnu, anu, Is0
-      real(dp), intent(out), dimension(:, :) :: Inu
-      optional :: jnu, anu, Is0
-      integer :: j, i, Nf, Ns
-      real(dp) :: Snu
-      logical :: with_emiss, with_absor
-      with_emiss = present(jnu)
-      with_absor = present(anu)
-      Nf = size(jnu, dim=1)
-      Ns = size(s, dim=1)
-      if ( present(Is0) ) then
-         Inu(:, 1) = Is0
-      else
-         Inu = 0d0
-      end if
-      !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED)&
-      !$OMP& PRIVATE(j, i, Snu)
-      do j = 1, Nf
-         do i = 1, Ns
-            if ( with_emiss .and. jnu(j, i) > 1d-100 ) then
-               if ( with_absor .and. anu(j, i) > 1d-100 ) then
-                  Snu = jnu(j, i) / anu(j, i)
-                  Inu(j, i) = Snu + dexp(-opacity(anu(j, i), s(i))) * (Inu(j, i) - Snu)
-               else
-                  Inu(j, i) = Inu(j, i) + s(i) * jnu(j, i)
-               end if
-            else
-               if ( with_absor .and. anu(j) > 1d-100) then
-                  Inu(j) = Inu(j, i) * dexp(-opacity(anu(j, i), s(i)))
-               else
-                  Inu(j) = Inu(j, i)
                end if
             end if
          end do
@@ -252,14 +259,12 @@ contains
    end subroutine RadTrans_m
 
 
-   !
    !  ####   ####   ####   ####      ####   ####  ###### ######
    ! #      #      #    # #    #    #    # #    # #      #
    !  ####   ####  #      #         #      #    # #####  #####
    !      #      # #      #         #      #    # #      #
    ! #    # #    # #    # #    #    #    # #    # #      #
    !  ####   ####   ####   ####      ####   ####  ###### #
-   !
    function ssc_cool_coef(nu0B,gg,freqs,Inu) result(nu0)
       implicit none
       real(dp), intent(in) :: nu0B
@@ -285,14 +290,12 @@ contains
    end function ssc_cool_coef
 
 
-   !
    !  ####   ####   ####     ###### #    # #  ####   ####
    ! #      #      #    #    #      ##  ## # #      #
    !  ####   ####  #         #####  # ## # #  ####   ####
    !      #      # #         #      #    # #      #      #
    ! #    # #    # #    #    #      #    # # #    # #    #
    !  ####   ####   ####     ###### #    # #  ####   ####
-   !
    subroutine ssc_emissivity(fout, gmin, gmax, gg, nn, Imbs, emiss)
       implicit none
       real(dp), intent(in) :: gmin, gmax
@@ -431,7 +434,6 @@ contains
    end function ssc_integrand
 
 
-   !
    !  #######  #####    #    #####
    !       #  #     #  ##   #     #
    !      #   #       # #         #
@@ -439,7 +441,6 @@ contains
    !    #           #   #   #
    !   #      #     #   #   #
    !  #######  #####  ##### #######
-   !
    function ssccZS12(gg,nn,B,R) result(nu0)
       implicit none
       real(dp), intent(in) :: B, R
@@ -464,14 +465,12 @@ contains
    end function ssccZS12
 
 
-   !
    ! ###### #      #    # #    #
    ! #      #      #    #  #  #
    ! #####  #      #    #   ##
    ! #      #      #    #   ##
    ! #      #      #    #  #  #
    ! #      ######  ####  #    #
-   !
    function flux_dens(Inu,dL,z,dopp,R) result(Fnu)
       ! ************************************************************************
       !  Description:
@@ -490,8 +489,5 @@ contains
       real(dp), dimension(size(Inu)) :: Fnu
       Fnu = pi * R**2 * dopp**3 * (1d0 + z) * Inu / dL**2
    end function flux_dens
-
-
-
 
 end module radiation

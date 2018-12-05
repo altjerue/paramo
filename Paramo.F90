@@ -18,16 +18,16 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc, mbs_o
    integer, parameter :: nmod=100
    character(len=*), parameter :: on_screen = &
       "(' Time iteration:', I6, ' | Time =', ES15.7, ' | Time step =', ES15.7, ' | nu_0(g_max) =', ES15.7, ' | Ntot =', ES15.7)"
-   integer :: i, j, k, kg2, numbins, numdf, numdt, ios
-   integer :: time_grid, cool_kind, herror, tstop
+   integer :: i, j, k, kg2, numbins, numdf, numdt, ios, i_start, time_grid, &
+      cool_kind, herror, tstop, i_edge
    integer(HID_T) :: file_id, group_id
    real(dp) :: uB, R, Q0, gmin, gmax, numin, numax, qind, B, dtacc, g1, &
       g2, nu0_B, tstep, zetae, Qth, Qnth, theta_e, tmax, d_lum, z, D, &
       gamma_bulk, theta_obs, R0, Rinit, b_index, mu_obs, mu_com
    real(dp), allocatable, dimension(:) :: freqs, gg, t, dg, Ntot, &
-      aux_zero_arr, sen_lum, dfreqs, dtimes, dt, nu_obs, t_obs, to_com
+      aux_zero_arr, sen_lum, dfreqs, dtimes, dt, nu_obs, t_obs, to_com, pos
    real(dp), allocatable, dimension(:, :) :: nu0, nn, Qinj, jnut, jmbs, &
-      jssc, ambs,anut,Imbs,Inut,Issc,Iobs
+      jssc, ambs, anut, Imbs, Inut
 
    open(unit=77, file=params_file, iostat=ios)
    if ( ios /= 0 ) call an_error("Paramo: Parameter file "//params_file//" could not be opened")
@@ -70,7 +70,7 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc, mbs_o
       sen_lum(numdt), dt(numdt), nu_obs(numdf), t_obs(numdt), to_com(numdt))
    allocate(nn(numdt, numbins), Qinj(numdt, numbins), nu0(numdt, numbins), &
       ambs(numdf, numdt), jmbs(numdf, numdt), jnut(numdf, numdt), &
-      jssc(numdf, numdt), Inut(numdf, numdt), Iobs(numdf, numdt), &
+      jssc(numdf, numdt), Inut(numdf, numdt), &
       Imbs(numdf, numdt), anut(numdf, numdt))
 
    dfreqs = 1d0
@@ -193,6 +193,7 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc, mbs_o
       !   ----->   Then we compute the light path
       sen_lum(i) = sum(dt(:i)) * cLight
 
+
       !  #####    ##   #####  #   ##   ##### #  ####  #    #
       !  #    #  #  #  #    # #  #  #    #   # #    # ##   #
       !  #    # #    # #    # # #    #   #   # #    # # #  #
@@ -209,7 +210,7 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc, mbs_o
          ! ----->>   Entering self-Compton   <<-----
          if ( with_ssc ) then
             !!! NOTE: The radius R is used following Chiaberge & Ghisellini (2009)
-            call RadTrans(Imbs(:, i), (/ R /), jnu=jmbs(:, i), anu=ambs(:, i))
+            call RadTrans(Imbs(:, i), R, jnu=jmbs(:, i), anu=ambs(:, i))
             call ssc_emissivity(freqs, gmin, g2, gg, nn(i, :), Imbs(:, i), jssc(:, i))
          else
             jssc(:, i) = 0d0
@@ -224,7 +225,7 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc, mbs_o
          ! ----->>   Entering self-Compton   <<-----
          if ( with_ssc ) then
             !!! NOTE: The radius R is used following Chiaberge & Ghisellini (2009)
-            call RadTrans(Imbs(:, i), (/ R /), jnu=jmbs(:, i))
+            call RadTrans(Imbs(:, i), R, jnu=jmbs(:, i))
             call ssc_emissivity(freqs, gmin, g2, gg, nn(i,: ), Imbs(:, i), jssc(:, i))
          else
             jssc(:, i) = 0d0
@@ -234,6 +235,7 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc, mbs_o
          anut(:, i) = ambs(:, i)
       end if
 
+      call RadTrans(Inut(:, i), R, jnu=jnut(:, i), anu=anut(:, i))
 
       !   ####   ####   ####  #      # #    #  ####
       !  #    # #    # #    # #      # ##   # #    #
@@ -275,16 +277,34 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc, mbs_o
 
    end do time_loop
 
-   call solRadTrans_full(Inut, dt(i) * cLight, jnu=jnut(:, i), anu=anut(:, i))
 
-   !
+   !  ### #    # ##### ###### #    #  ####  # ##### #   #
+   !   #  ##   #   #   #      ##   # #      #   #    # #
+   !   #  # #  #   #   #####  # #  #  ####  #   #     #
+   !   #  #  # #   #   #      #  # #      # #   #     #
+   !   #  #   ##   #   #      #   ## #    # #   #     #
+   !  ### #    #   #   ###### #    #  ####  #   #     #
+#if 0
+   pos = R - sen_lum
+   i_edge = minloc(pos, dim = 1, mask = pos >= 0d0)
+   pos = 2d0 * mu_com * pos
+   Inut_loop: do i = 1, numdt
+      if ( i <= i_edge ) then
+         i_start = 1
+      else
+         i_start = i - i_edge
+      end if
+      call RadTrans(Inut(:, i), pos(i_start:i), jnu=jnut(:, i_start:i), anu=anut(:, i_start:i))
+   end do Inut_loop
+#endif
+
+
    !  ####    ##   #    # # #    #  ####
    ! #       #  #  #    # # ##   # #    #
    !  ####  #    # #    # # # #  # #
    !      # ###### #    # # #  # # #  ###
    ! #    # #    #  #  #  # #   ## #    #
    !  ####  #    #   ##   # #    #  ####
-   !
    write(*, *) ""
    ! call system("[ -f "//trim(output_file)//" ] && rm "//trim(output_file)//" && echo 'output: '"//trim(output_file)//" || echo 'output: '"//trim(output_file))
 
