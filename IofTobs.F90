@@ -118,12 +118,12 @@ program IofTobs
             call RadTrans(Iobs(:, i), abu, jnu=jnut(:, ii), anu=anut(:, ii), I0=Iobs(:, i))
          end if
       end do tcom_loop
-#ifdef FBAR
-   !$OMP CRITICAL
-   cur = cur + 1
-   if ( cur < numdt ) call bar%update(current=real(cur, R8P))
-   !$OMP END CRITICAL
-#endif
+! #ifdef FBAR
+!    !$OMP CRITICAL
+!    cur = cur + 1
+!    if ( cur < numdt ) call bar%update(current=real(cur, R8P))
+!    !$OMP END CRITICAL
+! #endif
    end do tobs_loop
    !$OMP END PARALLEL DO
 

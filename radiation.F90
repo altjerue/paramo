@@ -46,7 +46,6 @@ contains
                jnu(j) = jnu(j) + j_mb(freqs(j), B, nn(k), gg(k), gg(k + 1), qq, RMA_new)
             end if
          end do calc_jnu
-         if ( jnu(j) < 1d-100 ) jnu(j) = 0d0
       end do freqs_loop
       !$OMP END PARALLEL DO
    end function mbs_emissivity
@@ -61,7 +60,7 @@ contains
    function mbs_absorption(freqs, gg, nn, B) result(anu)
       implicit none
       real(dp), intent(in) :: B
-      real(dp), intent(in), dimension(:) :: freqs,gg,nn
+      real(dp), intent(in), dimension(:) :: freqs, gg, nn
       integer :: j, k, Ng, Nf
       real(dp) :: qq
       real(dp), dimension(size(freqs)) :: anu
@@ -75,11 +74,10 @@ contains
             if ( nn(k) > 1d-100 .and. nn(k + 1) > 1d-100) then
                qq = -dlog(nn(k + 1) / nn(k)) / dlog(gg(k + 1) / gg(k))
                if ( qq > 8d0 ) qq = 8d0
-               if ( qq < 8d0 ) qq = -8d0
+               if ( qq < -8d0 ) qq = -8d0
                anu(j) = anu(j) + a_mb(freqs(j), B, nn(k), gg(k), gg(k + 1), qq, RMA_new)
             end if
          end do calc_anu
-         if ( anu(j) < 1d-100 ) anu(j) = 0d0
       end do freqs_loop
       !$OMP END PARALLEL DO
    end function mbs_absorption
