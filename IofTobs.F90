@@ -79,13 +79,13 @@ program IofTobs
       end if
       tcom_loop: do ii = i_start, i
          if ( ii == 1 ) then
-            s_min = x_com_f(0d0, t_obs(i), z, Gbulk, mu_obs) / (2d0 * R * mu_com)
-            s_max = x_com_f(t(1), t_obs(i), z, Gbulk, mu_obs) / (2d0 * R * mu_com)
+            s_min = x_com_f(0d0, t_obs(i), z, Gbulk, mu_obs) * 0.5d0 / mu_com
+            s_max = x_com_f(t(1), t_obs(i), z, Gbulk, mu_obs) * 0.5d0 / mu_com
             abu = s_max - s_min
             call RadTrans(Iobs(:, i), abu, jnu=jnut(:, 1), anu=anut(:, 1))
          else
-            s_min = x_com_f(t(ii - 1), t_obs(i), z, Gbulk, mu_obs) / (2d0 * R * mu_com)
-            s_max = x_com_f(t(ii), t_obs(i), z, Gbulk, mu_obs) / (2d0 * R * mu_com)
+            s_min = x_com_f(t(ii - 1), t_obs(i), z, Gbulk, mu_obs) * 0.5d0 / mu_com
+            s_max = x_com_f(t(ii), t_obs(i), z, Gbulk, mu_obs) * 0.5d0 / mu_com
             abu = s_max - s_min
             call RadTrans(Iobs(:, i), abu, jnu=jnut(:, ii), anu=anut(:, ii), I0=Iobs(:, i))
          end if

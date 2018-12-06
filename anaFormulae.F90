@@ -184,11 +184,12 @@ contains
    function RMA_new(chi, g) result(res)
       implicit none
       real(dp) :: res,x
-      real(dp), parameter :: c1 = 3.2180900500625734d-4, c2 = 6.50532122717873d-1, c3 = 1.5579904689804556d1
-      real(dp), intent(in) :: chi,g
+      real(dp), parameter :: c1 = 3.2180900500625734d-4, &
+         c2 = 6.50532122717873d-1, c3 = 1.5579904689804556d1
+      real(dp), intent(in) :: chi, g
       if (chi > 0.75d0 / g) then
          x = 2d0 * chi / (3d0 * g**2)
-         if (x < c1) then
+         if ( x < c1 ) then
             res = 1.8084180211028020864d0 * x**(1d0 / 3d0)
          else if (x >= c1 .and. x <= c2) then
             res = dexp( -0.7871626401625178d0 &
@@ -217,7 +218,7 @@ contains
             !    + 0.010445217874656604d0 * dlog10(x)**4 &
             !    - 0.012831897130695337d0 * dlog10(x)**5 )
          else
-            res = pi * dexp(-x) * (1d0 - (11d0 / 18d0) / x) ! 99/162 = 11/18
+            res = 0.5d0 * pi * dexp(-x) * (1d0 - 11d0 / (18d0 * x))
          end if
       else
          res = 0d0
