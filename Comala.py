@@ -94,7 +94,6 @@ class compiler(object):
         self.arch = ''           # compile with specific arch flag
         self.OMP = False         # compile with OpenMP
         self.DBG = False         # compile for debugging
-        self.FBAR = False        # Progress bar
         self.rules = 'all'       # rule to compile
         self.compile_dir = './'  # address to Paramo, must end with '/'
 
@@ -122,9 +121,6 @@ class compiler(object):
         if self.MBS:
             make += ' MBS=1'
 
-        if self.FBAR:
-            make += ' FBAR=1'
-
         os.chdir(self.compile_dir)
         os.system('git pull')
         print("--> Running Makefile:\n   ", make, "\n")
@@ -141,7 +137,7 @@ class compiler(object):
         os.chdir(self.cwd)
 
 
-# 
+#
 #  #####  #####   ####     ###### # #      ######
 #  #    # #    # #         #      # #      #
 #  #    # #####   ####     #####  # #      #####
@@ -250,12 +246,11 @@ class Paramo(object):
         if pream is None:
             run_cmd = '{0}xParamo {1} {2} {3}'.format(self.comp.compile_dir, self.par.params_file, " ".join(argv), outfile)
         else:
-            run_cmd = '{0} {1}xParamo {2}{3} {4}'.format(pream, self.comp.compile_dir, self.par.params_file, " ".join(argv), outfile)
+            run_cmd = '{0} {1}xParamo {2} {3} {4}'.format(pream, self.comp.compile_dir, self.par.params_file, " ".join(argv), outfile)
         print("\n--> Running:\n  ", run_cmd, "\n")
         os.system(run_cmd)
         print("\n--> Paramo finished")
-        return self.outfile
-
+        return outfile
 
     def cl_Paramo(self, pream=None):
         self.comp.compile()

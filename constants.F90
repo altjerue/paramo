@@ -29,8 +29,6 @@ module constants
    !
    real(dp), parameter :: &
       cLight  = 2.99792458d10, &                    ! cm / s
-      cLight2 = 8.987551787368177d20, &             ! cm^2 / s^2
-      cLight4 = 8.07760871306249d41, &              ! cm^4 / s^4
       mass_p = 1.672621898d-24, &                   ! g
       mass_e = 9.10938356d-28, &                    ! g
       eCharge = 4.80320467299766d-10, &             ! cm^(3/2) g^(1/2) / s

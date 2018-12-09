@@ -46,6 +46,7 @@ contains
                jnu(j) = jnu(j) + j_mb(freqs(j), B, nn(k), gg(k), gg(k + 1), qq, RMA_new)
             end if
          end do calc_jnu
+         if ( jnu(j) < 1d-200 ) jnu(j) = 0d0
       end do freqs_loop
       !$OMP END PARALLEL DO
    end function mbs_emissivity
@@ -78,6 +79,7 @@ contains
                anu(j) = anu(j) + a_mb(freqs(j), B, nn(k), gg(k), gg(k + 1), qq, RMA_new)
             end if
          end do calc_anu
+         if ( anu(j) < 1d-200 ) anu(j) = 0d0
       end do freqs_loop
       !$OMP END PARALLEL DO
    end function mbs_absorption
@@ -97,7 +99,6 @@ contains
       tau = absor * s
    end function opt_depth_s
 
-
    function opt_depth_v(absor, s) result(tau)
       implicit none
       real(dp), intent(in), dimension(:) :: s
@@ -114,6 +115,20 @@ contains
          end do
       end if
    end function opt_depth_v
+
+   function opt_depth_blob(tau) result(u)
+      implicit none
+      real(dp), intent(in) :: tau
+      real(dp) :: u
+      if ( tau > 100d0 ) then
+         u = 0.5d0 - 1d0 / tau**2
+      else if ( tau >= 0.01 .and. tau <= 100.0 ) then
+         u = 0.5d0 * (1d0 - 2d0 * (1d0 - (1d0 + tau) * dexp(-tau)) / tau**2)
+      else
+         u = (tau / 3d0) - 0.125d0 * tau**2
+      end if
+   end function opt_depth_blob
+
 
 
    ! # #    # ##### ###### #    #  ####  # ##### #   #
@@ -215,18 +230,45 @@ contains
    end subroutine RadTrans_m
 
 
-   !  ####   ####   ####   ####      ####   ####  ###### ######
-   ! #      #      #    # #    #    #    # #    # #      #
-   !  ####   ####  #      #         #      #    # #####  #####
-   !      #      # #      #         #      #    # #      #
-   ! #    # #    # #    # #    #    #    # #    # #      #
-   !  ####   ####   ####   ####      ####   ####  ###### #
-   function ssc_cool_coef(nu0B,gg,freqs,Inu) result(nu0)
+   subroutine RadTrans_blob(Inu, s, jnu, anu)
+      implicit none
+      real(dp), intent(in) :: s
+      real(dp), intent(in), dimension(:) :: jnu, anu
+      real(dp), intent(out), dimension(:) :: Inu
+      integer :: j, Nf
+      real(dp) :: Snu
+      real(dp), dimension(size(jnu, dim=1)) :: tau
+      Nf = size(jnu, dim=1)
+      tau = opt_depth(anu, s)
+      !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
+      !$OMP& PRIVATE(j, Snu)
+      do j = 1, Nf
+         if ( jnu(j) > 1d-100 ) then
+            if ( tau(j) > 1d-100 ) then
+               Snu = jnu(j) / anu(j)
+               Inu(j) = 0.25d0 * opt_depth_blob(tau(j)) * jnu(j) * s / (pi * tau(j))
+            else
+               Inu(j) = 0.25d0 * s * jnu(j) / pi
+            end if
+         end if
+      end do
+      !$OMP END PARALLEL DO
+   end subroutine RadTrans_blob
+
+
+   !  ###  #####
+   !   #  #     #     ####   ####   ####  #      # #    #  ####
+   !   #  #          #    # #    # #    # #      # ##   # #    #
+   !   #  #          #      #    # #    # #      # # #  # #
+   !   #  #          #      #    # #    # #      # #  # # #  ###
+   !   #  #     #    #    # #    # #    # #      # #   ## #    #
+   !  ###  #####      ####   ####   ####  ###### # #    #  ####
+   function IC_cool(nu0B, gg, freqs, Inu) result(nu0)
       implicit none
       real(dp), intent(in) :: nu0B
-      real(dp), intent(in), dimension(:) :: freqs,gg,Inu
-      integer :: j,k
-      real(dp) :: nuKN,urad,Iind,Ibol
+      real(dp), intent(in), dimension(:) :: freqs, gg, Inu
+      integer :: j, k
+      real(dp) :: nuKN, urad, Iind, Ibol
       real(dp), dimension(size(gg)) :: nu0
       do k = 1, size(gg)
          nuKN = 3d0 * mass_e * cLight**2 / (4d0 * hPlanck * gg(k))
@@ -243,16 +285,54 @@ contains
          urad = 4d0 * pi * Ibol / cLight
          nu0(k) = nu0B + 4d0 * sigmaT * urad / (3d0 * mass_e * cLight)
       end do
-   end function ssc_cool_coef
+   end function IC_cool
 
 
-   !  ####   ####   ####     ###### #    # #  ####   ####
-   ! #      #      #    #    #      ##  ## # #      #
-   !  ####   ####  #         #####  # ## # #  ####   ####
-   !      #      # #         #      #    # #      #      #
-   ! #    # #    # #    #    #      #    # # #    # #    #
-   !  ####   ####   ####     ###### #    # #  ####   ####
-   subroutine ssc_emissivity(fout, gmin, gmax, gg, nn, Imbs, emiss)
+   !  #######  #####    #    #####
+   !       #  #     #  ##   #     #
+   !      #   #       # #         #
+   !     #     #####    #    #####
+   !    #           #   #   #
+   !   #      #     #   #   #
+   !  #######  #####  ##### #######
+   function ssccZS12(gg, nn, B, R) result(nu0)
+      real(dp), intent(in) :: B, R
+      real(dp), intent(in), dimension(:) :: nn, gg
+      real(dp), dimension(size(gg)) :: nu0
+      integer :: k,Ng
+      real(dp) :: R15,D0,A0,Ig2n,pp
+      Ng = size(gg)
+      R15 = R * 1d-15
+      D0 = 1.29d-9 * B**2
+      A0 = 1.15d-18 * R15 * B**2
+      Ig2n = 0d0
+      do k = 1, Ng - 1
+         if ( nn(k) > 1d-100 .and. nn(k + 1) > 1d-100 ) then
+            pp = -dlog(nn(k + 1) * gg(k + 1)**2 / (nn(k) * gg(k)**2)) / dlog(gg(k + 1) / gg(k))
+            if ( pp > 8d0 ) pp = 8d0
+            if ( pp < -8d0 ) pp = -8d0
+            Ig2n = Ig2n + nn(k) * gg(k)**3d0 * Pinteg(gg(k + 1) / gg(k), pp, 1d-9)
+         endif
+      enddo
+      nu0 = D0 + A0 * Ig2n
+   end function ssccZS12
+
+
+   !  ###  #####
+   !   #  #     #  ####  #    # #####  #####  ####  #    #
+   !   #  #       #    # ##  ## #    #   #   #    # ##   #
+   !   #  #       #    # # ## # #    #   #   #    # # #  #
+   !   #  #       #    # #    # #####    #   #    # #  # #
+   !   #  #     # #    # #    # #        #   #    # #   ##
+   !  ###  #####   ####  #    # #        #    ####  #    #
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#if 0
+   !
+   !   ----------{   Integral over incomming frequencies   }----------
+   !
+   subroutine IC_emis_monochr(fout, gmin, gmax, gg, nn, Imbs, emiss)
       implicit none
       real(dp), intent(in) :: gmin, gmax
       real(dp), intent(in), dimension(:) :: gg, nn, Imbs, fout
@@ -266,10 +346,10 @@ contains
 
       !$OMP  PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
       !$OMP& PRIVATE(j, g1, g2, I0, jbol0)
-      fout_loop: do k=1,Nf
-         fin_loop: do j=1,Nf
+      fout_loop: do k=1, Nf
+         fin_loop: do j=1, Nf
             g1 = dmax1(dsqrt(0.25d0 * fout(k) / fin(j)), gmin)
-            g2 = dmin1(0.75d0 * mass_e * cLight2 / (hPlanck * fin(j)), gmax)
+            g2 = dmin1(0.75d0 * mass_e * cLight**2 / (hPlanck * fin(j)), gmax)
             if ( g1 >= g2 ) then
                I0(j) = 0d0
             else
@@ -284,13 +364,58 @@ contains
       end do fout_loop
       !$OMP END PARALLEL DO
 
-   end subroutine ssc_emissivity
+   end subroutine IC_emis_monochr
+
+
+   !
+   !   ----------{   Integral over incomming frequencies   }----------
+   !
+   subroutine IC_emis_integ1(fout, gmin, gmax, gg, nn, Imbs, emiss)
+      implicit none
+      real(dp), intent(in) :: gmin, gmax
+      real(dp), intent(in), dimension(:) :: gg, nn, Imbs, fout
+      real(dp), intent(out), dimension(:) :: emiss
+      integer :: j, k, Nf
+      real(dp) :: g1, g2, jbol0
+      real(dp), dimension(size(fout)) :: fin, I0
+
+      Nf = size(fout)
+      fin = fout
+
+      !$OMP  PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
+      !$OMP& PRIVATE(j, g1, g2, I0, jbol0)
+      fout_loop: do k=1, Nf
+         fin_loop: do j=1, Nf
+            g1 = dmax1(dsqrt(0.25d0 * fout(k) / fin(j)), gmin)
+            g2 = dmin1(0.75d0 * mass_e * cLight**2 / (hPlanck * fin(j)), gmax)
+            if ( g1 >= g2 ) then
+               I0(j) = 0d0
+            else
+               I0(j) = Imbs(j) * ssc_qromb(fin(j), fout(k), g1, g2, gg, nn) / fin(j)**2
+            end if
+         end do fin_loop
+         !  :::::  improvised trapezoidal rule  :::::
+         jbol0 = fin(1) * I0(1) + fin(Nf) * I0(Nf)
+         jbol0 = 0.5d0 * dlog(fin(Nf) / fin(1)) * &
+            (jbol0 + 2d0 * sum(fin(2:Nf - 1) * I0(2:Nf - 1))) / dble(Nf - 1)
+         emiss(k) = 0.25d0 * fout(k) * sigmaT * jbol0
+      end do fout_loop
+      !$OMP END PARALLEL DO
+
+   end subroutine IC_emis_integ1
+
 
    !
    !   ----------{   Romberg integrator   }----------
    !
-   function ssc_qromb(fin, fout, a, b, gg, nn) result(qromb)
+   function IC_distrib_qromb(fin, fout, a, b, gg, nn, scatt_kern) result(qromb)
       implicit none
+      interface scatt_kern(x)
+         use data_types
+         implicit none
+         real(dp), intent(in) :: x
+         real(dp) :: scat_kern
+      end interface scatt_kern
       real(dp), intent(in) :: fin, fout, a, b
       real(dp), intent(in), dimension(:) :: nn, gg
       integer, parameter :: jmax = 25, jmaxp = jmax + 1, kq = 6, km = kq - 1
@@ -310,7 +435,7 @@ contains
       end do
       print*, fin, fout, a, b, qromb, dqromb
       call an_error('ssc_qromb: too many steps')
-   end function ssc_qromb
+   end function IC_distrib_qromb
 
    !
    !   ----------{   Trapezoid   }----------
@@ -343,7 +468,7 @@ contains
    !
    !   ----------{   Dispersion function   }----------
    !
-   function ssc_integrand(fin, fout, gev, gg, nn) result(integrand)
+   function IC_kern_RL79Eq7p24(fin, fout, gev, gg, nn) result(integrand)
       implicit none
       real(dp), intent(in) :: fin, fout, gev
       real(dp), intent(in), dimension(:) :: gg, nn
@@ -387,63 +512,151 @@ contains
          integrand = one_over_gb2(gev) * nnev * fIC
          return
       end if
-   end function ssc_integrand
+   end function IC_kern_RL79Eq7p24
+#endif
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
-   !  #######  #####    #    #####
-   !       #  #     #  ##   #     #
-   !      #   #       # #         #
-   !     #     #####    #    #####
-   !    #           #   #   #
-   !   #      #     #   #   #
-   !  #######  #####  ##### #######
-   function ssccZS12(gg,nn,B,R) result(nu0)
+   subroutine SSC_pwlEED(jSSC, nu, Imbs, n, g)
       implicit none
-      real(dp), intent(in) :: B, R
-      real(dp), intent(in), dimension(:) :: nn, gg
-      real(dp), dimension(size(gg)) :: nu0
-      integer :: k,Ng
-      real(dp) :: R15,D0,A0,Ig2n,pp
-      Ng = size(gg)
-      R15 = R * 1d-15
-      D0 = 1.29d-9 * B**2
-      A0 = 1.15d-18 * R15 * B**2
-      Ig2n = 0d0
-      do k = 1, Ng - 1
-         if ( nn(k) > 1d-100 .and. nn(k + 1) > 1d-100 ) then
-            pp = -dlog(nn(k + 1) * gg(k + 1)**2 / (nn(k) * gg(k)**2)) / dlog(gg(k + 1) / gg(k))
-            if ( pp > 8d0 ) pp = 8d0
-            if ( pp < -8d0 ) pp = -8d0
-            Ig2n = Ig2n + nn(k) * gg(k)**3d0 * Pinteg(gg(k + 1) / gg(k), pp, 1d-9)
-         endif
-      enddo
-      nu0 = D0 + A0 * Ig2n
-   end function ssccZS12
+      real(dp), intent(in), dimension(:) :: nu, n, g, Imbs
+      real(dp), intent(out), dimension(:) :: jSSC
+      integer :: i, j, k, Ng, Nf
+      real(dp) :: w1, w2, gmx_star, e0, qf, qg, f1, f2, emis
+      Ng = size(g, dim=1)
+      Nf = size(nu, dim=1)
+      !$OMP  PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
+      !$OMP& PRIVATE(i, j, k, emis, w1, w2, qg, qf, gmx_star, e0, f1, f2)
+      nu_loop: do j = 1, Nf
+         g_loop: do k = 1, Ng - 1
+            emis = 0d0
+            e_dist: if ( n(k) > 1d-100 .and. n(k + 1) > 1d-100 ) then
+               qg = -dlog(n(k + 1) / n(k)) / dlog(g(k + 1) / g(k))
+               if ( qg > 8d0 ) qg = 8d0
+               if ( qg < -8d0 ) qg = -8d0
+               nu1_loop: do i = 1, Nf - 1
+                  intens_if: if ( Imbs(i) > 1d-100 .and. Imbs(i + 1) > 1d-100 ) then
+                     e0 = mass_e * cLight**2 / (hPlanck * nu(i + 1))
+                     f1 = 0.25d0 * nu(j) / nu(i)
+                     f2 = 0.25d0 * nu(j) / nu(i + 1)
+                     gmx_star = dmin1(g(k + 1), e0)
+                     w1 = dmin1(f1, gmx_star**2)
+                     w2 = dmax1(f2, 0.25d0)
+                     contrib_if: if ( w1 > w2 .and. gmx_star > g(k) ) then
+                        qf = -dlog(Imbs(i + 1) / Imbs(i)) / dlog(nu(i + 1) / nu(i))
+                        if ( qf > 8d0 ) qf = 8d0
+                        if ( qf < -8d0 ) qf = -8d0
+                        if ( 0.25d0 < f1 .and. f1 < g(k)**2 ) then
+                           emis = sscG1ISO(1d0 / gmx_star**2, 1d0 / g(k)**2, w2, w1, 0.5d0 * (qg - 1d0), 0.5d0 * (2d0 * qf - qg - 1d0))
+                        else if ( f2 <= g(k)**2 .and. g(k)**2 <= f1 ) then
+                           emis = sscG1ISO(1d0 / gmx_star**2, 1d0 / g(k)**2, w2, g(k)**2, 0.5d0 * (qg - 1d0), 0.5d0 * (2d0 * qf - qg - 1d0)) + &
+                              sscG2ISO(1d0 / gmx_star**2, 1d0, g(k)**2, w1, 0.5d0 * (qg - 1d0), 0.5d0 * (2d0 * qf - qg - 1d0))
+                        else if ( g(k)**2 < f2 .and. f2 <= gmx_star**2 ) then
+                           emis = sscG2ISO(1d0 / gmx_star**2, 1d0, w2, w1, 0.5d0 * (qg - 1d0), 0.5d0 * (2d0 * qf - qg - 1d0))
+                        else
+                           emis = 0d0
+                        end if
+                     end if contrib_if
+                     emis = emis * Imbs(i) * f1**(-qf)
+                  end if intens_if
+               end do nu1_loop
+            end if e_dist
+            jSSC(j) = jSSC(j) + emis * n(k) * g(k)**qg
+         end do g_loop
+         jSSC(j) = jSSC(j) * sigmaT
+      end do nu_loop
+      !$OMP END PARALLEL DO
+   end subroutine SSC_pwlEED
 
 
-   ! ###### #      #    # #    #
-   ! #      #      #    #  #  #
-   ! #####  #      #    #   ##
-   ! #      #      #    #   ##
-   ! #      #      #    #  #  #
-   ! #      ######  ####  #    #
-   function flux_dens(Inu,dL,z,dopp,R) result(Fnu)
-      ! ************************************************************************
-      !  Description:
-      !     Using Eq. (13) in Zheng & Zhang, 2011, ApJ, 728, 105.
-      !  Arguments:
-      !     - Inu : intensity
-      !     - dL  : luminosity distance
-      !     - z   : redshift
-      !     - dopp: Doppler factor
-      !     - R   : radius of the emision region
-      !     - Fnu : flux density measured by a distant observer
-      ! ************************************************************************
+   subroutine EIC_pwlEED(jEIC, nu, uext, nuext, n, g)
       implicit none
-      real(dp), intent(in) :: dL,z,dopp,R
-      real(dp), intent(in), dimension(:) :: Inu
-      real(dp), dimension(size(Inu)) :: Fnu
-      Fnu = pi * R**2 * dopp**3 * (1d0 + z) * Inu / dL**2
-   end function flux_dens
+      real(dp), intent(in) :: uext, nuext
+      real(dp), intent(in), dimension(:) :: nu, n, g
+      real(dp), intent(out), dimension(:) :: jEIC
+      real(dp), parameter :: eps = 1d-9
+      integer :: j, k, Ng, Nf
+      real(dp) :: w, gmx_star, e0, q, q1, q2, emis
+      Ng = size(g, dim=1)
+      Nf = size(nu, dim=1)
+      e0 = mass_e * cLight**2 / (hPlanck * nuext)
+      !$OMP  PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
+      !$OMP& PRIVATE(j, k, w, emis, q, q1, q2, gmx_star)
+      nu_loop: do j = 1, Nf
+         w = 0.25d0 * nu(j) / nuext
+         g_loop: do k = 1, Ng - 1
+            emis = 0d0
+            e_dist: if ( n(k) > 1d-100 .and. n(k + 1) > 1d-100 ) then
+               gmx_star = dmin1(g(k + 1), e0)
+               q = -dlog(n(k + 1) / n(k)) / dlog(g(k + 1) / g(k))
+               if ( q > 8d0 ) q = 8d0
+               if ( q < -8d0 ) q = -8d0
+               q1 = 0.5d0 * (q - 1d0)
+               q2 = 0.5d0 * (q + 1d0)
+               contrib_if: if ( 0.25d0 <= w .and. w <= gmx_star**2 ) then
+                  emis = (w / gmx_star**2)**(1d0 + q1) * &
+                     Pinteg((gmx_star / g(k))**2, -q1, eps) - &
+                     (w / gmx_star**2)**(1d0 + q2) * &
+                     Pinteg((gmx_star / g(k))**2, -q2, eps)
+               else if ( g(k)**2 < w .and. w <= gmx_star**2 ) then
+                  emis = (w / gmx_star**2)**(1d0 + q1) * &
+                     Pinteg(gmx_star**2 / w, -q1, eps) - &
+                     (w / gmx_star**2)**(1d0 + q2) * &
+                     Pinteg(gmx_star**2 / w, -q2, eps)
+               end if contrib_if
+            end if e_dist
+            jEIC(j) = jEIC(j) + emis * n(k) * g(k)**q * w**(-q1)
+         end do g_loop
+         jEIC(j) = jEIC(j) * cLight * sigmaT * uext * 0.25d0 / (pi * nuext)
+      end do nu_loop
+      !$OMP END PARALLEL DO
+   end subroutine EIC_pwlEED
+
+
+   !     Eq. (3.19) of Rueda-Becerril (2017)
+   function sscR(a, b, c, d, alpha, beta) result(res)
+      implicit none
+      real(dp), intent(in) :: a, b, c, d, alpha, beta
+      real(dp) :: res
+      real(dp) :: eps = 1d-9
+      res = c**(beta + alpha + 2d0) * a**(alpha + 1d0) * Pinteg(d / c, -beta - alpha - 1d0, eps) * Qinteg(b / a, -alpha, eps)
+   end function sscR
+   
+   !     Eq. (3.21) of Rueda-Becerril (2017)
+   function sscS(a, b, c, d, alpha, beta) result(res)
+      implicit none
+      real(dp), intent(in) :: a, b, c, d, alpha, beta
+      real(dp) :: res, b_ac
+      real(dp) :: eps = 1d-9
+      b_ac = b / (a * c)
+      if ( LN3(b / (a * d), eps) * (alpha + 1d0)**2 > eps * 6d0 ) then
+         res = c**(beta + 1d0) * ( b**(alpha + 1d0) * Pinteg(d / c, -beta, eps) - &
+            (a * c)**(alpha + 1d0) * Pinteg(d / c, -alpha - beta - 1d0, eps) ) / (alpha + 1d0)
+      else
+         res = c**(alpha + beta + 2d0) * a**(alpha + 1d0) * ( LN1(b_ac, eps) * &
+            Pinteg(d / c, -beta, eps) - Qinteg(d / c, -beta, eps) + 0.5d0 * &
+            (alpha + 1d0) * ( LN2(b_ac, eps) * Pinteg(d / c, -beta, eps) - &
+            2d0 * LN1(b_ac, eps) * Qinteg(d / c, -beta, eps) + &
+            Q2integ(d / c, -beta, eps) ) )
+      endif
+   end function sscS
+   
+   !     Eq. 2.106 of Mimica (2004)
+   function sscG1ISO(a, b, c, d, alpha, beta) result(res)
+      implicit none
+      real(dp), intent(in) :: a, b, c, d, alpha, beta
+      real(dp) :: res
+      res = sscR(a, b, c, d, alpha, beta) - sscR(a, b, c, d, alpha + 1d0, beta)
+   end function sscG1ISO
+   
+   !     Eq. 2.107 of Mimica (2004)
+   function sscG2ISO(a, b, c, d, alpha, beta) result(res)
+      implicit none
+      real(dp), intent(in) :: a, b, c, d, alpha, beta
+      real(dp) :: res
+      res = sscS(a, b, c, d, alpha, beta) - sscS(a, b, c, d, alpha + 1d0, beta)
+   end function sscG2ISO
 
 end module radiation

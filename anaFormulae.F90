@@ -274,7 +274,7 @@ contains
       a=1.0d0
       b=1.0d0
       c=0.5d0
-      infpow=5d0/6d0
+      infpow = 5d0 / 6d0
       x = 2d0 * chi / (3d0 * g**2)
       !!$print*,"a=",a,"  b=",b,"  c=",c
       !!$x = chi / g**2
@@ -289,6 +289,7 @@ contains
    end function SL07_alt
 
 
+   ! ===========================================================================
    !  ###### #    # #  ####   ####  # #    # # ##### #   #
    !  #      ##  ## # #      #      # #    # #   #    # #
    !  #####  # ## # #  ####   ####  # #    # #   #     #
@@ -308,52 +309,11 @@ contains
       real(dp) :: emiss, chi, nu_b, I2
       nu_b = nuconst * B
       chi = nu / nu_b
-      I2 = RMA_qromb(chi, qq, dlog(gmin), dlog(gmax), 1d0, RMAfunc)
+      I2 = RMA_qromb(chi, qq, dlog(gmin), dlog(gmax), RMAfunc)
       emiss = jmbconst * nu_b * n0 * I2 * gmin**qq
    end function j_mb
 
-   subroutine RMA_trapzd(chi, q, lga, lgb, s, n, globg, RMAfunc)
-      implicit none
-      interface
-         function RMAfunc(c, g) result(res)
-            use data_types
-            real(dp) :: res
-            real(dp), intent(in) :: c,g
-         end function RMAfunc
-      end interface
-      integer :: it,i
-      integer, intent(in) :: n
-      real(dp), intent(in) :: chi, q, lga, lgb, globg
-      real(dp), intent(inout) :: s
-      real(dp) :: del, fsum, lg, fa, fb, ega, egb, eg
-      if ( n /= 1 ) then
-         ega = dexp(lga)
-         egb = dexp(lgb)
-         fa = ega**(1d0 - q) * RMAfunc(chi, ega * globg)
-         fb = egb**(1d0 - q) * RMAfunc(chi, egb * globg)
-         s = 0.5d0 * (lgb - lga) * (fa + fb)
-
-      else
-         it = 2**(n - 2)
-         del = (lgb - lga) / dble(it)
-         lg = lga + 0.5d0 * del
-         eg = dexp(lg)
-         fsum = 0d0
-         itloop: do i=1,it
-            if ( globg /= 1d0 .and. lg >= 0d0 ) exit itloop
-            fsum = fsum + eg**(1d0 - q) * RMAfunc(chi, eg * globg)
-            lg = lg + del
-            eg = dexp(lg)
-         end do itloop
-         s = 0.5d0 * (s + del * fsum)
-      end if
-   end subroutine RMA_trapzd
-
-
-   !
-   ! :::: Romberg ::::
-   !
-   function RMA_qromb(chi, q, lga, lgb, globg, RMAfunc) result(qromb)
+   subroutine RMA_trapzd(chi, q, lga, lgb, s, n, RMAfunc)
       implicit none
       interface
          function RMAfunc(c, g) result(res)
@@ -362,7 +322,43 @@ contains
             real(dp), intent(in) :: c, g
          end function RMAfunc
       end interface
-      real(dp), intent(in) :: chi, q, lga, lgb, globg
+      integer :: it,i
+      integer, intent(in) :: n
+      real(dp), intent(in) :: chi, q, lga, lgb
+      real(dp), intent(inout) :: s
+      real(dp) :: del, fsum, lg, fa, fb, ega, egb, eg
+      if ( n /= 1 ) then
+         ega = dexp(lga)
+         egb = dexp(lgb)
+         fa = ega**(1d0 - q) * RMAfunc(chi, ega)
+         fb = egb**(1d0 - q) * RMAfunc(chi, egb)
+         s = 0.5d0 * (lgb - lga) * (fa + fb)
+
+      else
+         it = 2**(n - 2)
+         del = (lgb - lga) / dble(it)
+         lg = lga + 0.5d0 * del
+         eg = dexp(lg)
+         fsum = 0d0
+         itloop: do i = 1, it
+            fsum = fsum + eg**(1d0 - q) * RMAfunc(chi, eg)
+            lg = lg + del
+            eg = dexp(lg)
+         end do itloop
+         s = 0.5d0 * (s + del * fsum)
+      end if
+   end subroutine RMA_trapzd
+
+   function RMA_qromb(chi, q, lga, lgb, RMAfunc) result(qromb)
+      implicit none
+      interface
+         function RMAfunc(c, g) result(res)
+            use data_types
+            real(dp) :: res
+            real(dp), intent(in) :: c, g
+         end function RMAfunc
+      end interface
+      real(dp), intent(in) :: chi, q, lga, lgb
       real(dp) :: qromb
       integer, parameter :: JMAX = 25, JMAXP = JMAX + 1, K = 5, KM = K - 1
       real(dp), parameter :: EPS = 1d-4
@@ -371,9 +367,9 @@ contains
       integer :: j
       h(1) = 1d0
       do j=1, JMAX
-         call RMA_trapzd(chi, q, lga, lgb, s(j), j, globg, RMAfunc)
+         call RMA_trapzd(chi, q, lga, lgb, s(j), j, RMAfunc)
          if ( j >= K ) then
-            call polint(h(j-KM:j), s(j-KM:j), 0d0, qromb, dqromb)
+            call polint(h(j - KM:j), s(j - KM:j), 0d0, qromb, dqromb)
             if ( dabs(dqromb) <= EPS * dabs(qromb) ) return
          end if
          s(j + 1) = s(j)
@@ -388,15 +384,17 @@ contains
       print*,'dqromb =', dqromb
       call an_error('RMA_qromb: too many steps')
    end function RMA_qromb
+   ! ===========================================================================
 
 
+
+   ! ===========================================================================
    !    ##   #####   ####   ####  #####  #####  ##### #  ####  #    #
    !   #  #  #    # #      #    # #    # #    #   #   # #    # ##   #
    !  #    # #####   ####  #    # #    # #    #   #   # #    # # #  #
    !  ###### #    #      # #    # #####  #####    #   # #    # #  # #
    !  #    # #    # #    # #    # #   #  #        #   # #    # #   ##
    !  #    # #####   ####   ####  #    # #        #   #  ####  #    #
-
    function a_mb(nu, B, n0, gmin, gmax, qq, RMAfunc) result(absor)
       implicit none
       interface
@@ -410,29 +408,29 @@ contains
       real(dp), intent(in) :: nu, B, gmin, gmax, qq, n0
       nu_b = nuconst * B
       chi = nu / nu_b
-      A2 = ARMA_qromb(chi, qq, dlog(gmin), dlog(gmax), 1d0, RMAfunc)
+      A2 = ARMA_qromb(chi, qq, dlog(gmin), dlog(gmax), RMAfunc)
       absor = ambconst * nu_b * n0 * A2 * gmin**qq / nu**2
    end function a_mb
 
-   subroutine ARMA_trapzd(chi,q,lga,lgb,s,n,globg,RMAfunc)
+   subroutine ARMA_trapzd(chi, q, lga, lgb, s, n, RMAfunc)
       implicit none
       interface
-         function RMAfunc(c,g) result(res)
+         function RMAfunc(c, g) result(res)
             use data_types
             real(dp) :: res
-            real(dp), intent(in) :: c,g
+            real(dp), intent(in) :: c, g
          end function RMAfunc
       end interface
       integer :: it,i
       integer, intent(in) :: n
-      real(dp), intent(in) :: chi,q,lga,lgb,globg
+      real(dp), intent(in) :: chi, q, lga, lgb
       real(dp), intent(inout) :: s
-      real(dp) :: del, fsum, lg, fa, fb, ega, egb, eg!, temp_sl, temp_eq, temp_mul
+      real(dp) :: del, fsum, lg, fa, fb, ega, egb, eg
       if (n.eq.1) then
          ega = dexp(lga)
          egb = dexp(lgb)
-         fa = ega**(1d0 - q - 1d0) * dmax1(RMAfunc(chi, ega * globg), 1d-200) * (q + 1d0 + (ega * globg)**2 / ((ega * globg)**2 - 1d0))
-         fb = egb**(1d0 - q - 1d0) * dmax1(RMAfunc(chi, egb * globg), 1d-200) * (q + 1d0 + (egb * globg)**2 / ((egb * globg)**2 - 1d0))
+         fa = ega**(1d0 - q - 1d0) * RMAfunc(chi, ega) * (q + 1d0 + ega**2 / (ega**2 - 1d0))
+         fb = egb**(1d0 - q - 1d0) * RMAfunc(chi, egb) * (q + 1d0 + egb**2 / (egb**2 - 1d0))
          s = 0.5d0 * (lgb - lga) * (fa + fb)
       else
          it = 2**(n - 2)
@@ -441,44 +439,39 @@ contains
          eg = dexp(lg)
          fsum = 0d0
          itloop: do i=1,it
-            !if (lg >= 0d0) exit itloop
-            fsum = fsum + eg**(1d0 - q - 1d0) * &
-            dmax1(RMAfunc(chi, eg * globg), 1d-200) * (q + 1d0 + (eg * globg)**2 / ((eg * globg)**2 - 1d0))
+            fsum = fsum + eg**(1d0 - q - 1d0) * RMAfunc(chi, eg) * (q + 1d0 + eg**2 / (eg**2 - 1d0))
             lg = lg + del
             eg = dexp(lg)
          end do itloop
-         s = 0.5d0 * (s + del * fsum) ! del = (lgb - lga) / it
+         s = 0.5d0 * (s + del * fsum) ! where del = (lgb - lga) / it
       end if
    end subroutine ARMA_trapzd
-   
-   !
-   ! :::: Romberg ::::
-   !
-   function ARMA_qromb(chi,q,lga,lgb,globg,RMAfunc) result(qromb)
+
+   function ARMA_qromb(chi, q, lga, lgb, RMAfunc) result(qromb)
       implicit none
       interface
-         function RMAfunc(c,g) result(res)
+         function RMAfunc(c, g) result(res)
             use data_types
             real(dp) :: res
-            real(dp), intent(in) :: c,g
+            real(dp), intent(in) :: c, g
          end function RMAfunc
       end interface
-      real(dp), intent(in) :: chi,q,lga,lgb,globg
+      real(dp), intent(in) :: chi, q, lga, lgb
       real(dp) :: qromb!,temp_s
-      integer, parameter :: JMAX=100,JMAXP=JMAX+1,K=10,KM=K-1
-      real(dp), parameter :: EPS=1d-5
-      real(dp), dimension(JMAXP) :: h,s
+      integer, parameter :: JMAX = 100, JMAXP = JMAX + 1, K = 10, KM = K - 1
+      real(dp), parameter :: EPS = 1d-5
+      real(dp), dimension(JMAXP) :: h, s
       real(dp) :: dqromb
       integer :: j
       h(1) = 1d0
-      do j=1,JMAX
-         call ARMA_trapzd(chi,q,lga,lgb,s(j),j,globg,RMAfunc)
+      do j = 1, JMAX
+         call ARMA_trapzd(chi, q, lga, lgb, s(j), j, RMAfunc)
          if (j >= K) then
-            call polint(h(j-KM:j),s(j-KM:j),0d0,qromb,dqromb)
-            if (dabs(dqromb).le.EPS*dabs(qromb)) return
+            call polint(h(j-KM:j), s(j-KM:j), 0d0, qromb, dqromb)
+            if (dabs(dqromb) .le. EPS * dabs(qromb)) return
          end if
-         s(j+1) = s(j)
-         h(j+1) = 0.25d0 * h(j)
+         s(j + 1) = s(j)
+         h(j + 1) = 0.25d0 * h(j)
       end do
       print*,'ARMA_qromb error'
       print*,'chi    =', chi
@@ -487,9 +480,8 @@ contains
       print*,'gb     =', dexp(lgb)
       print*,'qromb  =', qromb
       print*,'dqromb =', dqromb
-      !print*,'h      =', h
-      !print*,'s      =', s
       call an_error('ARMA_qromb: too many steps')
    end function ARMA_qromb
+   ! ===========================================================================
 
 end module anaFormulae
