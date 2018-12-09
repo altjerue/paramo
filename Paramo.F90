@@ -191,11 +191,11 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
       !  #    # #    # #####  # #    #   #   #  ####  #    #
       !
       ! ----->>   magnetobrem   <<-----
-      jmbs(:, i) = mbs_emissivity(freqs, gg, nn(i, :), B)
+      call mbs_emissivity(jmbs(:, i), freqs, gg, nn(i, :), B)
 
       if ( with_abs ) then
          ! ----->>   Absorption   <<-----
-         ambs(:, i) = mbs_absorption(freqs, gg, nn(i, :), B)
+         call mbs_absorption(ambs(:, i), freqs, gg, nn(i, :), B)
          ! ----->>   Entering self-Compton   <<-----
          if ( with_ssc ) then
             call RadTrans_blob(Imbs, R, jmbs(:, i), ambs(:, i))

@@ -25,13 +25,13 @@ contains
    ! #    # #    #      #    #      #    # #      #      #
    ! #    # #    # #    #    #      #    # # #    # #    #
    ! #    # #####   ####     ###### #    # #  ####   ####
-   function mbs_emissivity(freqs, gg, nn, B) result(jnu)
+   subroutine mbs_emissivity(jnu, freqs, gg, nn, B)
       implicit none
       real(dp), intent(in) :: B
       real(dp), intent(in), dimension(:) :: freqs, gg, nn
+      real(dp), intent(out), dimension(:) :: jnu
       integer :: j, k, Ng, Nf
       real(dp) :: qq
-      real(dp), dimension(size(freqs)) :: jnu
       Ng = size(gg, dim=1)
       Nf = size(freqs, dim=1)
       !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
@@ -49,7 +49,7 @@ contains
          if ( jnu(j) < 1d-200 ) jnu(j) = 0d0
       end do freqs_loop
       !$OMP END PARALLEL DO
-   end function mbs_emissivity
+   end subroutine mbs_emissivity
 
 
    ! #    # #####   ####       ##   #####   ####   ####  #####
@@ -58,13 +58,13 @@ contains
    ! #    # #    #      #    ###### #    #      # #    # #####
    ! #    # #    # #    #    #    # #    # #    # #    # #   #
    ! #    # #####   ####     #    # #####   ####   ####  #    #
-   function mbs_absorption(freqs, gg, nn, B) result(anu)
+   subroutine mbs_absorption(anu, freqs, gg, nn, B)
       implicit none
       real(dp), intent(in) :: B
       real(dp), intent(in), dimension(:) :: freqs, gg, nn
+      real(dp), intent(out), dimension(:) :: anu
       integer :: j, k, Ng, Nf
       real(dp) :: qq
-      real(dp), dimension(size(freqs)) :: anu
       Ng = size(gg, dim=1)
       Nf = size(freqs, dim=1)
       !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
@@ -82,7 +82,7 @@ contains
          if ( anu(j) < 1d-200 ) anu(j) = 0d0
       end do freqs_loop
       !$OMP END PARALLEL DO
-   end function mbs_absorption
+   end subroutine mbs_absorption
 
 
    !   ####  #####  #####        #####  ###### #####  ##### #    #
@@ -586,16 +586,17 @@ contains
       !$OMP& PRIVATE(j, k, w, emis, q, q1, q2, gmx_star)
       nu_loop: do j = 1, Nf
          w = 0.25d0 * nu(j) / nuext
+         emis = 0d0
+         jEIC(j) = 0d0
          g_loop: do k = 1, Ng - 1
-            emis = 0d0
+            gmx_star = dmin1(g(k + 1), e0)
             e_dist: if ( n(k) > 1d-100 .and. n(k + 1) > 1d-100 ) then
-               gmx_star = dmin1(g(k + 1), e0)
                q = -dlog(n(k + 1) / n(k)) / dlog(g(k + 1) / g(k))
                if ( q > 8d0 ) q = 8d0
                if ( q < -8d0 ) q = -8d0
                q1 = 0.5d0 * (q - 1d0)
                q2 = 0.5d0 * (q + 1d0)
-               contrib_if: if ( 0.25d0 <= w .and. w <= gmx_star**2 ) then
+               contrib_if: if ( 0.25d0 <= w .and. w <= g(k)**2 .and. g(k) <= gmx_star ) then
                   emis = (w / gmx_star**2)**(1d0 + q1) * &
                      Pinteg((gmx_star / g(k))**2, -q1, eps) - &
                      (w / gmx_star**2)**(1d0 + q2) * &
@@ -606,8 +607,8 @@ contains
                      (w / gmx_star**2)**(1d0 + q2) * &
                      Pinteg(gmx_star**2 / w, -q2, eps)
                end if contrib_if
+               jEIC(j) = jEIC(j) + emis * n(k) * g(k)**q * w**(-q1)
             end if e_dist
-            jEIC(j) = jEIC(j) + emis * n(k) * g(k)**q * w**(-q1)
          end do g_loop
          jEIC(j) = jEIC(j) * cLight * sigmaT * uext * 0.25d0 / (pi * nuext)
       end do nu_loop
@@ -621,25 +622,26 @@ contains
       real(dp), intent(in) :: a, b, c, d, alpha, beta
       real(dp) :: res
       real(dp) :: eps = 1d-9
-      res = c**(beta + alpha + 2d0) * a**(alpha + 1d0) * Pinteg(d / c, -beta - alpha - 1d0, eps) * Qinteg(b / a, -alpha, eps)
+      res = c**(beta + alpha + 2d0) * a**(alpha + 1d0) * Pinteg(d / c, -(beta + alpha + 1d0), eps) * Qinteg(b / a, -alpha, eps)
    end function sscR
    
    !     Eq. (3.21) of Rueda-Becerril (2017)
    function sscS(a, b, c, d, alpha, beta) result(res)
       implicit none
       real(dp), intent(in) :: a, b, c, d, alpha, beta
-      real(dp) :: res, b_ac
+      real(dp) :: res, b_ac, d_c
       real(dp) :: eps = 1d-9
       b_ac = b / (a * c)
+      d_c = d / c
       if ( LN3(b / (a * d), eps) * (alpha + 1d0)**2 > eps * 6d0 ) then
-         res = c**(beta + 1d0) * ( b**(alpha + 1d0) * Pinteg(d / c, -beta, eps) - &
-            (a * c)**(alpha + 1d0) * Pinteg(d / c, -alpha - beta - 1d0, eps) ) / (alpha + 1d0)
+         res = c**(beta + 1d0) * ( b**(alpha + 1d0) * Pinteg(d_c, -beta, eps) - &
+            (a * c)**(alpha + 1d0) * Pinteg(d_c, -(alpha + beta + 1d0), eps) ) / (alpha + 1d0)
       else
          res = c**(alpha + beta + 2d0) * a**(alpha + 1d0) * ( LN1(b_ac, eps) * &
-            Pinteg(d / c, -beta, eps) - Qinteg(d / c, -beta, eps) + 0.5d0 * &
-            (alpha + 1d0) * ( LN2(b_ac, eps) * Pinteg(d / c, -beta, eps) - &
-            2d0 * LN1(b_ac, eps) * Qinteg(d / c, -beta, eps) + &
-            Q2integ(d / c, -beta, eps) ) )
+            Pinteg(d_c, -beta, eps) - Qinteg(d_c, -beta, eps) + 0.5d0 * &
+            (alpha + 1d0) * ( LN2(b_ac, eps) * Pinteg(d_c, -beta, eps) - &
+            2d0 * LN1(b_ac, eps) * Qinteg(d_c, -beta, eps) + &
+            Q2integ(d_c, -beta, eps) ) )
       endif
    end function sscS
    
