@@ -12,7 +12,7 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
    implicit none
    character(len=*), intent(in) :: output_file, params_file
    logical, intent(in) :: with_cool, with_abs, with_ssc
-   integer, parameter :: nmod=16
+   integer, parameter :: nmod=50
    character(len=*), parameter :: on_screen = &
       "(' Time iteration:', I6, ' | Time =', ES15.7, ' | Time step =', ES15.7, ' | nu_0(g_max) =', ES15.7, ' | Ntot =', ES15.7)"
    integer :: i, j, k, kg2, numbins, numdf, numdt, ios, time_grid, &
@@ -21,10 +21,10 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
    real(dp) :: uB, R, Q0, gmin, gmax, numin, numax, qind, B, dtacc, g1, &
       g2, nu0_B, tstep, zetae, Qth, Qnth, theta_e, tmax, d_lum, z, D, &
       gamma_bulk, theta_obs, R0, Rinit, b_index, mu_obs, mu_com, u_ext, nu_ext
-   real(dp), allocatable, dimension(:) :: freqs, gg, t, dg, Ntot, Imbs, &
+   real(dp), allocatable, dimension(:) :: freqs, t, dg, Ntot, Imbs, &
       aux_zero_arr, sen_lum, dfreqs, dtimes, dt, nu_obs, t_obs, to_com
    real(dp), allocatable, dimension(:, :) :: nu0, nn, Qinj, jnut, jmbs, &
-      jssc, jeic, ambs, anut
+      jssc, jeic, ambs, anut, gg
 
    open(unit=77, file=params_file, iostat=ios)
    if ( ios /= 0 ) call an_error("Paramo: Parameter file "//params_file//" could not be opened")
@@ -62,12 +62,13 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
    !      # #        #   #    # #####
    ! #    # #        #   #    # #
    !  ####  ######   #    ####  #
-   allocate(t(0:numdt), gg(numbins), freqs(numdf), dg(numbins), Ntot(numdt),&
+   allocate(t(0:numdt), freqs(numdf), dg(numbins), Ntot(numdt),&
       aux_zero_arr(numbins - 1), dfreqs(numdf), dtimes(numdt), Imbs(numdf), &
       sen_lum(numdt), dt(numdt), nu_obs(numdf), t_obs(numdt), to_com(numdt))
    allocate(nn(numdt, numbins), Qinj(numdt, numbins), nu0(numdt, numbins), &
       ambs(numdf, numdt), jmbs(numdf, numdt), jnut(numdf, numdt), &
-      jssc(numdf, numdt), anut(numdf, numdt), jeic(numdf, numdt))
+      jssc(numdf, numdt), anut(numdf, numdt), jeic(numdf, numdt), &
+      gg(numdt, numbins))
 
    dfreqs = 1d0
    dtimes = 1d0
@@ -111,8 +112,8 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
    dfreqs(1:numdf - 1) = 1d0 / (freqs(2:numdf) - freqs(1:numdf - 1))
 
    build_g: do k=1, numbins
-      gg(k) = gmin * ( (gmax / gmin)**(dble(k - 1) / dble(numbins - 1)) )
-      if ( k > 1 ) dg(k - 1) = gg(k) - gg(k - 1)
+      gg(1, k) = gmin * ( (gmax / gmin)**(dble(k - 1) / dble(numbins - 1)) )
+      if ( k > 1 ) dg(k - 1) = gg(1, k) - gg(1, k - 1)
    end do build_g
    dg(numbins) = dg(numbins - 1)
 
@@ -120,7 +121,7 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
    nn = 1d-200
    jnut = 0d0
    aux_zero_arr = 0d0
-   kg2 = locate(gg, g2, .true.)
+   kg2 = locate(gg(1, :), g2, .true.)
 
    write(*, *) '---> Calculating the emission'
    write(*, *) ''
@@ -162,7 +163,7 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
       end select
       dt(i) = t(i) - t(i - 1)
       dtimes(i) = 1d0 / dt(i)
-      Qinj(i, :) = injection(t(i), dtacc, gg, g1, g2, qind, theta_e, Qth, Qnth)
+      Qinj(i, :) = injection(t(i), dtacc, gg(i - 1, :), g1, g2, qind, theta_e, Qth, Qnth)
 
 
       !  ###### ###### #####
@@ -176,7 +177,7 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
       !    - nu0(i - 1,2:) * gg(2:)**2 * dt / dg(:numbins - 1), &
       !    nn(i - 1,:) + dt * Qinj(i - 1,:), &
       !    nn(i,:))
-      call cooling_lines(nn(i, :), gg, nu0(:i, :), t(1:i), dtacc, Qinj(:i, :))
+      call cooling_lines(nn(i, :), gg(:i, :), nu0(:i, :), t(0:i), dtacc, tmax, Qinj(i, :))
 
 
       !   ----->   Then we compute the light path
@@ -191,19 +192,19 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
       !  #    # #    # #####  # #    #   #   #  ####  #    #
       !
       ! ----->>   magnetobrem   <<-----
-      call mbs_emissivity(jmbs(:, i), freqs, gg, nn(i, :), B)
+      call mbs_emissivity(jmbs(:, i), freqs, gg(i, :), nn(i, :), B)
 
       if ( with_abs ) then
          ! ----->>   Absorption   <<-----
-         call mbs_absorption(ambs(:, i), freqs, gg, nn(i, :), B)
+         call mbs_absorption(ambs(:, i), freqs, gg(i, :), nn(i, :), B)
          ! ----->>   Entering self-Compton   <<-----
          if ( with_ssc ) then
             call RadTrans_blob(Imbs, R, jmbs(:, i), ambs(:, i))
-            call SSC_pwlEED(jssc(:, i), freqs, Imbs, nn(i, :), gg)
-            call EIC_pwlEED(jeic(:, i), freqs, u_ext, nu_ext, nn(i, :), gg)
+            ! call SSC_pwlEED(jssc(:, i), freqs, Imbs, nn(i, :), gg)
+            call EIC_pwlEED(jeic(:, i), freqs, u_ext, nu_ext, nn(i, :), gg(i, :))
             !!! NOTE: The radius R is used following Chiaberge & Ghisellini (2009)
             ! call RadTrans(Imbs(:, i), R, jnu=jmbs(:, i), anu=ambs(:, i))
-            ! call ssc_emissivity(freqs, gmin, g2, gg, nn(i, :), Imbs(:, i), jssc(:, i))
+            call ssc_emissivity(freqs, gmin, g2, gg(i, :), nn(i, :), Imbs, jssc(:, i))
          else
             jeic(:, i) = 0d0
             jssc(:, i) = 0d0
@@ -217,8 +218,8 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
          ! ----->>   Entering self-Compton   <<-----
          if ( with_ssc ) then
             call RadTrans_blob(Imbs, R, jmbs(:, i), ambs(:, i))
-            call SSC_pwlEED(jssc(:, i), freqs, Imbs, nn(i, :), gg)
-            call EIC_pwlEED(jeic(:, i), freqs, u_ext, nu_ext, nn(i, :), gg)
+            call SSC_pwlEED(jssc(:, i), freqs, Imbs, nn(i, :), gg(i, :))
+            call EIC_pwlEED(jeic(:, i), freqs, u_ext, nu_ext, nn(i, :), gg(i, :))
             !!! NOTE: The radius R is used following Chiaberge & Ghisellini (2009)
             ! call RadTrans(Imbs(:, i), R, jnu=jmbs(:, i))
             ! call ssc_emissivity(freqs, gmin, g2, gg, nn(i, :), Imbs(:, i), jssc(:, i))
@@ -243,11 +244,11 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
             select case (cool_kind)
             case (1)
                !!!   ---{   Numerical radiative cooling   }---
-               nu0(i, :) = IC_cool(nu0_B, gg, freqs, R * jssc(:, i))
+               nu0(i, :) = IC_cool(nu0_B, gg(i, :), freqs, R * jssc(:, i))
             case (2)
                !!!   ---{   Zacharias & Schlickeiser, 2012, 761, 110   }---
                if (i == 1) write(*,*) "Using ZS12 cooling"
-               nu0(i, :) = ssccZS12(gg, nn(i, :), B, R)
+               nu0(i, :) = ssccZS12(gg(i, :), nn(i, :), B, R)
             case (3)
                !!!   ---{   Uhm & Zhang, 2014, Nat. Phys., 10, 351   }---
                if (i == 1) write(*, *) "Using power-law dacaying magnetic field"
@@ -260,7 +261,7 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
          end if
       end if
 
-      Ntot(i) = sum(nn(i, :) * dg, mask=(nn(i, :) > 1d-100))
+      ! Ntot(i) = sum(nn(i, :) * dg, mask=(nn(i, :) > 1d-100))
 
       t_obs(i) = t(i)
 
@@ -328,7 +329,6 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
    call h5io_wdble1(file_id, 'sen_lum', sen_lum(:tstop), herror)
    call h5io_wdble1(file_id, 'frequency', freqs, herror)
    call h5io_wdble1(file_id, 'nu_obs', nu_obs, herror)
-   call h5io_wdble1(file_id, 'gamma', gg, herror)
 
    call h5io_wdble2(file_id, 'jnut', jnut(:, :tstop), herror)
    call h5io_wdble2(file_id, 'jmbs', jmbs(:, :tstop), herror)
@@ -336,7 +336,7 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
    call h5io_wdble2(file_id, 'jeic', jeic(:, :tstop), herror)
    call h5io_wdble2(file_id, 'anut', anut(:, :tstop), herror)
    call h5io_wdble2(file_id, 'ambs', ambs(:, :tstop), herror)
-   call h5io_wdble2(file_id, 'Qinj', Qinj(:tstop, :), herror)
+   call h5io_wdble2(file_id, 'gamma', gg(tstop, :), herror)
    call h5io_wdble2(file_id, 'distrib', nn(:tstop, :), herror)
    call h5io_wdble2(file_id, 'nu0_tot', nu0(:tstop, :), herror)
 
