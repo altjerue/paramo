@@ -12,10 +12,10 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
    implicit none
    character(len=*), intent(in) :: output_file, params_file
    logical, intent(in) :: with_cool, with_abs, with_ssc
-   integer, parameter :: nmod=50
+   integer, parameter :: nmod = 16
    character(len=*), parameter :: on_screen = &
       "(' Time iteration:', I6, ' | Time =', ES15.7, ' | Time step =', ES15.7, ' | nu_0(g_max) =', ES15.7, ' | Ntot =', ES15.7)"
-   integer :: i, j, k, kg2, numbins, numdf, numdt, ios, time_grid, &
+   integer :: i, j, k, numbins, numdf, numdt, ios, time_grid, &
       cool_kind, herror, tstop
    integer(HID_T) :: file_id, group_id
    real(dp) :: uB, R, Q0, gmin, gmax, numin, numax, qind, B, dtacc, g1, &
@@ -23,7 +23,7 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
       gamma_bulk, theta_obs, R0, Rinit, b_index, mu_obs, mu_com, u_ext, nu_ext
    real(dp), allocatable, dimension(:) :: freqs, t, dg, Ntot, Imbs, &
       aux_zero_arr, sen_lum, dfreqs, dtimes, dt, nu_obs, t_obs, to_com
-   real(dp), allocatable, dimension(:, :) :: nu0, nn, Qinj, jnut, jmbs, &
+   real(dp), allocatable, dimension(:, :) :: nu0, nn, jnut, jmbs, &
       jssc, jeic, ambs, anut, gg
 
    open(unit=77, file=params_file, iostat=ios)
@@ -65,10 +65,9 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
    allocate(t(0:numdt), freqs(numdf), dg(numbins), Ntot(numdt),&
       aux_zero_arr(numbins - 1), dfreqs(numdf), dtimes(numdt), Imbs(numdf), &
       sen_lum(numdt), dt(numdt), nu_obs(numdf), t_obs(numdt), to_com(numdt))
-   allocate(nn(numdt, numbins), Qinj(numdt, numbins), nu0(numdt, numbins), &
+   allocate(nn(0:numdt, numbins), nu0(numdt, numbins), gg(0:numdt, numbins), &
       ambs(numdf, numdt), jmbs(numdf, numdt), jnut(numdf, numdt), &
-      jssc(numdf, numdt), anut(numdf, numdt), jeic(numdf, numdt), &
-      gg(numdt, numbins))
+      jssc(numdf, numdt), anut(numdf, numdt), jeic(numdf, numdt))
 
    dfreqs = 1d0
    dtimes = 1d0
@@ -98,7 +97,7 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
 #endif
    Qnth = zetae * Q0
    Qth = (1d0 - zetae) * Q0
-   print*, Qnth, Qth
+   ! print*, Qnth, Qth
 
    ! ----->>   Viewing angle
    mu_obs = dcos(theta_obs * pi / 180d0)
@@ -112,16 +111,14 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
    dfreqs(1:numdf - 1) = 1d0 / (freqs(2:numdf) - freqs(1:numdf - 1))
 
    build_g: do k=1, numbins
-      gg(1, k) = gmin * ( (gmax / gmin)**(dble(k - 1) / dble(numbins - 1)) )
+      gg(0, k) = gmin * ( (gmax / gmin)**(dble(k - 1) / dble(numbins - 1)) )
       if ( k > 1 ) dg(k - 1) = gg(1, k) - gg(1, k - 1)
    end do build_g
    dg(numbins) = dg(numbins - 1)
 
    t(0) = 0d0
-   nn = 1d-200
+   nn = 0d0
    jnut = 0d0
-   aux_zero_arr = 0d0
-   kg2 = locate(gg(1, :), g2, .true.)
 
    write(*, *) '---> Calculating the emission'
    write(*, *) ''
@@ -141,16 +138,16 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
    ! ######   ##    ####  ######  ####    #   #  ####  #    #
    !
    tstop = numdt
-   time_loop: do i=1, numdt
+   time_loop: do i = 1, numdt
 
       select case(time_grid)
       case(1)
          t(i) = tstep * ( (tmax / tstep)**(dble(i - 1) / dble(numdt - 1)) )
       case(2)
          if ( i == 1 ) then
-            t(i) = t(i - 1) + dmin1(tstep / (nu0(max0(1, i - 1), kg2) * g2), 1e-2 * tstep)
+            t(i) = t(i - 1) + dmin1(tstep / (nu0(max0(1, i - 1), numbins) * g2), 1e-2 * tstep)
          else
-            t(i) = t(i - 1) + tstep / (nu0(max0(1, i - 1), kg2) * g2)
+            t(i) = t(i - 1) + tstep / (nu0(max0(1, i - 1), numbins) * g2)
          end if
          if ( t(i - 1) >= tmax ) then
             tstop = i - 1
@@ -163,7 +160,6 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
       end select
       dt(i) = t(i) - t(i - 1)
       dtimes(i) = 1d0 / dt(i)
-      Qinj(i, :) = injection(t(i), dtacc, gg(i - 1, :), g1, g2, qind, theta_e, Qth, Qnth)
 
 
       !  ###### ###### #####
@@ -177,8 +173,7 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
       !    - nu0(i - 1,2:) * gg(2:)**2 * dt / dg(:numbins - 1), &
       !    nn(i - 1,:) + dt * Qinj(i - 1,:), &
       !    nn(i,:))
-      call cooling_lines(nn(i, :), gg(:i, :), nu0(:i, :), t(0:i), dtacc, tmax, Qinj(i, :))
-
+      call cooling_lines(nn(i - 1:i, :), gg(i - 1:i, :), nu0(i, :), t(i - 1:i), dtacc, tmax, g1, g2, qind, theta_e, Qth, Qnth)
 
       !   ----->   Then we compute the light path
       sen_lum(i) = sum(dt(:i)) * cLight
@@ -200,11 +195,11 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
          ! ----->>   Entering self-Compton   <<-----
          if ( with_ssc ) then
             call RadTrans_blob(Imbs, R, jmbs(:, i), ambs(:, i))
-            ! call SSC_pwlEED(jssc(:, i), freqs, Imbs, nn(i, :), gg)
+            call SSC_pwlEED(jssc(:, i), freqs, Imbs, nn(i, :), gg(i, :))
             call EIC_pwlEED(jeic(:, i), freqs, u_ext, nu_ext, nn(i, :), gg(i, :))
             !!! NOTE: The radius R is used following Chiaberge & Ghisellini (2009)
             ! call RadTrans(Imbs(:, i), R, jnu=jmbs(:, i), anu=ambs(:, i))
-            call ssc_emissivity(freqs, gmin, g2, gg(i, :), nn(i, :), Imbs, jssc(:, i))
+            ! call ssc_emissivity(freqs, gmin, g2, gg(i, :), nn(i, :), Imbs, jssc(:, i))
          else
             jeic(:, i) = 0d0
             jssc(:, i) = 0d0
@@ -261,7 +256,7 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
          end if
       end if
 
-      ! Ntot(i) = sum(nn(i, :) * dg, mask=(nn(i, :) > 1d-100))
+      Ntot(i) = sum(nn(i, :) * dg, mask=(nn(i, :) > 1d-100))
 
       t_obs(i) = t(i)
 
@@ -336,8 +331,8 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
    call h5io_wdble2(file_id, 'jeic', jeic(:, :tstop), herror)
    call h5io_wdble2(file_id, 'anut', anut(:, :tstop), herror)
    call h5io_wdble2(file_id, 'ambs', ambs(:, :tstop), herror)
-   call h5io_wdble2(file_id, 'gamma', gg(tstop, :), herror)
-   call h5io_wdble2(file_id, 'distrib', nn(:tstop, :), herror)
+   call h5io_wdble2(file_id, 'gamma', gg(1:tstop, :), herror)
+   call h5io_wdble2(file_id, 'distrib', nn(1:tstop, :), herror)
    call h5io_wdble2(file_id, 'nu0_tot', nu0(:tstop, :), herror)
 
    ! ------  Closing output file  ------
