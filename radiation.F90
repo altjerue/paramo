@@ -325,14 +325,11 @@ contains
    !   #  #       #    # #    # #####    #   #    # #  # #
    !   #  #     # #    # #    # #        #   #    # #   ##
    !  ###  #####   ####  #    # #        #    ####  #    #
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#if 0
+
    !
    !   ----------{   Integral over incomming frequencies   }----------
    !
-   subroutine IC_emis_monochr(fout, gmin, gmax, gg, nn, Imbs, emiss)
+   subroutine ssc_emissivity(fout, gmin, gmax, gg, nn, Imbs, emiss)
       implicit none
       real(dp), intent(in) :: gmin, gmax
       real(dp), intent(in), dimension(:) :: gg, nn, Imbs, fout
@@ -340,10 +337,8 @@ contains
       integer :: j, k, Nf
       real(dp) :: g1, g2, jbol0
       real(dp), dimension(size(fout)) :: fin, I0
-
       Nf = size(fout)
       fin = fout
-
       !$OMP  PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
       !$OMP& PRIVATE(j, g1, g2, I0, jbol0)
       fout_loop: do k=1, Nf
@@ -364,58 +359,13 @@ contains
       end do fout_loop
       !$OMP END PARALLEL DO
 
-   end subroutine IC_emis_monochr
-
-
-   !
-   !   ----------{   Integral over incomming frequencies   }----------
-   !
-   subroutine IC_emis_integ1(fout, gmin, gmax, gg, nn, Imbs, emiss)
-      implicit none
-      real(dp), intent(in) :: gmin, gmax
-      real(dp), intent(in), dimension(:) :: gg, nn, Imbs, fout
-      real(dp), intent(out), dimension(:) :: emiss
-      integer :: j, k, Nf
-      real(dp) :: g1, g2, jbol0
-      real(dp), dimension(size(fout)) :: fin, I0
-
-      Nf = size(fout)
-      fin = fout
-
-      !$OMP  PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
-      !$OMP& PRIVATE(j, g1, g2, I0, jbol0)
-      fout_loop: do k=1, Nf
-         fin_loop: do j=1, Nf
-            g1 = dmax1(dsqrt(0.25d0 * fout(k) / fin(j)), gmin)
-            g2 = dmin1(0.75d0 * mass_e * cLight**2 / (hPlanck * fin(j)), gmax)
-            if ( g1 >= g2 ) then
-               I0(j) = 0d0
-            else
-               I0(j) = Imbs(j) * ssc_qromb(fin(j), fout(k), g1, g2, gg, nn) / fin(j)**2
-            end if
-         end do fin_loop
-         !  :::::  improvised trapezoidal rule  :::::
-         jbol0 = fin(1) * I0(1) + fin(Nf) * I0(Nf)
-         jbol0 = 0.5d0 * dlog(fin(Nf) / fin(1)) * &
-            (jbol0 + 2d0 * sum(fin(2:Nf - 1) * I0(2:Nf - 1))) / dble(Nf - 1)
-         emiss(k) = 0.25d0 * fout(k) * sigmaT * jbol0
-      end do fout_loop
-      !$OMP END PARALLEL DO
-
-   end subroutine IC_emis_integ1
-
+   end subroutine ssc_emissivity
 
    !
    !   ----------{   Romberg integrator   }----------
    !
-   function IC_distrib_qromb(fin, fout, a, b, gg, nn, scatt_kern) result(qromb)
+   function ssc_qromb(fin, fout, a, b, gg, nn) result(qromb)
       implicit none
-      interface scatt_kern(x)
-         use data_types
-         implicit none
-         real(dp), intent(in) :: x
-         real(dp) :: scat_kern
-      end interface scatt_kern
       real(dp), intent(in) :: fin, fout, a, b
       real(dp), intent(in), dimension(:) :: nn, gg
       integer, parameter :: jmax = 25, jmaxp = jmax + 1, kq = 6, km = kq - 1
@@ -435,7 +385,7 @@ contains
       end do
       print*, fin, fout, a, b, qromb, dqromb
       call an_error('ssc_qromb: too many steps')
-   end function IC_distrib_qromb
+   end function ssc_qromb
 
    !
    !   ----------{   Trapezoid   }----------
@@ -468,7 +418,7 @@ contains
    !
    !   ----------{   Dispersion function   }----------
    !
-   function IC_kern_RL79Eq7p24(fin, fout, gev, gg, nn) result(integrand)
+   function ssc_integrand(fin, fout, gev, gg, nn) result(integrand)
       implicit none
       real(dp), intent(in) :: fin, fout, gev
       real(dp), intent(in), dimension(:) :: gg, nn
@@ -512,11 +462,7 @@ contains
          integrand = one_over_gb2(gev) * nnev * fIC
          return
       end if
-   end function IC_kern_RL79Eq7p24
-#endif
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   end function ssc_integrand
 
 
    subroutine SSC_pwlEED(jSSC, nu, Imbs, n, g)

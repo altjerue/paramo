@@ -24,20 +24,20 @@ contains
       real(dp), dimension(size(gg)) :: Qinj
       if ( t <= dtinj ) then
          if ( Qth < 1d-100 ) then
-            Qinj = dmax1(1d-200, Qnth * powlaw_dis(gg,g1,g2,qind))
+            Qinj = Qnth * powlaw_dis(gg,g1,g2,qind)
          else if ( Qnth < 1d-100 ) then
-            Qinj = dmax1(1d-200, Qth * RMaxwell(gg, th))
+            Qinj = Qth * RMaxwell(gg, th)
          else
             do k = 1, size(gg)
                if ( gg(k) >= g1 .and. gg(k) <= g2 ) then
-                  Qinj(k) = dmax1(1d-200, Qnth * powlaw_dis(gg(k),g1,g2,qind) + Qth * RMaxwell(gg(k), th))
+                  Qinj(k) = Qnth * powlaw_dis(gg(k),g1,g2,qind) + Qth * RMaxwell(gg(k), th)
                else
-                  Qinj(k) = dmax1(1d-200, Qth * RMaxwell(gg(k), th))
+                  Qinj(k) = Qth * RMaxwell(gg(k), th)
                end if
             end do
          end if
       else
-         Qinj = 1d-200
+         Qinj = 0d0
       end if
    end function injection
 
@@ -50,20 +50,19 @@ contains
    !  #    # #    # #    # #            #      # #   ## #      #    #
    !   ####   ####   ####  ######       ###### # #    # ######  ####
    !
-   subroutine cooling_lines(nn,gg,nu0,times,dtinj,Qinj)
-      real(dp), intent(in) :: dtinj
-      real(dp), intent(in), dimension(:) :: gg,times
-      real(dp), intent(in), dimension(:,:) :: nu0,Qinj
+   subroutine cooling_lines(nn, gg, nu0, times, dtinj, tesc, Qinj)
+      real(dp), intent(in) :: dtinj, tesc
+      real(dp), intent(in), dimension(:) :: gg, times
+      real(dp), intent(in), dimension(:,:) :: nu0, Qinj
       real(dp), intent(out), dimension(:) :: nn
-      integer :: k,i,kk,Ng,Nt
-      double precision :: g0,ghigh,glow,g,tup,tdw,t_curr
+      integer :: k, i, kk, Ng, Nt, iup, kup, i_end
+      double precision :: g0, ghigh, glow, g, tup, tdw, t_curr
       real(dp), dimension(size(times), size(gg)) :: q, Q0
-
-      Ng = ubound(gg, dim=1)
-      Nt = ubound(times, dim=1)
+      Ng = size(gg, dim = 1)
+      Nt = size(times, dim = 1)
       t_curr = times(Nt)
+      i_end = minloc(t_curr - times, mask = t_curr >= times, dim=1)
       do i = 1, Nt
-
          do kk = 1, Ng - 1
             if ( Qinj(i, kk + 1) > 1d-100 .and. Qinj(i, kk) > 1d-100 ) then
                q(i, kk) = -dlog(Qinj(i, kk + 1) / Qinj(i, kk)) / dlog(gg(kk + 1) / gg(kk))
@@ -75,7 +74,6 @@ contains
                Q0(i, kk) = 0d0
             endif
          enddo
-
          if ( Qinj(i, Ng - 1) > 1d-100 .and. Qinj(i, Ng) > 1d-100 ) then
             q(i, Ng) = -dlog(Qinj(i, Ng) / Qinj(i, Ng - 1)) / dlog(gg(Ng) / gg(Ng - 1))
             if ( q(i, Ng) > 8d0 ) q(i, Ng) = 8d0
@@ -85,11 +83,10 @@ contains
             q(i, Ng) = 0d0
             Q0(i, Ng) = 0d0
          endif
-
       enddo
 
       !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
-      !$OMP& PRIVATE(i, k, tup, tdw, glow, ghigh, g, g0)
+      !$OMP& PRIVATE(i, k, kk, iup, kup, tup, tdw, glow, ghigh, g, g0)
       gloop: do kk = 1, Ng
          !
          !  #    # #####  #    #   ##   #####  #####   ####
@@ -99,14 +96,14 @@ contains
          !  #    # #      ##  ## #    # #   #  #    # #    #
          !   ####  #      #    # #    # #    # #####   ####
          !
-         tdw= t_curr
+         tdw = t_curr
+         i = i_end
          g = gg(kk)
-         i = Nt - 1
          k = max(1, kk - 1)
          find_g0: do while( i >= 1 .and. k < Ng )
 
             tup = times(i)
-
+            iup = i
             g0 = g / ( 1d0 - nu0(i, k) * (tdw - tup) * g )
 
             if ( g0 > gg(k + 1) ) then
@@ -118,8 +115,10 @@ contains
                g = g0
                i = i - 1
             end if
-
+            kup = k
          end do find_g0
+         ! if ( tdw > 0d0 .and. t_curr > dtinj ) cycle gloop
+
          !
          !  #####   ####  #    # #    # #    #   ##   #####  #####   ####
          !  #    # #    # #    # ##   # #    #  #  #  #    # #    # #
@@ -129,8 +128,8 @@ contains
          !  #####   ####  #    # #    # #    # #    # #    # #####   ####
          !
          nn(kk) = 0d0
-         i = locate(times, tup, .true.)
-         ! k = locate(gg, g0, .true.)
+         i = iup != locate(times, tup, .true.)
+         k = kup ! k = locate(gg, g0, .true.)
          contrib_loop: do while ( i < Nt .and. g >= gg(1) )
 
             tdw = times(i + 1)

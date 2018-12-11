@@ -176,7 +176,7 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
       !    - nu0(i - 1,2:) * gg(2:)**2 * dt / dg(:numbins - 1), &
       !    nn(i - 1,:) + dt * Qinj(i - 1,:), &
       !    nn(i,:))
-      call cooling_lines(nn(i, :), gg, nu0(:i, :), t(1:i), dtacc, Qinj(:i, :))
+      call cooling_lines(nn(i, :), gg, nu0(:i, :), t(1:i), dtacc, R / cLight, Qinj(:i, :))
 
 
       !   ----->   Then we compute the light path
@@ -203,7 +203,7 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
             call EIC_pwlEED(jeic(:, i), freqs, u_ext, nu_ext, nn(i, :), gg)
             !!! NOTE: The radius R is used following Chiaberge & Ghisellini (2009)
             ! call RadTrans(Imbs(:, i), R, jnu=jmbs(:, i), anu=ambs(:, i))
-            ! call ssc_emissivity(freqs, gmin, g2, gg, nn(i, :), Imbs(:, i), jssc(:, i))
+            ! call ssc_emissivity(freqs, gmin, g2, gg, nn(i, :), Imbs, jssc(:, i))
          else
             jeic(:, i) = 0d0
             jssc(:, i) = 0d0
@@ -217,11 +217,11 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
          ! ----->>   Entering self-Compton   <<-----
          if ( with_ssc ) then
             call RadTrans_blob(Imbs, R, jmbs(:, i), ambs(:, i))
-            call SSC_pwlEED(jssc(:, i), freqs, Imbs, nn(i, :), gg)
+            ! call SSC_pwlEED(jssc(:, i), freqs, Imbs, nn(i, :), gg)
             call EIC_pwlEED(jeic(:, i), freqs, u_ext, nu_ext, nn(i, :), gg)
             !!! NOTE: The radius R is used following Chiaberge & Ghisellini (2009)
             ! call RadTrans(Imbs(:, i), R, jnu=jmbs(:, i))
-            ! call ssc_emissivity(freqs, gmin, g2, gg, nn(i, :), Imbs(:, i), jssc(:, i))
+            call ssc_emissivity(freqs, gmin, g2, gg, nn(i, :), Imbs, jssc(:, i))
          else
             jeic(:, i) = 0d0
             jssc(:, i) = 0d0
