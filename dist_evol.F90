@@ -16,7 +16,7 @@ contains
    ! # #   ## #    # #      #    #   #   # #    # #   ##
    ! # #    #  ####  ######  ####    #   #  ####  #    #
    !
-   function injection(t,dtinj,gg,g1,g2,qind,th,Qth,Qnth) result(Qinj)
+   function injection(t, dtinj, gg, g1, g2, qind, th, Qth, Qnth) result(Qinj)
       implicit none
       real(dp), intent(in) :: g1,g2,th,Qth,Qnth,dtinj,t,qind
       real(dp), intent(in), dimension(:) :: gg
@@ -50,166 +50,113 @@ contains
    !  #    # #    # #    # #            #      # #   ## #      #    #
    !   ####   ####   ####  ######       ###### # #    # ######  ####
    !
-   subroutine cooling_lines(nn, gg, nu0, times, dtinj, tesc, Qinj)
-      real(dp), intent(in) :: dtinj, tesc
-      real(dp), intent(in), dimension(:) :: gg, times
-      real(dp), intent(in), dimension(:,:) :: nu0, Qinj
-      real(dp), intent(out), dimension(:) :: nn
-      integer :: k, i, kk, Ng, Nt, iup, kup, i_end
+   subroutine cooling_lines(nn, gg, nu0, t, dtinj, tesc, g1, g2, qind, theta_e, Qth, Qnth)
+      real(dp), intent(in) :: dtinj, tesc, g1, g2, theta_e, Qth, Qnth, qind
+      real(dp), intent(in), dimension(:) :: t
+      real(dp), intent(in), dimension(:) :: nu0
+      real(dp), intent(inout), dimension(:, :) :: gg, nn
+      integer :: k, kk, Ng
       double precision :: g0, ghigh, glow, g, tup, tdw, t_curr
-      real(dp), dimension(size(times), size(gg)) :: q, Q0
-      Ng = size(gg, dim = 1)
-      Nt = size(times, dim = 1)
-      t_curr = times(Nt)
-      i_end = minloc(t_curr - times, mask = t_curr >= times, dim=1)
-      do i = 1, Nt
-         do kk = 1, Ng - 1
-            if ( Qinj(i, kk + 1) > 1d-100 .and. Qinj(i, kk) > 1d-100 ) then
-               q(i, kk) = -dlog(Qinj(i, kk + 1) / Qinj(i, kk)) / dlog(gg(kk + 1) / gg(kk))
-               if ( q(i, kk) > 8d0 ) q(i, kk) = 8d0
-               if ( q(i, kk) < -8d0 ) q(i, kk) = -8d0
-               Q0(i, kk) = Qinj(i, kk) * gg(kk)**q(i, kk)
-            else
-               q(i, kk) = 0d0
-               Q0(i, kk) = 0d0
-            endif
-         enddo
-         if ( Qinj(i, Ng - 1) > 1d-100 .and. Qinj(i, Ng) > 1d-100 ) then
-            q(i, Ng) = -dlog(Qinj(i, Ng) / Qinj(i, Ng - 1)) / dlog(gg(Ng) / gg(Ng - 1))
-            if ( q(i, Ng) > 8d0 ) q(i, Ng) = 8d0
-            if ( q(i, Ng) < -8d0 ) q(i, Ng) = -8d0
-            Q0(i, Ng) = Qinj(i, Ng) * gg(Ng)**q(i, Ng)
+      real(dp), dimension(size(gg, dim=2)) :: q, Qinj, Q0
+      Ng = size(nu0, dim=1)
+      if ( t(1) <= 0d0 ) then
+         gg(2, :) = gg(1, :) / (1d0 + nu0 * (t(2) - t(1)) * gg(1, :))
+         nn(2, :) = t(2) * injection(t(2), dtinj, gg(2, :), g1, g2, qind, theta_e, Qth, Qnth)
+         return
+      end if
+
+      Qinj = injection(t(1), dtinj, gg(1, :), g1, g2, qind, theta_e, Qth, Qnth)
+      do kk = 1, Ng - 1
+         if ( Qinj(kk + 1) > 1d-100 .and. Qinj(kk) > 1d-100 ) then
+            q(kk) = -dlog(Qinj(kk + 1) / Qinj(kk)) / dlog(gg(1, kk + 1) / gg(1, kk))
+            if ( q(kk) > 8d0 ) q(kk) = 8d0
+            if ( q(kk) < -8d0 ) q(kk) = -8d0
+            Q0(kk) = Qinj(kk) * gg(1, kk)**q(kk)
          else
-            q(i, Ng) = 0d0
-            Q0(i, Ng) = 0d0
+            q(kk) = 0d0
+            Q0(kk) = 0d0
          endif
       enddo
+      q(Ng) = q(Ng - 1)
+      Q0(Ng) = Qinj(Ng) * gg(1, Ng)**q(Ng)
 
-      !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
-      !$OMP& PRIVATE(i, k, kk, iup, kup, tup, tdw, glow, ghigh, g, g0)
-      gloop: do kk = 1, Ng
-         !
-         !  #    # #####  #    #   ##   #####  #####   ####
-         !  #    # #    # #    #  #  #  #    # #    # #
-         !  #    # #    # #    # #    # #    # #    #  ####
-         !  #    # #####  # ## # ###### #####  #    #      #
-         !  #    # #      ##  ## #    # #   #  #    # #    #
-         !   ####  #      #    # #    # #    # #####   ####
-         !
-         tdw = t_curr
-         i = i_end
-         g = gg(kk)
-         k = max(1, kk - 1)
-         find_g0: do while( i >= 1 .and. k < Ng )
+      t_curr = t(2)
 
-            tup = times(i)
-            iup = i
-            g0 = g / ( 1d0 - nu0(i, k) * (tdw - tup) * g )
+      gloop: do k = 1, Ng
+         nn(2, k) = nn(1, k)
+         kk = max0(k - 1, 1)
+         g0 = gg(1, k)
+         g = g0
+         tup = t(1)
+         contrib_loop: do while ( tup < t_curr .and. kk >= 1 )
 
-            if ( g0 > gg(k + 1) ) then
-               tdw = tup - (gg(k + 1) - g0) / (nu0(i, k) * g0 * gg(k + 1))
-               g = gg(k + 1)
-               k = k + 1
-            else
-               tdw = times(i)
-               g = g0
-               i = i - 1
-            end if
-            kup = k
-         end do find_g0
-         ! if ( tdw > 0d0 .and. t_curr > dtinj ) cycle gloop
+            tdw = t_curr
 
-         !
-         !  #####   ####  #    # #    # #    #   ##   #####  #####   ####
-         !  #    # #    # #    # ##   # #    #  #  #  #    # #    # #
-         !  #    # #    # #    # # #  # #    # #    # #    # #    #  ####
-         !  #    # #    # # ## # #  # # # ## # ###### #####  #    #      #
-         !  #    # #    # ##  ## #   ## ##  ## #    # #   #  #    # #    #
-         !  #####   ####  #    # #    # #    # #    # #    # #####   ####
-         !
-         nn(kk) = 0d0
-         i = iup != locate(times, tup, .true.)
-         k = kup ! k = locate(gg, g0, .true.)
-         contrib_loop: do while ( i < Nt .and. g >= gg(1) )
+            injection: if ( tup < dtinj .and. t_curr < dtinj ) then
 
-            tdw = times(i + 1)
-
-            injection: if ( tup < dtinj .and. tdw < dtinj ) then
-
-               g = g0 / (1d0 + nu0(i, k) * (tdw - tup) * g0)
-
-               ghigh = dmax1(1d0, g0)
-
-               if ( g < gg(k) ) then
-
-                  glow = gg(k)
-                  tup = tup + (g0 - gg(k)) / (nu0(i, k) * g0 * gg(k))
-                  g0 = gg(k)
-                  nn(kk) = nn(kk) + Q0(i, k) * ghigh**(1d0 - q(i, k)) * & 
-                  Pinteg(ghigh / glow, 2d0 - q(i, k), 1d-9) / (nu0(i, k) * g0**2)
-                  k = k - 1
-
+               g = g0 / (1d0 + nu0(kk) * (tdw - tup) * g0)
+               ghigh = g0
+               if ( g < gg(1, kk) ) then
+                  glow = gg(1, kk)
+                  tdw = tup + (g0 - gg(1, kk)) / (nu0(kk) * g0 * gg(1, kk))
+                  ! nn(2, k) = nn(2, k) * (1d0 + nu0(kk) * (tdw - tup) * g0)**2
+                  nn(2, k) = nn(2, k) + Q0(kk) * ghigh**(1d0 - q(kk)) * Pinteg(ghigh / glow, 2d0 - q(kk), 1d-9) / (nu0(kk) * g0**2)
+                  g0 = gg(1, kk)
+                  g = gg(1, kk)
+                  kk = kk - 1
+                  tup = tdw
                else
-
                   glow = g
-                  tup = times(i + 1)
+                  ! nn(2, k) = nn(2, k) * (1d0 + nu0(kk) * (tdw - tup) * g0)**2
+                  nn(2, k) = nn(2, k) + Q0(kk) * ghigh**(1d0 - q(kk)) * Pinteg(ghigh / glow, 2d0 - q(kk), 1d-9) / (nu0(kk) * g0**2)
+                  tup = t_curr
                   g0 = g
-                  nn(kk) = nn(kk) + Q0(i, k) * ghigh**(1d0 - q(i, k)) * Pinteg(ghigh / glow, 2d0 - q(i, k), 1d-9) / (nu0(i, k) * g0**2)
-                  i = i + 1
-
                end if
 
             else if ( tup < dtinj .and. tdw >= dtinj ) then
 
-               g = g0 / (1d0 + nu0(i, k) * (dtinj - tup) * g0)
-
-               ghigh = dmax1(1d0, g0)
-
-               if ( g < gg(k) ) then
-
-                  glow = gg(k)
-                  tup = tup + (g0 - gg(k)) / (nu0(i, k) * g0 * gg(k))
-                  g0 = gg(k)
-                  nn(kk) = nn(kk) + Q0(i, k) * ghigh**(1d0 - q(i, k)) * Pinteg(ghigh / glow, 2d0 - q(i, k), 1d-9) / (nu0(i, k) * g0**2)
-                  k = k - 1
-
+               g = g0 / (1d0 + nu0(kk) * (dtinj - tup) * g0)
+               ghigh = g0
+               if ( g < gg(1, kk) ) then
+                  glow = gg(1, kk)
+                  tdw = tup + (g0 - gg(1, kk)) / (nu0(kk) * g0 * gg(1, kk))
+                  ! nn(2, k) = nn(2, k) * (1d0 + nu0(kk) * (tdw - tup) * g0)**2
+                  nn(2, k) = nn(2, k) + Q0(kk) * ghigh**(1d0 - q(kk)) * Pinteg(ghigh / glow, 2d0 - q(kk), 1d-9) / (nu0(kk) * g0**2)
+                  g0 = gg(1, kk)
+                  g = gg(1, kk)
+                  kk = kk - 1
+                  tup = tdw
                else
-
-                  glow = g / ( 1d0 + nu0(i, k) * (dtinj - tup) * g )
+                  glow = g / ( 1d0 + nu0(kk) * (dtinj - tup) * g )
+                  ! nn(2, k) = nn(2, k) * (1d0 + nu0(kk) * (dtinj - tup) * g0)**2
+                  nn(2, k) = nn(2, k) + Q0(kk) * ghigh**(1d0 - q(kk)) * Pinteg(ghigh / glow, 2d0 - q(kk), 1d-9) / (nu0(kk) * g0**2)
                   tup = dtinj
                   g0 = g
-                  nn(kk) = nn(kk) + Q0(i, k) * ghigh**(1d0 - q(i, k)) * Pinteg(ghigh / glow, 2d0 - q(i, k), 1d-9) / (nu0(i, k) * g0**2)
-                  i = locate(times, dtinj, .true.)
-
                end if
 
             else
 
-               g = g0 / (1d0 + nu0(i, k) * (tdw - tup) * g0)
-
-               if ( g < gg(k) ) then
-
-                  tdw = tup + (g0 - gg(k)) / (g0 * nu0(i, k) * gg(k))
-                  nn(kk) = nn(kk) / (1d0 - nu0(i, k) * (tdw - tup) * gg(k))**2
+               g = g0 / (1d0 + nu0(kk) * (tdw - tup) * g0)
+               if ( g < gg(1, kk) ) then
+                  tdw = tup + (g0 - gg(1, kk)) / (nu0(kk) * g0 * gg(1, kk))
+                  g = gg(1, kk)
+                  nn(2, k) = nn(2, k) / (1d0 - nu0(kk) * (tdw - tup) * g)**2
+                  g0 = gg(1, kk)
+                  kk = kk - 1
                   tup = tdw
-                  g0 = gg(k)
-                  k = k - 1
-
                else
-
-                  nn(kk) = nn(kk) / (1d0 - nu0(i, k) * (tdw - tup) * g)**2
-                  tup = times(i + 1)
+                  nn(2, k) = nn(2, k) / (1d0 - nu0(kk) * (tdw - tup) * g)**2
+                  tup = t_curr
                   g0 = g
-                  i = i + 1
-
                end if
 
             end if injection
 
+            if ( g * tesc * nu0(kk) < 1d0 ) exit contrib_loop
+
          enddo contrib_loop
-         !nn(kk) = dmax1(1d-200, nn(kk))
+         gg(2, k) = g
       end do gloop
-      !$OMP END PARALLEL DO
 
    end subroutine cooling_lines
 

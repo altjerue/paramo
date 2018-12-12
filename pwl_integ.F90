@@ -54,6 +54,51 @@ contains
       end if
    end function Q2integ
 
+   !     Eq. (3.19) of Rueda-Becerril (2017)
+   function sscR(a, b, c, d, alpha, beta) result(res)
+      implicit none
+      real(dp), intent(in) :: a, b, c, d, alpha, beta
+      real(dp) :: res
+      real(dp) :: eps = 1d-9
+      res = c**(beta + alpha + 2d0) * a**(alpha + 1d0) * Pinteg(d / c, -(beta + alpha + 1d0), eps) * Qinteg(b / a, -alpha, eps)
+   end function sscR
+   
+   !     Eq. (3.21) of Rueda-Becerril (2017)
+   function sscS(a, b, c, d, alpha, beta) result(res)
+      implicit none
+      real(dp), intent(in) :: a, b, c, d, alpha, beta
+      real(dp) :: res, b_ac, d_c
+      real(dp) :: eps = 1d-9
+      b_ac = b / (a * c)
+      d_c = d / c
+      if ( LN3(b / (a * d), eps) * (alpha + 1d0)**2 > eps * 6d0 ) then
+         res = c**(beta + 1d0) * ( b**(alpha + 1d0) * Pinteg(d_c, -beta, eps) - &
+            (a * c)**(alpha + 1d0) * Pinteg(d_c, -(alpha + beta + 1d0), eps) ) / (alpha + 1d0)
+      else
+         res = c**(beta + 1d0) * b**(alpha + 1d0) * ( LN1(b_ac, eps) * &
+            Pinteg(d_c, -beta, eps) - Qinteg(d_c, -beta, eps) + 0.5d0 * &
+            (alpha + 1d0) * ( LN2(b_ac, eps) * Pinteg(d_c, -beta, eps) - &
+            2d0 * LN1(b_ac, eps) * Qinteg(d_c, -beta, eps) + &
+            Q2integ(d_c, -beta, eps) ) )
+      endif
+   end function sscS
+   
+   !     Eq. 2.106 of Mimica (2004)
+   function sscG1ISO(a, b, c, d, alpha, beta) result(res)
+      implicit none
+      real(dp), intent(in) :: a, b, c, d, alpha, beta
+      real(dp) :: res
+      res = sscR(a, b, c, d, alpha, beta) - sscR(a, b, c, d, alpha + 1d0, beta)
+   end function sscG1ISO
+   
+   !     Eq. 2.107 of Mimica (2004)
+   function sscG2ISO(a, b, c, d, alpha, beta) result(res)
+      implicit none
+      real(dp), intent(in) :: a, b, c, d, alpha, beta
+      real(dp) :: res
+      res = sscS(a, b, c, d, alpha, beta) - sscS(a, b, c, d, alpha + 1d0, beta)
+   end function sscG2ISO
+
 
    !
    !   -----{   Power-law distribution Normalization   }-----

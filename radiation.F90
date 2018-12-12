@@ -329,15 +329,20 @@ contains
    !
    !   ----------{   Integral over incomming frequencies   }----------
    !
+<<<<<<< HEAD
    subroutine ssc_emissivity(fout, gmin, gmax, gg, nn, Imbs, emiss)
+=======
+   subroutine ssc_emissivity(fout, gg, nn, Imbs, emiss)
+>>>>>>> LFmatrix
       implicit none
-      real(dp), intent(in) :: gmin, gmax
       real(dp), intent(in), dimension(:) :: gg, nn, Imbs, fout
       real(dp), intent(out), dimension(:) :: emiss
       integer :: j, k, Nf
-      real(dp) :: g1, g2, jbol0
+      real(dp) :: g1, g2, jbol0, gmin, gmax
       real(dp), dimension(size(fout)) :: fin, I0
       Nf = size(fout)
+      gmin = gg(1)
+      gmax = gg(size(gg, dim=1))
       fin = fout
       !$OMP  PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
       !$OMP& PRIVATE(j, g1, g2, I0, jbol0)
@@ -470,48 +475,52 @@ contains
       real(dp), intent(in), dimension(:) :: nu, n, g, Imbs
       real(dp), intent(out), dimension(:) :: jSSC
       integer :: i, j, k, Ng, Nf
-      real(dp) :: w1, w2, gmx_star, e0, qf, qg, f1, f2, emis
+      real(dp) :: w1, w2, gmx_star, e0, l, q, f1, f2, emis, g1, g2
       Ng = size(g, dim=1)
       Nf = size(nu, dim=1)
       !$OMP  PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
-      !$OMP& PRIVATE(i, j, k, emis, w1, w2, qg, qf, gmx_star, e0, f1, f2)
+      !$OMP& PRIVATE(i, j, k, emis, w1, w2, q, l, g1, g2, e0, f1, f2)
       nu_loop: do j = 1, Nf
-         g_loop: do k = 1, Ng - 1
-            emis = 0d0
-            e_dist: if ( n(k) > 1d-100 .and. n(k + 1) > 1d-100 ) then
-               qg = -dlog(n(k + 1) / n(k)) / dlog(g(k + 1) / g(k))
-               if ( qg > 8d0 ) qg = 8d0
-               if ( qg < -8d0 ) qg = -8d0
-               nu1_loop: do i = 1, Nf - 1
-                  intens_if: if ( Imbs(i) > 1d-100 .and. Imbs(i + 1) > 1d-100 ) then
-                     e0 = mass_e * cLight**2 / (hPlanck * nu(i + 1))
-                     f1 = 0.25d0 * nu(j) / nu(i)
-                     f2 = 0.25d0 * nu(j) / nu(i + 1)
-                     gmx_star = dmin1(g(k + 1), e0)
-                     w1 = dmin1(f1, gmx_star**2)
-                     w2 = dmax1(f2, 0.25d0)
-                     contrib_if: if ( w1 > w2 .and. gmx_star > g(k) ) then
-                        qf = -dlog(Imbs(i + 1) / Imbs(i)) / dlog(nu(i + 1) / nu(i))
-                        if ( qf > 8d0 ) qf = 8d0
-                        if ( qf < -8d0 ) qf = -8d0
-                        if ( 0.25d0 < f1 .and. f1 < g(k)**2 ) then
-                           emis = sscG1ISO(1d0 / gmx_star**2, 1d0 / g(k)**2, w2, w1, 0.5d0 * (qg - 1d0), 0.5d0 * (2d0 * qf - qg - 1d0))
-                        else if ( f2 <= g(k)**2 .and. g(k)**2 <= f1 ) then
-                           emis = sscG1ISO(1d0 / gmx_star**2, 1d0 / g(k)**2, w2, g(k)**2, 0.5d0 * (qg - 1d0), 0.5d0 * (2d0 * qf - qg - 1d0)) + &
-                              sscG2ISO(1d0 / gmx_star**2, 1d0, g(k)**2, w1, 0.5d0 * (qg - 1d0), 0.5d0 * (2d0 * qf - qg - 1d0))
-                        else if ( g(k)**2 < f2 .and. f2 <= gmx_star**2 ) then
-                           emis = sscG2ISO(1d0 / gmx_star**2, 1d0, w2, w1, 0.5d0 * (qg - 1d0), 0.5d0 * (2d0 * qf - qg - 1d0))
-                        else
-                           emis = 0d0
-                        end if
-                     end if contrib_if
-                     emis = emis * Imbs(i) * f1**(-qf)
-                  end if intens_if
-               end do nu1_loop
-            end if e_dist
-            jSSC(j) = jSSC(j) + emis * n(k) * g(k)**qg
-         end do g_loop
-         jSSC(j) = jSSC(j) * sigmaT
+         jSSC(j) = 0d0
+         nu1_loop: do i = 1, Nf - 1
+            intens_if: if ( Imbs(i) > 1d-100 .and. Imbs(i + 1) > 1d-100 ) then
+               l = -dlog(Imbs(i + 1) / Imbs(i)) / dlog(nu(i + 1) / nu(i))
+               if ( l > 8d0 ) l = 8d0
+               if ( l < -8d0 ) l = -8d0
+               e0 = mass_e * cLight**2 / (hPlanck * nu(i + 1))
+               f1 = 0.25d0 * nu(j) / nu(i)
+               f2 = 0.25d0 * nu(j) / nu(i + 1)
+               g2 = dmin1(g(Ng), e0)
+               g1 = dmax1(g(1), dsqrt(f1))
+               g1g2_cond: if ( g1 < g2 ) then
+                  g_loop: do k = 1, Ng - 1
+                     if ( g(k) < g1 ) cycle g_loop
+                     if ( g(k) > g2 ) exit g_loop
+                     e_dist: if ( n(k) > 1d-100 .and. n(k + 1) > 1d-100 ) then
+                        q = -dlog(n(k + 1) / n(k)) / dlog(g(k + 1) / g(k))
+                        if ( q > 8d0 ) q = 8d0
+                        if ( q < -8d0 ) q = -8d0
+                        gmx_star = dmin1(g(k + 1), e0)
+                        w1 = dmin1(f1, gmx_star**2)
+                        w2 = dmax1(f2, 0.25d0)
+                        contrib_if: if ( w1 > w2 ) then
+                           if ( 0.25d0 < f1 .and. f1 < g(k)**2 ) then
+                              emis = sscG1ISO(1d0 / gmx_star**2, 1d0 / g(k)**2, w2, w1, 0.5d0 * (q - 1d0), 0.5d0 * (2d0 * l - q - 1d0))
+                           else if ( f2 <= g(k)**2 .and. g(k)**2 <= f1 ) then
+                              emis = sscG1ISO(1d0 / gmx_star**2, 1d0 / g(k)**2, w2, g(k)**2, 0.5d0 * (q - 1d0), 0.5d0 * (2d0 * l - q - 1d0)) + &
+                                 sscG2ISO(1d0 / gmx_star**2, 1d0, g(k)**2, w1, 0.5d0 * (q - 1d0), 0.5d0 * (2d0 * l - q - 1d0))
+                           else if ( g(k)**2 < f2 .and. f2 <= gmx_star**2 ) then
+                              emis = sscG2ISO(1d0 / gmx_star**2, 1d0, w2, w1, 0.5d0 * (q - 1d0), 0.5d0 * (2d0 * l - q - 1d0))
+                           else
+                              emis = 0d0
+                           end if
+                           jSSC(j) = jSSC(j) + emis * n(k) * g(k)**q * Imbs(i) * f1**(-l) * sigmaT
+                        end if contrib_if
+                     end if e_dist
+                  end do g_loop
+               end if g1g2_cond
+            end if intens_if
+         end do nu1_loop   
       end do nu_loop
       !$OMP END PARALLEL DO
    end subroutine SSC_pwlEED
@@ -561,50 +570,5 @@ contains
       !$OMP END PARALLEL DO
    end subroutine EIC_pwlEED
 
-
-   !     Eq. (3.19) of Rueda-Becerril (2017)
-   function sscR(a, b, c, d, alpha, beta) result(res)
-      implicit none
-      real(dp), intent(in) :: a, b, c, d, alpha, beta
-      real(dp) :: res
-      real(dp) :: eps = 1d-9
-      res = c**(beta + alpha + 2d0) * a**(alpha + 1d0) * Pinteg(d / c, -(beta + alpha + 1d0), eps) * Qinteg(b / a, -alpha, eps)
-   end function sscR
-   
-   !     Eq. (3.21) of Rueda-Becerril (2017)
-   function sscS(a, b, c, d, alpha, beta) result(res)
-      implicit none
-      real(dp), intent(in) :: a, b, c, d, alpha, beta
-      real(dp) :: res, b_ac, d_c
-      real(dp) :: eps = 1d-9
-      b_ac = b / (a * c)
-      d_c = d / c
-      if ( LN3(b / (a * d), eps) * (alpha + 1d0)**2 > eps * 6d0 ) then
-         res = c**(beta + 1d0) * ( b**(alpha + 1d0) * Pinteg(d_c, -beta, eps) - &
-            (a * c)**(alpha + 1d0) * Pinteg(d_c, -(alpha + beta + 1d0), eps) ) / (alpha + 1d0)
-      else
-         res = c**(alpha + beta + 2d0) * a**(alpha + 1d0) * ( LN1(b_ac, eps) * &
-            Pinteg(d_c, -beta, eps) - Qinteg(d_c, -beta, eps) + 0.5d0 * &
-            (alpha + 1d0) * ( LN2(b_ac, eps) * Pinteg(d_c, -beta, eps) - &
-            2d0 * LN1(b_ac, eps) * Qinteg(d_c, -beta, eps) + &
-            Q2integ(d_c, -beta, eps) ) )
-      endif
-   end function sscS
-   
-   !     Eq. 2.106 of Mimica (2004)
-   function sscG1ISO(a, b, c, d, alpha, beta) result(res)
-      implicit none
-      real(dp), intent(in) :: a, b, c, d, alpha, beta
-      real(dp) :: res
-      res = sscR(a, b, c, d, alpha, beta) - sscR(a, b, c, d, alpha + 1d0, beta)
-   end function sscG1ISO
-   
-   !     Eq. 2.107 of Mimica (2004)
-   function sscG2ISO(a, b, c, d, alpha, beta) result(res)
-      implicit none
-      real(dp), intent(in) :: a, b, c, d, alpha, beta
-      real(dp) :: res
-      res = sscS(a, b, c, d, alpha, beta) - sscS(a, b, c, d, alpha + 1d0, beta)
-   end function sscG2ISO
 
 end module radiation
