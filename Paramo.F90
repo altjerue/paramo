@@ -173,7 +173,7 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
       !    - nu0(i - 1,2:) * gg(2:)**2 * dt / dg(:numbins - 1), &
       !    nn(i - 1,:) + dt * Qinj(i - 1,:), &
       !    nn(i,:))
-      call cooling_lines(nn(i - 1:i, :), gg(i - 1:i, :), nu0(i, :), t(i - 1:i), dtacc, 0.95 * R / cLight, g1, g2, qind, theta_e, Qth, Qnth)
+      call cooling_lines(nn(i - 1:i, :), gg(i - 1:i, :), nu0(i, :), t(i - 1:i), dtacc, tmax, g1, g2, qind, theta_e, Qth, Qnth)
 
       !   ----->   Then we compute the light path
       sen_lum(i) = sum(dt(:i)) * cLight
