@@ -20,7 +20,8 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
    integer(HID_T) :: file_id, group_id
    real(dp) :: uB, R, Q0, gmin, gmax, numin, numax, qind, B, dtacc, g1, &
       g2, nu0_B, tstep, zetae, Qth, Qnth, theta_e, tmax, d_lum, z, D, &
-      gamma_bulk, theta_obs, R0, Rinit, b_index, mu_obs, mu_com, u_ext, nu_ext
+      gamma_bulk, theta_obs, R0, Rinit, b_index, mu_obs, mu_com, u_ext, &
+      nu_ext, tesc
    real(dp), allocatable, dimension(:) :: freqs, t, dg, Ntot, Imbs, &
       aux_zero_arr, sen_lum, dfreqs, dtimes, dt, nu_obs, t_obs, to_com
    real(dp), allocatable, dimension(:, :) :: nu0, nn, jnut, jmbs, &
@@ -103,6 +104,7 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
    mu_obs = dcos(theta_obs * pi / 180d0)
    mu_com = mu_com_f(gamma_bulk, mu_obs)
    D = Doppler(gamma_bulk, mu_obs)
+   tesc = 0.95 * R / cLight
 
    build_f: do j=1,numdf
       nu_obs(j) = numin * ( (numax / numin)**(dble(j - 1) / dble(numdf - 1)) )
@@ -173,7 +175,7 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
       !    - nu0(i - 1,2:) * gg(2:)**2 * dt / dg(:numbins - 1), &
       !    nn(i - 1,:) + dt * Qinj(i - 1,:), &
       !    nn(i,:))
-      call cooling_lines(nn(i - 1:i, :), gg(i - 1:i, :), nu0(i, :), t(i - 1:i), dtacc, tmax, g1, g2, qind, theta_e, Qth, Qnth)
+      call cooling_lines(nn(i - 1:i, :), gg(i - 1:i, :), nu0(i, :), t(i - 1:i), dtacc, tesc, numbins, gmin, gmax, g1, g2, qind, theta_e, Qth, Qnth)
 
       !   ----->   Then we compute the light path
       sen_lum(i) = sum(dt(:i)) * cLight

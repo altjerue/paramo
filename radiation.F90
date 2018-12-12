@@ -329,11 +329,7 @@ contains
    !
    !   ----------{   Integral over incomming frequencies   }----------
    !
-<<<<<<< HEAD
-   subroutine ssc_emissivity(fout, gmin, gmax, gg, nn, Imbs, emiss)
-=======
    subroutine ssc_emissivity(fout, gg, nn, Imbs, emiss)
->>>>>>> LFmatrix
       implicit none
       real(dp), intent(in), dimension(:) :: gg, nn, Imbs, fout
       real(dp), intent(out), dimension(:) :: emiss

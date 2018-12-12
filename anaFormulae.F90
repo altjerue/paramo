@@ -129,7 +129,7 @@ contains
       real(dp), intent(in) :: theta_a,theta_b,beta,gam,chi
       real(dp), intent(inout) :: s
       
-      if (n.eq.1) then
+      if (n == 1) then
          fa = P81_eq8(beta,gam,theta_a,chi)
          fb = P81_eq8(beta,gam,theta_b,chi)
          s = 5d-1 * (theta_b - theta_a) * (fa + fb)
@@ -327,13 +327,12 @@ contains
       real(dp), intent(in) :: chi, q, lga, lgb
       real(dp), intent(inout) :: s
       real(dp) :: del, fsum, lg, fa, fb, ega, egb, eg
-      if ( n /= 1 ) then
+      if ( n == 1 ) then
          ega = dexp(lga)
          egb = dexp(lgb)
          fa = ega**(1d0 - q) * RMAfunc(chi, ega)
          fb = egb**(1d0 - q) * RMAfunc(chi, egb)
          s = 0.5d0 * (lgb - lga) * (fa + fb)
-
       else
          it = 2**(n - 2)
          del = (lgb - lga) / dble(it)
@@ -426,7 +425,7 @@ contains
       real(dp), intent(in) :: chi, q, lga, lgb
       real(dp), intent(inout) :: s
       real(dp) :: del, fsum, lg, fa, fb, ega, egb, eg
-      if (n.eq.1) then
+      if (n == 1) then
          ega = dexp(lga)
          egb = dexp(lgb)
          fa = ega**(1d0 - q - 1d0) * RMAfunc(chi, ega) * (q + 1d0 + ega**2 / (ega**2 - 1d0))
