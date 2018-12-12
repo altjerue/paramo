@@ -57,7 +57,7 @@ contains
       real(dp), intent(inout), dimension(:, :) :: gg, nn
       integer :: k, kk, Ng
       double precision :: g0, ghigh, glow, g, tup, tdw, t_curr
-      real(dp), dimension(size(gg, dim=2)) :: q, Q0, Qinj
+      real(dp), dimension(size(gg, dim=2)) :: q, Qinj, Q0
       Ng = size(nu0, dim=1)
       if ( t(1) <= 0d0 ) then
          gg(2, :) = gg(1, :) / (1d0 + nu0 * (t(2) - t(1)) * gg(1, :))
@@ -82,63 +82,68 @@ contains
 
       t_curr = t(2)
 
-      ! $OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
-      ! $OMP& PRIVATE(k, iup, kup, t_cool, tup, tdw, glow, ghigh, g, g0)
       gloop: do k = 1, Ng
-
-         kk = max0(k - 1, 1)
          nn(2, k) = nn(1, k)
-         g0 = gg(1, kk)
+         kk = max0(k - 1, 1)
+         g0 = gg(1, k)
+         g = g0
          tup = t(1)
-         tdw = t_curr
+         contrib_loop: do while ( tup < t_curr .and. kk >= 1 )
 
-         contrib_loop: do while ( tup < t_curr )
+            tdw = t_curr
 
-            injection: if ( tup < dtinj .and. tdw < dtinj ) then
+            injection: if ( tup < dtinj .and. t_curr < dtinj ) then
 
                g = g0 / (1d0 + nu0(kk) * (tdw - tup) * g0)
-
                ghigh = g0
                if ( g < gg(1, kk) ) then
                   glow = gg(1, kk)
-                  tup = tup + (g0 - gg(1, kk)) / (nu0(kk) * g0 * gg(1, kk))
-                  g0 = gg(1, kk)
+                  tdw = tup + (g0 - gg(1, kk)) / (nu0(kk) * g0 * gg(1, kk))
+                  ! nn(2, k) = nn(2, k) * (1d0 + nu0(kk) * (tdw - tup) * g0)**2
                   nn(2, k) = nn(2, k) + Q0(kk) * ghigh**(1d0 - q(kk)) * Pinteg(ghigh / glow, 2d0 - q(kk), 1d-9) / (nu0(kk) * g0**2)
+                  g0 = gg(1, kk)
+                  g = gg(1, kk)
                   kk = kk - 1
+                  tup = tdw
                else
                   glow = g
+                  ! nn(2, k) = nn(2, k) * (1d0 + nu0(kk) * (tdw - tup) * g0)**2
+                  nn(2, k) = nn(2, k) + Q0(kk) * ghigh**(1d0 - q(kk)) * Pinteg(ghigh / glow, 2d0 - q(kk), 1d-9) / (nu0(kk) * g0**2)
                   tup = t_curr
                   g0 = g
-                  nn(2, k) = nn(2, k) + Q0(kk) * ghigh**(1d0 - q(kk)) * Pinteg(ghigh / glow, 2d0 - q(kk), 1d-9) / (nu0(kk) * g0**2)
                end if
 
             else if ( tup < dtinj .and. tdw >= dtinj ) then
 
                g = g0 / (1d0 + nu0(kk) * (dtinj - tup) * g0)
-
                ghigh = g0
                if ( g < gg(1, kk) ) then
                   glow = gg(1, kk)
-                  tup = tup + (g0 - gg(1, kk)) / (nu0(kk) * g0 * gg(1, kk))
-                  g0 = gg(1, kk)
+                  tdw = tup + (g0 - gg(1, kk)) / (nu0(kk) * g0 * gg(1, kk))
+                  ! nn(2, k) = nn(2, k) * (1d0 + nu0(kk) * (tdw - tup) * g0)**2
                   nn(2, k) = nn(2, k) + Q0(kk) * ghigh**(1d0 - q(kk)) * Pinteg(ghigh / glow, 2d0 - q(kk), 1d-9) / (nu0(kk) * g0**2)
+                  g0 = gg(1, kk)
+                  g = gg(1, kk)
                   kk = kk - 1
+                  tup = tdw
                else
                   glow = g / ( 1d0 + nu0(kk) * (dtinj - tup) * g )
+                  ! nn(2, k) = nn(2, k) * (1d0 + nu0(kk) * (dtinj - tup) * g0)**2
+                  nn(2, k) = nn(2, k) + Q0(kk) * ghigh**(1d0 - q(kk)) * Pinteg(ghigh / glow, 2d0 - q(kk), 1d-9) / (nu0(kk) * g0**2)
                   tup = dtinj
                   g0 = g
-                  nn(2, k) = nn(2, k) + Q0(kk) * ghigh**(1d0 - q(kk)) * Pinteg(ghigh / glow, 2d0 - q(kk), 1d-9) / (nu0(kk) * g0**2)
                end if
 
             else
 
                g = g0 / (1d0 + nu0(kk) * (tdw - tup) * g0)
-
                if ( g < gg(1, kk) ) then
-                  tup = tup + (g0 - gg(1, kk)) / (g0 * nu0(kk) * gg(1, kk))
-                  nn(2, k) = nn(2, k) / (1d0 - nu0(kk) * (tdw - tup) * gg(1, kk))**2
+                  tdw = tup + (g0 - gg(1, kk)) / (nu0(kk) * g0 * gg(1, kk))
+                  g = gg(1, kk)
+                  nn(2, k) = nn(2, k) / (1d0 - nu0(kk) * (tdw - tup) * g)**2
                   g0 = gg(1, kk)
                   kk = kk - 1
+                  tup = tdw
                else
                   nn(2, k) = nn(2, k) / (1d0 - nu0(kk) * (tdw - tup) * g)**2
                   tup = t_curr
@@ -152,7 +157,6 @@ contains
          enddo contrib_loop
          gg(2, k) = g
       end do gloop
-      ! $OMP END PARALLEL DO
 
    end subroutine cooling_lines
 

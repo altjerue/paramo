@@ -329,15 +329,16 @@ contains
    !
    !   ----------{   Integral over incomming frequencies   }----------
    !
-   subroutine ssc_emissivity(fout, gmin, gmax, gg, nn, Imbs, emiss)
+   subroutine ssc_emissivity(fout, gg, nn, Imbs, emiss)
       implicit none
-      real(dp), intent(in) :: gmin, gmax
       real(dp), intent(in), dimension(:) :: gg, nn, Imbs, fout
       real(dp), intent(out), dimension(:) :: emiss
       integer :: j, k, Nf
-      real(dp) :: g1, g2, jbol0
+      real(dp) :: g1, g2, jbol0, gmin, gmax
       real(dp), dimension(size(fout)) :: fin, I0
       Nf = size(fout)
+      gmin = gg(1)
+      gmax = gg(size(gg, dim=1))
       fin = fout
       !$OMP  PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
       !$OMP& PRIVATE(j, g1, g2, I0, jbol0)
@@ -476,8 +477,8 @@ contains
       !$OMP  PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
       !$OMP& PRIVATE(i, j, k, emis, w1, w2, qg, qf, gmx_star, e0, f1, f2)
       nu_loop: do j = 1, Nf
+         jSSC(j) = 0d0
          g_loop: do k = 1, Ng - 1
-            emis = 0d0
             e_dist: if ( n(k) > 1d-100 .and. n(k + 1) > 1d-100 ) then
                qg = -dlog(n(k + 1) / n(k)) / dlog(g(k + 1) / g(k))
                if ( qg > 8d0 ) qg = 8d0
@@ -504,12 +505,12 @@ contains
                         else
                            emis = 0d0
                         end if
+                        jSSC(j) = jSSC(j) +  emis * Imbs(i) * f1**(-qf) * n(k) * g(k)**qg
                      end if contrib_if
-                     emis = emis * Imbs(i) * f1**(-qf)
                   end if intens_if
                end do nu1_loop
+               
             end if e_dist
-            jSSC(j) = jSSC(j) + emis * n(k) * g(k)**qg
          end do g_loop
          jSSC(j) = jSSC(j) * sigmaT
       end do nu_loop

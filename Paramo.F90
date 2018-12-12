@@ -173,7 +173,7 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
       !    - nu0(i - 1,2:) * gg(2:)**2 * dt / dg(:numbins - 1), &
       !    nn(i - 1,:) + dt * Qinj(i - 1,:), &
       !    nn(i,:))
-      call cooling_lines(nn(i - 1:i, :), gg(i - 1:i, :), nu0(i, :), t(i - 1:i), dtacc, tmax, g1, g2, qind, theta_e, Qth, Qnth)
+      call cooling_lines(nn(i - 1:i, :), gg(i - 1:i, :), nu0(i, :), t(i - 1:i), dtacc, 0.95 * R / cLight, g1, g2, qind, theta_e, Qth, Qnth)
 
       !   ----->   Then we compute the light path
       sen_lum(i) = sum(dt(:i)) * cLight
@@ -199,7 +199,7 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
             call EIC_pwlEED(jeic(:, i), freqs, u_ext, nu_ext, nn(i, :), gg(i, :))
             !!! NOTE: The radius R is used following Chiaberge & Ghisellini (2009)
             ! call RadTrans(Imbs(:, i), R, jnu=jmbs(:, i), anu=ambs(:, i))
-            ! call ssc_emissivity(freqs, gmin, g2, gg(i, :), nn(i, :), Imbs, jssc(:, i))
+            ! call ssc_emissivity(freqs, gg(i, :), nn(i, :), Imbs, jssc(:, i))
          else
             jeic(:, i) = 0d0
             jssc(:, i) = 0d0
@@ -217,7 +217,7 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
             call EIC_pwlEED(jeic(:, i), freqs, u_ext, nu_ext, nn(i, :), gg(i, :))
             !!! NOTE: The radius R is used following Chiaberge & Ghisellini (2009)
             ! call RadTrans(Imbs(:, i), R, jnu=jmbs(:, i))
-            ! call ssc_emissivity(freqs, gmin, g2, gg, nn(i, :), Imbs(:, i), jssc(:, i))
+            ! call ssc_emissivity(freqs, gg(i, :), nn(i, :), Imbs, jssc(:, i))
          else
             jeic(:, i) = 0d0
             jssc(:, i) = 0d0
