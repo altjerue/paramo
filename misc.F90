@@ -15,9 +15,30 @@
 module misc
    use data_types
    implicit none
-   
+
+   interface realloc
+      module procedure realloc_1d
+      module procedure realloc_2d
+   end interface
+
 contains
-   
+
+   subroutine realloc_1d(array, size)
+      implicit none
+      integer, intent(in) :: size
+      real(dp), intent(inout), allocatable, dimension(:) :: array
+      if ( allocated(array) ) deallocate(array)
+      allocate(array(size))
+   end subroutine realloc_1d
+
+   subroutine realloc_2d(array, size1, size2)
+      implicit none
+      integer, intent(in) :: size1, size2
+      real(dp), intent(inout), allocatable, dimension(:, :) :: array
+      if ( allocated(array) ) deallocate(array)
+      allocate(array(size1, size2))
+   end subroutine realloc_2d
+
    ! :::: Polinomial interpolation ::::
    subroutine polint(xa, ya, x, y, dy)
       implicit none

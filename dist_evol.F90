@@ -6,6 +6,12 @@ module dist_evol
    use SRtoolkit
    implicit none
 
+   integer :: d_Ng, d_Nt
+   real(dp) :: d_dtinj, d_g1, d_g2, d_tcurr, d_tesc
+   real(dp), allocatable, dimension(:) :: d_gg, d_qind, d_Q0, d_t
+   real(dp), allocatable, dimension(:, :) :: d_nu0, d_dist
+   public :: d_ng, d_t, d_dtinj, d_g1, d_g2, d_tcurr, d_qind, &
+      d_Q0, d_Nt, d_dist, d_tesc
 
 contains
 
@@ -17,25 +23,24 @@ contains
    ! # #   ## #    # #      #    #   #   # #    # #   ##
    ! # #    #  ####  ######  ####    #   #  ####  #    #
    !
-   function injection(t, dtinj, Ng, gmin, gmax, g1, g2, qind, th, Qth, Qnth) result(Qinj)
+   function injection(t, dtinj, g, g1, g2, qind, th, Qth, Qnth) result(Qinj)
       implicit none
-      integer, intent(in) :: Ng
-      real(dp), intent(in) :: gmin, gmax, g1, g2, th, Qth, Qnth, dtinj, t, qind
-      real(dp) :: g
+      real(dp), intent(in) :: g1, g2, th, Qth, Qnth, dtinj, t, qind
+      real(dp), intent(in), dimension(:) :: g
       integer :: k
-      real(dp), dimension(Ng) :: Qinj
+      real(dp), dimension(size(g)) :: Qinj
+      
       if ( t <= dtinj ) then
-         do k = 1, Ng
-            g = gmin * (gmax / gmin)**(dble(k - 1) / dble(Ng - 1))
+         do k = 1, size(g)
             if ( Qth < 1d-100 ) then
-               Qinj(k) = Qnth * powlaw_dis(g, g1, g2, qind)
+               Qinj(k) = Qnth * powlaw_dis(g(k), g1, g2, qind)
             else if ( Qnth < 1d-100 ) then
-               Qinj(k) = Qth * RMaxwell(g, th)
+               Qinj(k) = Qth * RMaxwell(g(k), th)
             else
-               if ( g >= g1 .and. g <= g2 ) then
-                  Qinj(k) = Qnth * powlaw_dis(g, g1, g2, qind) + Qth * RMaxwell(g, th)
+               if ( g(k) >= g1 .and. g(k) <= g2 ) then
+                  Qinj(k) = Qnth * powlaw_dis(g(k), g1, g2, qind) + Qth * RMaxwell(g(k), th)
                else
-                  Qinj(k) = Qth * RMaxwell(g, th)
+                  Qinj(k) = Qth * RMaxwell(g(k), th)
                end if
             end if
          end do
@@ -53,119 +58,163 @@ contains
    !  #    # #    # #    # #            #      # #   ## #      #    #
    !   ####   ####   ####  ######       ###### # #    # ######  ####
    !
-   subroutine distrib_setup(nn, gg, nu0, t, dtinj, tesc, Ng, gmin, gmax, g1, g2, qind, theta_e, Qth, Qnth)
+   subroutine distrib_setup(nn, gg, nu0, t, dtinj, tesc, g1, g2, qind, theta_e, Qth, Qnth)
       implicit none
-      integer, intent(in) :: Ng
-      real(dp), intent(in) :: dtinj, tesc, g1, g2, theta_e, Qth, Qnth, qind, &
-         gmin, gmax
-      real(dp), intent(in), dimension(:) :: t
-      real(dp), intent(in), dimension(:) :: nu0
-      real(dp), intent(inout), dimension(:, :) :: nn, gg
-      integer :: k, kk
-      double precision :: g0, ghigh, glow, g, tup, tdw, t_curr
-      real(dp), dimension(Ng) :: q, Qinj, Q0
+      real(dp), intent(in) :: dtinj, tesc, g1, g2, theta_e, Qth, Qnth, qind
+      real(dp), intent(in), dimension(:) :: t, gg
+      real(dp), intent(in), dimension(:, :) :: nu0, nn
+      integer :: k, Ng, Nt
+      real(dp), dimension(size(gg, dim=1)) :: Qinj
 
-      if ( t(1) <= 0d0 ) then
-         gg(2, :) = gg(1, :)
-         nn(2, :) = t(2) * injection(t(2), dtinj, Ng, gmin, gmax, g1, g2, qind, theta_e, Qth, Qnth)
-         return
-      end if
+      Ng = size(gg, dim=1)
+      Nt = size(t, dim=1)
+      call realloc(d_t, Nt)
+      call realloc(d_gg, Ng)
+      call realloc(d_Q0, Ng)
+      call realloc(d_qind, Ng)
+      call realloc(d_nu0, Nt, Ng)
+      call realloc(d_dist, Nt, Ng)
 
-      Qinj = injection(t(2), dtinj, Ng, gmin, gmax, g1, g2, qind, theta_e, Qth, Qnth)
+      d_Ng = Ng
+      d_Nt = Nt
+      d_t = t
+      d_tcurr = t(Nt)
+      d_dtinj = dtinj
+      d_tesc = tesc
+      d_g1 = g1
+      d_g2 = g2
+      d_qind = qind
+      d_nu0 = nu0
+      d_dist = nn
+      d_gg = gg
+
+      Qinj = injection(d_tcurr, d_dtinj, gg, g1, g2, qind, theta_e, Qth, Qnth)
+
       do k = 1, Ng - 1
          if ( Qinj(k + 1) > 1d-100 .and. Qinj(k) > 1d-100 ) then
-            q(k) = -dlog(Qinj(k + 1) / Qinj(k)) / dlog(gg(2, k + 1) / gg(2, k))
-            if ( q(k) > 8d0 ) q(k) = 8d0
-            if ( q(k) < -8d0 ) q(k) = -8d0
-            Q0(k) = Qinj(k) * gg(2, k)**q(k)
+            d_qind(k) = -dlog(Qinj(k + 1) / Qinj(k)) / dlog(gg(k + 1) / gg(k))
+            if ( d_qind(k) > 8d0 ) d_qind(k) = 8d0
+            if ( d_qind(k) < -8d0 ) d_qind(k) = -8d0
+            d_Q0(k) = Qinj(k) * gg(k)**d_qind(k)
          else
-            q(k) = 0d0
-            Q0(k) = 0d0
+            d_qind(k) = 0d0
+            d_Q0(k) = 0d0
          endif
       enddo
-      q(Ng) = q(Ng - 1)
-      Q0(Ng) = Qinj(Ng) * gg(2, Ng)**q(Ng)
+      d_qind(Ng) = d_qind(Ng - 1)
+      d_Q0(Ng) = Qinj(Ng) * gg(Ng)**d_qind(Ng)
 
    end subroutine distrib_setup
 
 
-   function distrib(g)
+   function distrib(gamma) result(nn)
       implicit none
-      
-      ! t_curr = t(2)
-      t_curr = dmin1( t(2), t(1) + tesc )
-      
-      gloop: do k = 1, Ng
-         nn(2, k) = nn(1, k)
-         kk = max0(k - 1, 1)
-         tup = t(1)
-         contrib_loop: do while ( tup < t_curr )
-            
-            tdw = t_curr
-            
-            if ( g0 > g1 .and. g0 <= g2 .and. tup < dtinj ) then
-               
-               injection: if ( tup < dtinj .and. t_curr < dtinj ) then
-                  g = g0 / (1d0 + nu0(kk) * (tdw - tup) * g0)
-                  ghigh = g0
-                  if ( g < gg(1, kk) ) then
-                     glow = gg(1, kk)
-                     tdw = tup + (g0 - gg(1, kk)) / (nu0(kk) * g0 * gg(1, kk))
-                     nn(2, k) = nn(2, k) + Q0(kk) * ghigh**(1d0 - q(kk)) * Pinteg(ghigh / glow, 2d0 - q(kk), 1d-9) / (nu0(kk) * g0**2)
-                     g0 = gg(1, kk)
-                     g = gg(1, kk)
-                     kk = kk - 1
-                     tup = tdw
-                  else
-                     glow = g
-                     nn(2, k) = nn(2, k) + Q0(kk) * ghigh**(1d0 - q(kk)) * Pinteg(ghigh / glow, 2d0 - q(kk), 1d-9) / (nu0(kk) * g0**2)
-                     tup = t_curr
-                     g0 = g
-                  end if
-               else if ( tup < dtinj .and. tdw >= dtinj ) then
-                  g = g0 / (1d0 + nu0(kk) * (dtinj - tup) * g0)
-                  ghigh = g0
-                  if ( g < gg(1, kk) ) then
-                     glow = gg(1, kk)
-                     tdw = tup + (g0 - gg(1, kk)) / (nu0(kk) * g0 * gg(1, kk))
-                     nn(2, k) = nn(2, k) + Q0(kk) * ghigh**(1d0 - q(kk)) * Pinteg(ghigh / glow, 2d0 - q(kk), 1d-9) / (nu0(kk) * g0**2)
-                     g0 = gg(1, kk)
-                     g = gg(1, kk)
-                     kk = kk - 1
-                     tup = tdw
-                  else
-                     glow = g / ( 1d0 + nu0(kk) * (dtinj - tup) * g )
-                     nn(2, k) = nn(2, k) + Q0(kk) * ghigh**(1d0 - q(kk)) * Pinteg(ghigh / glow, 2d0 - q(kk), 1d-9) / (nu0(kk) * g0**2)
-                     tup = dtinj
-                     g0 = g
-                  end if
-               end if injection
-               
-            else
-               
-               g0 = gg(1, k)
-               g = g0 / (1d0 + nu0(kk) * (tdw - tup) * g0)
-               
-               if ( g < gg(1, kk) .and. kk > 1 ) then
-                  tdw = tup + (g0 - gg(1, kk)) / (nu0(kk) * g0 * gg(1, kk))
-                  g = gg(1, kk)
-                  nn(2, k) = nn(2, k) / (1d0 - nu0(kk) * (tdw - tup) * g)**2
-                  g0 = gg(1, kk)
-                  kk = kk - 1
-                  tup = tdw
+      real(dp), intent(in) :: gamma
+      integer :: k, i
+      real(dp) :: nn, g0, ghigh, glow, t, g, tt, t0
+      logical :: injecting
+
+      injecting = .true.
+      t = d_tcurr
+      g = gamma
+      k = locate(d_gg, g, .true.)
+      i = d_Nt - 1
+      do while ( i > 0 .and. k < d_Ng )
+         g0 = g / (1d0 - d_nu0(i, k) * (t - d_t(i)) * g)
+         if ( g0 >= d_gg(k + 1) ) then
+            t = t - (d_gg(k + 1) - g) / (d_nu0(i, k) * g * d_gg(k + 1))
+            g = d_gg(k + 1)
+            k = k + 1
+         else
+            t = d_t(i)
+            g = g0
+            i = i - 1
+         end if
+      end do
+
+      ! if ( k == d_Ng .and. t > 0d0 ) return
+      ! k = locate(d_gg, g0, .true.)
+      ! i = locate(d_t, t, .true.)
+
+      nn = 0d0
+      t = d_t(i)
+      tt = dmin1( d_t(i + 1), t + d_tesc )
+      contrib_loop: do while ( t < d_tcurr .and. g0 > d_gg(1) )
+
+         g = g0 / (1d0 + d_nu0(i, k) * (tt - t) * g0)
+
+         if ( g0 > d_g1 .and. g0 <= d_g2 .and. t < d_dtinj ) then
+
+            injec_cond: if ( t < d_dtinj .and. tt < d_dtinj ) then
+
+               ghigh = g0
+               if ( g < d_gg(k) ) then
+                  glow = d_gg(k)
+                  t = t + (g0 - d_gg(k)) / (d_nu0(i, k) * g0 * d_gg(k))
+                  nn = nn + d_Q0(k) * ghigh**(1d0 - d_qind(k)) * Pinteg(ghigh / glow, 2d0 - d_qind(k), 1d-9) / (d_nu0(i, k) * g0**2)
+                  g0 = d_gg(k)
+                  k = k - 1
                else
-                  nn(2, k) = nn(2, k) / (1d0 - nu0(kk) * (tdw - tup) * g)**2
-                  tup = t_curr
+                  glow = g
+                  nn = nn + d_Q0(k) * ghigh**(1d0 - d_qind(k)) * Pinteg(ghigh / glow, 2d0 - d_qind(k), 1d-9) / (d_nu0(i, k) * g0**2)
                   g0 = g
+                  t = tt
+                  if ( t >= d_t(i + 1) ) i = i + 1
                end if
-               
-               gg(2, k) = g
-               
+
+            else if ( t < d_dtinj .and. tt >= d_dtinj ) then
+
+               g = g0 / (1d0 + d_nu0(i, k) * (d_dtinj - t) * g0)
+               ghigh = g0
+
+               if ( g < d_gg(k) ) then
+                  glow = d_gg(k)
+                  t = t + (g0 - d_gg(k)) / (d_nu0(i, k) * g0 * d_gg(k))
+                  nn = nn + d_Q0(k) * ghigh**(1d0 - d_qind(k)) * Pinteg(ghigh / glow, 2d0 - d_qind(k), 1d-9) / (d_nu0(i, k) * g0**2)
+                  g0 = d_gg(k)
+                  k = k - 1
+               else
+                  glow = dmax1(g, g / ( 1d0 + d_nu0(i, k) * (d_dtinj - t) * g ))
+                  nn = nn + d_Q0(k) * ghigh**(1d0 - d_qind(k)) * Pinteg(ghigh / glow, 2d0 - d_qind(k), 1d-9) / (d_nu0(i, k) * g0**2)
+                  t = dmin1( d_dtinj, t + d_tesc)
+                  g0 = g
+                  if ( t >= d_dtinj ) i = i + 1
+               end if
+
+            end if injec_cond
+
+            tt = dmin1( d_t(i + 1), t + d_tesc )
+            injecting = .true.
+
+         else
+
+            if ( injecting ) then
+               t0 = t
+               injecting = .false.
             end if
-            
-         end do contrib_loop
-      end do gloop
-      
+
+            if ( g < d_gg(k) .and. k > 1 ) then
+               t = t + (g0 - d_gg(k)) / (d_nu0(i, k) * g0 * d_gg(k))
+               nn = nn / (1d0 - d_nu0(i, k) * (tt - t) * d_gg(k))**2
+               g0 = d_gg(k)
+               k = k - 1
+            else
+               nn = nn / (1d0 - d_nu0(i, k) * (tt - t) * g)**2
+               t = tt
+               g0 = g
+               if ( t >= t0 + d_tesc ) then
+                  exit contrib_loop
+               else
+                  i = i + 1
+               end if
+            end if
+
+            tt = dmin1( d_t(i + 1), t0 + d_tesc )
+
+         end if
+
+      end do contrib_loop
+
    end function distrib
 
 

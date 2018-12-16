@@ -122,7 +122,6 @@ class compiler(object):
             make += ' MBS=1'
 
         os.chdir(self.compile_dir)
-        os.system('git pull')
         print("--> Running Makefile:\n   ", make, "\n")
         log = strftime("%a, %d %b %Y %H:%M:%S %Z", localtime())
         os.system(make)

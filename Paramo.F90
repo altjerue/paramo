@@ -22,10 +22,10 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
       g2, nu0_B, tstep, zetae, Qth, Qnth, theta_e, tmax, d_lum, z, D, &
       gamma_bulk, theta_obs, R0, Rinit, b_index, mu_obs, mu_com, u_ext, &
       nu_ext, tesc
-   real(dp), allocatable, dimension(:) :: freqs, t, dg, Ntot, Imbs, &
+   real(dp), allocatable, dimension(:) :: freqs, t, dg, Ntot, Imbs, gg, &
       aux_zero_arr, sen_lum, dfreqs, dtimes, dt, nu_obs, t_obs, to_com
    real(dp), allocatable, dimension(:, :) :: nu0, nn, jnut, jmbs, &
-      jssc, jeic, ambs, anut, gg
+      jssc, jeic, ambs, anut
 
    open(unit=77, file=params_file, iostat=ios)
    if ( ios /= 0 ) call an_error("Paramo: Parameter file "//params_file//" could not be opened")
@@ -66,7 +66,7 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
    allocate(t(0:numdt), freqs(numdf), dg(numbins), Ntot(numdt),&
       aux_zero_arr(numbins - 1), dfreqs(numdf), dtimes(numdt), Imbs(numdf), &
       sen_lum(numdt), dt(numdt), nu_obs(numdf), t_obs(numdt), to_com(numdt))
-   allocate(nn(0:numdt, numbins), nu0(numdt, numbins), gg(0:numdt, numbins), &
+   allocate(nn(numdt, numbins), nu0(numdt, numbins), gg(numbins), &
       ambs(numdf, numdt), jmbs(numdf, numdt), jnut(numdf, numdt), &
       jssc(numdf, numdt), anut(numdf, numdt), jeic(numdf, numdt))
 
@@ -104,7 +104,7 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
    mu_obs = dcos(theta_obs * pi / 180d0)
    mu_com = mu_com_f(gamma_bulk, mu_obs)
    D = Doppler(gamma_bulk, mu_obs)
-   tesc = 0.95 * R / cLight
+   tesc = tmax !0.95 * R / cLight
 
    build_f: do j=1,numdf
       nu_obs(j) = numin * ( (numax / numin)**(dble(j - 1) / dble(numdf - 1)) )
@@ -113,8 +113,8 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
    dfreqs(1:numdf - 1) = 1d0 / (freqs(2:numdf) - freqs(1:numdf - 1))
 
    build_g: do k=1, numbins
-      gg(0, k) = gmin * ( (gmax / gmin)**(dble(k - 1) / dble(numbins - 1)) )
-      if ( k > 1 ) dg(k - 1) = gg(1, k) - gg(1, k - 1)
+      gg(k) = gmin * ( (gmax / gmin)**(dble(k - 1) / dble(numbins - 1)) )
+      if ( k > 1 ) dg(k - 1) = gg(k) - gg(k - 1)
    end do build_g
    dg(numbins) = dg(numbins - 1)
 
@@ -163,7 +163,6 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
       dt(i) = t(i) - t(i - 1)
       dtimes(i) = 1d0 / dt(i)
 
-
       !  ###### ###### #####
       !  #      #      #    #
       !  #####  #####  #    #
@@ -175,7 +174,14 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
       !    - nu0(i - 1,2:) * gg(2:)**2 * dt / dg(:numbins - 1), &
       !    nn(i - 1,:) + dt * Qinj(i - 1,:), &
       !    nn(i,:))
-      call cooling_lines(nn(i - 1:i, :), gg(i - 1:i, :), nu0(i, :), t(i - 1:i), dtacc, tesc, numbins, gmin, gmax, g1, g2, qind, theta_e, Qth, Qnth)
+      if ( t(i - 1) <= 0d0 ) then
+         nn(i, :) = t(i) * injection(t(i), dtacc, gg, g1, g2, qind, theta_e, Qth, Qnth)
+      else
+         call distrib_setup(nn(:i - 1, :), gg, nu0(:i - 1, :), t(1:i), dtacc, tesc, g1, g2, qind, theta_e, Qth, Qnth)
+         do k = 1, numbins
+            nn(i, k) = distrib(gg(k))
+         end do
+      end if
 
       !   ----->   Then we compute the light path
       sen_lum(i) = sum(dt(:i)) * cLight
@@ -189,19 +195,19 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
       !  #    # #    # #####  # #    #   #   #  ####  #    #
       !
       ! ----->>   magnetobrem   <<-----
-      call mbs_emissivity(jmbs(:, i), freqs, gg(i, :), nn(i, :), B)
+      call mbs_emissivity(jmbs(:, i), freqs, gg, nn(i, :), B)
 
       if ( with_abs ) then
          ! ----->>   Absorption   <<-----
-         call mbs_absorption(ambs(:, i), freqs, gg(i, :), nn(i, :), B)
+         call mbs_absorption(ambs(:, i), freqs, gg, nn(i, :), B)
          ! ----->>   Entering self-Compton   <<-----
          if ( with_ssc ) then
             call RadTrans_blob(Imbs, R, jmbs(:, i), ambs(:, i))
-            call SSC_pwlEED(jssc(:, i), freqs, Imbs, nn(i, :), gg(i, :))
-            call EIC_pwlEED(jeic(:, i), freqs, u_ext, nu_ext, nn(i, :), gg(i, :))
+            call SSC_pwlEED(jssc(:, i), freqs, Imbs, nn(i, :), gg)
+            call EIC_pwlEED(jeic(:, i), freqs, u_ext, nu_ext, nn(i, :), gg)
             !!! NOTE: The radius R is used following Chiaberge & Ghisellini (2009)
             ! call RadTrans(Imbs(:, i), R, jnu=jmbs(:, i), anu=ambs(:, i))
-            ! call ssc_emissivity(freqs, gg(i, :), nn(i, :), Imbs, jssc(:, i))
+            ! call ssc_emissivity(freqs, gg, nn(i, :), Imbs, jssc(:, i))
          else
             jeic(:, i) = 0d0
             jssc(:, i) = 0d0
@@ -215,11 +221,11 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
          ! ----->>   Entering self-Compton   <<-----
          if ( with_ssc ) then
             call RadTrans_blob(Imbs, R, jmbs(:, i), ambs(:, i))
-            call SSC_pwlEED(jssc(:, i), freqs, Imbs, nn(i, :), gg(i, :))
-            call EIC_pwlEED(jeic(:, i), freqs, u_ext, nu_ext, nn(i, :), gg(i, :))
+            call SSC_pwlEED(jssc(:, i), freqs, Imbs, nn(i, :), gg)
+            call EIC_pwlEED(jeic(:, i), freqs, u_ext, nu_ext, nn(i, :), gg)
             !!! NOTE: The radius R is used following Chiaberge & Ghisellini (2009)
             ! call RadTrans(Imbs(:, i), R, jnu=jmbs(:, i))
-            ! call ssc_emissivity(freqs, gg(i, :), nn(i, :), Imbs, jssc(:, i))
+            ! call ssc_emissivity(freqs, gg, nn(i, :), Imbs, jssc(:, i))
          else
             jeic(:, i) = 0d0
             jssc(:, i) = 0d0
@@ -241,11 +247,11 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
             select case (cool_kind)
             case (1)
                !!!   ---{   Numerical radiative cooling   }---
-               nu0(i, :) = IC_cool(nu0_B, gg(i, :), freqs, R * jssc(:, i))
+               nu0(i, :) = IC_cool(nu0_B, gg, freqs, R * jssc(:, i))
             case (2)
                !!!   ---{   Zacharias & Schlickeiser, 2012, 761, 110   }---
                if (i == 1) write(*,*) "Using ZS12 cooling"
-               nu0(i, :) = ssccZS12(gg(i, :), nn(i, :), B, R)
+               nu0(i, :) = ssccZS12(gg, nn(i, :), B, R)
             case (3)
                !!!   ---{   Uhm & Zhang, 2014, Nat. Phys., 10, 351   }---
                if (i == 1) write(*, *) "Using power-law dacaying magnetic field"
@@ -326,6 +332,7 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
    call h5io_wdble1(file_id, 'sen_lum', sen_lum(:tstop), herror)
    call h5io_wdble1(file_id, 'frequency', freqs, herror)
    call h5io_wdble1(file_id, 'nu_obs', nu_obs, herror)
+   call h5io_wdble1(file_id, 'gamma', gg, herror)
 
    call h5io_wdble2(file_id, 'jnut', jnut(:, :tstop), herror)
    call h5io_wdble2(file_id, 'jmbs', jmbs(:, :tstop), herror)
@@ -333,7 +340,6 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
    call h5io_wdble2(file_id, 'jeic', jeic(:, :tstop), herror)
    call h5io_wdble2(file_id, 'anut', anut(:, :tstop), herror)
    call h5io_wdble2(file_id, 'ambs', ambs(:, :tstop), herror)
-   call h5io_wdble2(file_id, 'gamma', gg(1:tstop, :), herror)
    call h5io_wdble2(file_id, 'distrib', nn(1:tstop, :), herror)
    call h5io_wdble2(file_id, 'nu0_tot', nu0(:tstop, :), herror)
 
