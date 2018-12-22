@@ -25,7 +25,7 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
    real(dp), allocatable, dimension(:) :: freqs, t, dg, Ntot, Imbs, gg, &
       aux_zero_arr, sen_lum, dfreqs, dtimes, dt, nu_obs, t_obs, to_com
    real(dp), allocatable, dimension(:, :) :: nu0, nn, jnut, jmbs, &
-      jssc, jeic, ambs, anut
+      jssc, jeic, ambs, anut, Qinj
 
    open(unit=77, file=params_file, iostat=ios)
    if ( ios /= 0 ) call an_error("Paramo: Parameter file "//params_file//" could not be opened")
@@ -66,9 +66,10 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
    allocate(t(0:numdt), freqs(numdf), dg(numbins), Ntot(numdt),&
       aux_zero_arr(numbins - 1), dfreqs(numdf), dtimes(numdt), Imbs(numdf), &
       sen_lum(numdt), dt(numdt), nu_obs(numdf), t_obs(numdt), to_com(numdt))
-   allocate(nn(numdt, numbins), nu0(numdt, numbins), gg(numbins), &
+   allocate(nn(numdt, numbins), nu0(0:numdt, numbins), gg(numbins), &
       ambs(numdf, numdt), jmbs(numdf, numdt), jnut(numdf, numdt), &
-      jssc(numdf, numdt), anut(numdf, numdt), jeic(numdf, numdt))
+      jssc(numdf, numdt), anut(numdf, numdt), jeic(numdf, numdt), &
+      Qinj(0:numdt, numbins))
 
    dfreqs = 1d0
    dtimes = 1d0
@@ -104,7 +105,7 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
    mu_obs = dcos(theta_obs * pi / 180d0)
    mu_com = mu_com_f(gamma_bulk, mu_obs)
    D = Doppler(gamma_bulk, mu_obs)
-   tesc = tmax !0.95 * R / cLight
+   tesc = 0.95 * R / cLight
 
    build_f: do j=1,numdf
       nu_obs(j) = numin * ( (numax / numin)**(dble(j - 1) / dble(numdf - 1)) )
@@ -121,6 +122,7 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
    t(0) = 0d0
    nn = 0d0
    jnut = 0d0
+   aux_zero_arr = 0d0
 
    write(*, *) '---> Calculating the emission'
    write(*, *) ''
@@ -169,19 +171,22 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
       !  #      #      #    #
       !  #      #      #    #
       !  ###### ###### #####
-      ! call tridag_ser(aux_zero_arr, &
-      !    1d0 + nu0(i - 1,:) * gg**2 * dt / dg, &
-      !    - nu0(i - 1,2:) * gg(2:)**2 * dt / dg(:numbins - 1), &
-      !    nn(i - 1,:) + dt * Qinj(i - 1,:), &
-      !    nn(i,:))
-      if ( t(i - 1) <= 0d0 ) then
-         nn(i, :) = t(i) * injection(t(i), dtacc, gg, g1, g2, qind, theta_e, Qth, Qnth)
-      else
-         call distrib_setup(nn(:i - 1, :), gg, nu0(:i - 1, :), t(1:i), dtacc, tesc, g1, g2, qind, theta_e, Qth, Qnth)
-         do k = 1, numbins
-            nn(i, k) = distrib(gg(k))
-         end do
-      end if
+      Qinj(i - 1, :) = injection(t(i), dtacc, gg, g1, g2, qind, theta_e, Qth, Qnth)
+      call tridag_ser(aux_zero_arr, &
+         1d0 + dt(i) / tesc + nu0(i - 1,:) * gg**2 * dt(i) / dg, &
+         - nu0(i - 1,2:) * gg(2:)**2 * dt(i) / dg(:numbins - 1), &
+         ! nn(i - 1,:) + dt * Qinj(i - 1,:), &
+         ! nn(i - 1,:) + dt * Qinj(i - 1,:), &
+         nn(i - 1,:) + dt(i) * Qinj(i - 1,:), &
+         nn(i,:))
+      ! if ( t(i - 1) <= 0d0 ) then
+      !    nn(i, :) = t(i) * injection(t(i), dtacc, gg, g1, g2, qind, theta_e, Qth, Qnth)
+      ! else
+      !    call distrib_setup(nn(:i - 1, :), gg, nu0(:i - 1, :), t(1:i), dtacc, tesc, g1, g2, qind, theta_e, Qth, Qnth)
+      !    do k = 1, numbins
+      !       nn(i, k) = distrib(gg(k))
+      !    end do
+      ! end if
 
       !   ----->   Then we compute the light path
       sen_lum(i) = sum(dt(:i)) * cLight
@@ -341,7 +346,7 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
    call h5io_wdble2(file_id, 'anut', anut(:, :tstop), herror)
    call h5io_wdble2(file_id, 'ambs', ambs(:, :tstop), herror)
    call h5io_wdble2(file_id, 'distrib', nn(1:tstop, :), herror)
-   call h5io_wdble2(file_id, 'nu0_tot', nu0(:tstop, :), herror)
+   call h5io_wdble2(file_id, 'nu0_tot', nu0(1:tstop, :), herror)
 
    ! ------  Closing output file  ------
    call h5io_closef(file_id, herror)
