@@ -33,8 +33,8 @@ ifeq ($(IFORT),1)
 OPTIMIZATION=-g -debug all -check all -check nostack -warn all -fp-stack-check -heap-arrays \
 	-ftrapuv -free
 else  # IFORT
-OPTIMIZATION=-g -Wall -ffree-form -ffree-line-length-none -DNONSTCPP \
-	-mieee-fp -ffpe-trap=invalid,zero,overflow -fbacktrace -fcheck=all \
+OPTIMIZATION=-g -Wall -ffree-form -ffree-line-length-none \
+	-ffpe-trap=invalid,zero -fbacktrace -fcheck=all \
 	-fbounds-check -fno-unsafe-math-optimizations -frounding-math \
 	-fsignaling-nans
 endif # IFORT
@@ -66,7 +66,7 @@ OMP=-fopenmp
 endif # OPENMP
 
 OPTIMIZATION=-O5 -ftree-vectorize -funroll-all-loops -ffree-form \
-	-ffree-line-length-none $(OMP) -DNONSTCPP
+	-ffree-line-length-none -fbacktrace $(OMP)
 
 endif # IFORT
 
@@ -134,5 +134,5 @@ $(ITOBS): data_types.o constants.o $(ITOBS_OBJ)
 .PHONY: clean
 
 clean:
-	rm -vf *.o *.mod *~ x*
-	rm -rvf *.dSYM
+	rm -vf *.o *.mod *~
+	rm -rvf x*

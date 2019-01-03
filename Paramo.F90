@@ -7,7 +7,7 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
    use h5_inout
    use SRtoolkit
    use anaFormulae
-   use dist_evol
+   use dist_evol, only: FP_FinDif, injection
    use radiation
    implicit none
    character(len=*), intent(in) :: output_file, params_file
@@ -25,7 +25,7 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
    real(dp), allocatable, dimension(:) :: freqs, t, dg, Ntot, Imbs, gg, &
       aux_zero_arr, sen_lum, dfreqs, dtimes, dt, nu_obs, t_obs, to_com
    real(dp), allocatable, dimension(:, :) :: nu0, nn, jnut, jmbs, &
-      jssc, jeic, ambs, anut, Qinj
+      jssc, jeic, ambs, anut, Qinj, Ddif
 
    open(unit=77, file=params_file, iostat=ios)
    if ( ios /= 0 ) call an_error("Paramo: Parameter file "//params_file//" could not be opened")
@@ -69,7 +69,7 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
    allocate(nn(numdt, numbins), nu0(0:numdt, numbins), gg(numbins), &
       ambs(numdf, numdt), jmbs(numdf, numdt), jnut(numdf, numdt), &
       jssc(numdf, numdt), anut(numdf, numdt), jeic(numdf, numdt), &
-      Qinj(0:numdt, numbins))
+      Qinj(numdt, numbins), Ddif(1:numdt, numbins))
 
    dfreqs = 1d0
    dtimes = 1d0
@@ -93,19 +93,19 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
    end if
    
 #ifdef HYB
-   zetae = 0.75d0
+   zetae = 0.99d0
 #else
    zetae = 1.0d0
 #endif
    Qnth = zetae * Q0
    Qth = (1d0 - zetae) * Q0
-   ! print*, Qnth, Qth
+   Ddif = 1d-40
+   tesc = 1.5 * R / cLight
 
    ! ----->>   Viewing angle
    mu_obs = dcos(theta_obs * pi / 180d0)
    mu_com = mu_com_f(gamma_bulk, mu_obs)
    D = Doppler(gamma_bulk, mu_obs)
-   tesc = 0.95 * R / cLight
 
    build_f: do j=1,numdf
       nu_obs(j) = numin * ( (numax / numin)**(dble(j - 1) / dble(numdf - 1)) )
@@ -171,23 +171,8 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
       !  #      #      #    #
       !  #      #      #    #
       !  ###### ###### #####
-      Qinj(i - 1, :) = injection(t(i), dtacc, gg, g1, g2, qind, theta_e, Qth, Qnth)
-      call tridag_ser(aux_zero_arr, &
-         1d0 + dt(i) / tesc + nu0(i - 1,:) * gg**2 * dt(i) / dg, &
-         - nu0(i - 1,2:) * gg(2:)**2 * dt(i) / dg(:numbins - 1), &
-         ! nn(i - 1,:) + dt * Qinj(i - 1,:), &
-         ! nn(i - 1,:) + dt * Qinj(i - 1,:), &
-         nn(i - 1,:) + dt(i) * Qinj(i - 1,:), &
-         nn(i,:))
-      ! if ( t(i - 1) <= 0d0 ) then
-      !    nn(i, :) = t(i) * injection(t(i), dtacc, gg, g1, g2, qind, theta_e, Qth, Qnth)
-      ! else
-      !    call distrib_setup(nn(:i - 1, :), gg, nu0(:i - 1, :), t(1:i), dtacc, tesc, g1, g2, qind, theta_e, Qth, Qnth)
-      !    do k = 1, numbins
-      !       nn(i, k) = distrib(gg(k))
-      !    end do
-      ! end if
-
+      Qinj(i, :) = injection(t(i), dtacc, gg, g1, g2, qind, theta_e, Qth, Qnth)
+      call FP_FinDif(dt(i), gg, nn(i - 1, :), nn(i, :), nu0(i - 1, :), Ddif(i, :), Qinj(i, :), tesc)
       !   ----->   Then we compute the light path
       sen_lum(i) = sum(dt(:i)) * cLight
 

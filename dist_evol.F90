@@ -33,21 +33,82 @@ contains
       if ( t <= dtinj ) then
          do k = 1, size(g)
             if ( Qth < 1d-100 ) then
-               Qinj(k) = Qnth * powlaw_dis(g(k), g1, g2, qind)
+               ! Qinj(k) = Qnth * powlaw_dis(g(k), g1, g2, qind)
+               Qinj(k) = Qnth * (g(k) / g1)**(-qind) * dexp(-g(k) / g2)
             else if ( Qnth < 1d-100 ) then
                Qinj(k) = Qth * RMaxwell(g(k), th)
             else
-               if ( g(k) >= g1 .and. g(k) <= g2 ) then
-                  Qinj(k) = Qnth * powlaw_dis(g(k), g1, g2, qind) + Qth * RMaxwell(g(k), th)
-               else
-                  Qinj(k) = Qth * RMaxwell(g(k), th)
-               end if
+               ! if ( g(k) >= g1 .and. g(k) <= g2 ) then
+                  !Q inj(k) = Qnth * powlaw_dis(g(k), g1, g2, qind) + &
+               Qinj(k) = Qnth * (g(k) / g1)**(-qind) * dexp(-g(k) / g2) + &
+                     Qth * RMaxwell(g(k), th)
+               ! else
+                  ! Qinj(k) = Qth * RMaxwell(g(k), th)
+               ! end if
             end if
          end do
       else
          Qinj = 0d0
       end if
    end function injection
+
+
+   !  #######          ######
+   !  #       # #    # #     # # ######
+   !  #       # ##   # #     # # #
+   !  #####   # # #  # #     # # #####
+   !  #       # #  # # #     # # #
+   !  #       # #   ## #     # # #
+   !  #       # #    # ######  # #
+   subroutine FP_FinDif(dt, g, nin, nout, nu0, DD, QQ, tesc)
+      implicit none
+      real(dp), intent(in) :: dt, tesc
+      real(dp), intent(in), dimension(:) :: g, nin, nu0, DD, QQ
+      real(dp), intent(out), dimension(:) :: nout
+      integer :: Ng, Ng1
+      real(dp), dimension(size(g)) :: gdot, x, dx, dxp2, dxm2, CCp2, CCm2, BBp2, BBm2, YYp2, YYm2, WWp2, WWm2, a, b, c, r
+
+      Ng = size(g)
+      Ng1 = Ng - 1
+
+      x = g - 1d0
+      gdot = nu0 * g**2
+      dxp2(:Ng1) = x(2:) - x(:Ng1)
+      dxp2(Ng) = x(Ng) + dxp2(Ng1)
+      dxm2(2:) = dxp2(:Ng1)
+      dxm2(1) = x(1)
+      dx = dsqrt(dxp2 * dxm2)
+
+      CCp2(:Ng1) = 0.25d0 * (DD(2:) + DD(:Ng1))
+      CCp2(Ng) = 0.25d0 * DD(Ng)
+      CCm2(2:) = CCp2(:Ng1)
+      CCm2(1) = 0.25d0 * DD(1)
+
+      BBp2(:Ng1) = 0.5d0 * ( (DD(2:) - DD(:Ng1)) / dxp2(:Ng1) - (gdot(2:) + gdot(:Ng1)) )
+      BBp2(Ng) = -0.5d0 * ( DD(Ng) / dxp2(Ng) + gdot(Ng) )
+      BBm2(2:) = 0.5d0 * ( (DD(2:) - DD(:Ng1)) / dxm2(2:) - ( gdot(2:) + gdot(:Ng1) ) )
+      BBm2(1) = 0.5d0 * ( DD(1) / dxp2(1) - gdot(1) )
+
+      WWp2 = dmax1(lzero, dxp2 * BBp2 / CCp2)
+      WWm2 = dmax1(lzero, dxm2 * BBm2 / CCm2)
+
+      YYp2 = WWp2 / (dexp(WWp2) - 1d0)
+      print*, '****  ERROR  *****'
+      print*, dxm2
+      print*, BBm2
+      print*, CCm2
+      print*, WWm2
+      print*, 'fin', WWm2 / (dexp(WWm2) - 1d0)
+      YYm2 = WWm2 / (dexp(WWm2) - 1d0)
+
+      r = nin + dt * QQ
+      a = - dt * CCm2 * YYm2 / (dx * dxp2)
+      c = - dt * CCp2 * WWp2 / ( dx * dxp2 * (1d0 - dexp(-WWp2)) )
+      b = 1d0 + dt * ( 1d0 / tesc + ( CCp2 * YYp2 / dxp2 + CCm2 * WWm2 / (dxm2 * (1d0 - dexp(1d0 - WWm2))) ) / dx )
+
+      call tridag_ser(a(2:), b, c(:Ng1), r, nout)
+
+   end subroutine FP_FinDif
 
 
    !
