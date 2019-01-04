@@ -60,7 +60,7 @@ contains
    !  #       # #  # # #     # # #
    !  #       # #   ## #     # # #
    !  #       # #    # ######  # #
-   subroutine FP_FinDif(dt, g, nin, nout, nu0, DD, QQ, tesc)
+   subroutine FP_FinDif_difu(dt, g, nin, nout, nu0, DD, QQ, tesc)
       implicit none
       real(dp), intent(in) :: dt, tesc
       real(dp), intent(in), dimension(:) :: g, nin, nu0, DD, QQ
@@ -76,7 +76,7 @@ contains
       dxp2(:Ng1) = x(2:) - x(:Ng1)
       dxp2(Ng) = x(Ng) + dxp2(Ng1)
       dxm2(2:) = dxp2(:Ng1)
-      dxm2(1) = x(1)
+      dxm2(1) = dmin1(x(1), x(1) - dxp2(2))
       dx = dsqrt(dxp2 * dxm2)
 
       CCp2(:Ng1) = 0.25d0 * (DD(2:) + DD(:Ng1))
@@ -93,12 +93,6 @@ contains
       WWm2 = dmax1(lzero, dxm2 * BBm2 / CCm2)
 
       YYp2 = WWp2 / (dexp(WWp2) - 1d0)
-      print*, '****  ERROR  *****'
-      print*, dxm2
-      print*, BBm2
-      print*, CCm2
-      print*, WWm2
-      print*, 'fin', WWm2 / (dexp(WWm2) - 1d0)
       YYm2 = WWm2 / (dexp(WWm2) - 1d0)
 
       r = nin + dt * QQ
@@ -108,8 +102,41 @@ contains
 
       call tridag_ser(a(2:), b, c(:Ng1), r, nout)
 
-   end subroutine FP_FinDif
+   end subroutine FP_FinDif_difu
 
+
+   subroutine FP_FinDif_cool(dt, g, nin, nout, nu0, QQ, tesc)
+      implicit none
+      real(dp), intent(in) :: dt, tesc
+      real(dp), intent(in), dimension(:) :: g, nin, nu0, QQ
+      real(dp), intent(out), dimension(:) :: nout
+      integer :: Ng, Ng1
+      real(dp), dimension(size(g)) :: gdot, x, dx, dxp2, dxm2, BBp2, BBm2, a, b, c, r
+
+      Ng = size(g)
+      Ng1 = Ng - 1
+
+      x = g! - 1d0
+      gdot = nu0 * g**2
+      dxp2(:Ng1) = x(2:) - x(:Ng1)
+      dxp2(Ng) = x(Ng) + dxp2(Ng1)
+      dxm2(2:) = dxp2(:Ng1)
+      dxm2(1) = dmin1(x(1), x(1) - dxp2(2))
+      dx = dsqrt(dxp2 * dxm2)
+
+      BBp2(:Ng1) = 0.5d0 * (gdot(2:) + gdot(:Ng1))
+      BBp2(Ng) = 0.5d0 * gdot(Ng)
+      BBm2(2:) = 0.5d0 * (gdot(2:) + gdot(:Ng1))
+      BBm2(1) = 0.5d0 * gdot(1)
+
+      r = nin + dt * QQ
+      a = zeros1D(Ng)
+      c = -dt * BBp2 / dx
+      b = 1d0 + dt * ( 1d0 / tesc + BBm2 / dx )
+
+      call tridag_ser(a(2:), b, c(:Ng1), r, nout)
+
+   end subroutine FP_FinDif_cool
 
    !
    !   ####   ####   ####  #            #      # #    # ######  ####

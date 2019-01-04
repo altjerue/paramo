@@ -7,7 +7,7 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
    use h5_inout
    use SRtoolkit
    use anaFormulae
-   use dist_evol, only: FP_FinDif, injection
+   use dist_evol, only: FP_FinDif_difu, FP_FinDif_cool, injection
    use radiation
    implicit none
    character(len=*), intent(in) :: output_file, params_file
@@ -66,10 +66,10 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
    allocate(t(0:numdt), freqs(numdf), dg(numbins), Ntot(numdt),&
       aux_zero_arr(numbins - 1), dfreqs(numdf), dtimes(numdt), Imbs(numdf), &
       sen_lum(numdt), dt(numdt), nu_obs(numdf), t_obs(numdt), to_com(numdt))
-   allocate(nn(numdt, numbins), nu0(0:numdt, numbins), gg(numbins), &
+   allocate(nn(0:numdt, numbins), nu0(0:numdt, numbins), gg(numbins), &
       ambs(numdf, numdt), jmbs(numdf, numdt), jnut(numdf, numdt), &
       jssc(numdf, numdt), anut(numdf, numdt), jeic(numdf, numdt), &
-      Qinj(numdt, numbins), Ddif(1:numdt, numbins))
+      Qinj(numdt, numbins), Ddif(numdt, numbins))
 
    dfreqs = 1d0
    dtimes = 1d0
@@ -99,7 +99,7 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
 #endif
    Qnth = zetae * Q0
    Qth = (1d0 - zetae) * Q0
-   Ddif = 1d-40
+   Ddif = 1d-200
    tesc = 1.5 * R / cLight
 
    ! ----->>   Viewing angle
@@ -172,7 +172,8 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
       !  #      #      #    #
       !  ###### ###### #####
       Qinj(i, :) = injection(t(i), dtacc, gg, g1, g2, qind, theta_e, Qth, Qnth)
-      call FP_FinDif(dt(i), gg, nn(i - 1, :), nn(i, :), nu0(i - 1, :), Ddif(i, :), Qinj(i, :), tesc)
+      ! call FP_FinDif_difu(dt(i), gg, nn(i - 1, :), nn(i, :), nu0(i - 1, :), Ddif(i, :), Qinj(i, :), tesc)
+      call FP_FinDif_cool(dt(i), gg, nn(i - 1, :), nn(i, :), nu0(i - 1, :), Qinj(i, :), tesc)
       !   ----->   Then we compute the light path
       sen_lum(i) = sum(dt(:i)) * cLight
 

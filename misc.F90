@@ -325,7 +325,7 @@ contains
       read(c, *) d
       return
    end function char2double
-   
+
    function zeros1D(n) result(a)
       implicit none
       integer, intent(in) :: n
