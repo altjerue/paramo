@@ -12,9 +12,12 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
    implicit none
    character(len=*), intent(in) :: output_file, params_file
    logical, intent(in) :: with_cool, with_abs, with_ssc
-   integer, parameter :: nmod = 16
-   character(len=*), parameter :: on_screen = &
-      "(' Time iteration:', I6, ' | Time =', ES15.7, ' | Time step =', ES15.7, ' | nu_0(g_max) =', ES15.7, ' | Ntot =', ES15.7)"
+   integer, parameter :: nmod = 10
+   character(len=*), parameter :: screan_head = &
+      '| Iteration |        Time |   Time step |    nu_0(g2) |       N_tot |'&
+      //new_line('A')//&
+      ' ---------------------------------------------------------------------', &
+      on_screen = "(' | ', I9, ' | ', ES11.4, ' | ', ES11.4, ' | ', ES11.4, ' | ', ES11.4, ' |')"
    integer :: i, j, k, numbins, numdf, numdt, ios, time_grid, &
       cool_kind, herror, tstop
    integer(HID_T) :: file_id, group_id
@@ -131,7 +134,7 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
    write(*, "(' Initial synchrotron cooling time scale:', ES15.7)") 1d0 / (nu0_B * g2)
    write(*, *) 'Wrting data in: ', trim(output_file)
    write(*, *) ''
-
+   write(*, *) screan_head
 
    !
    ! ###### #    #  ####  #      #    # ##### #  ####  #    #
@@ -271,8 +274,7 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
    !      # ###### #    # # #  # # #  ###
    ! #    # #    #  #  #  # #   ## #    #
    !  ####  #    #   ##   # #    #  ####
-   write(*, *) ""
-   ! call system("[ -f "//trim(output_file)//" ] && rm "//trim(output_file)//" && echo 'output: '"//trim(output_file)//" || echo 'output: '"//trim(output_file))
+   write(*, *) "---> Saving"
 
    ! ------  Opening output file  ------
    call h5open_f(herror)
