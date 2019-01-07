@@ -85,10 +85,6 @@ endif
 
 endif # DBG
 
-ifeq ($(HYB),1)
-DEFS+=-DHYB
-endif
-
 COPT=-c $(OPTIMIZATION) $(DEFS) $(INCL)
 LOPT=$(OPTIMIZATION) $(DEFS) $(LIBS)
 
@@ -97,7 +93,7 @@ PARAMO=xParamo
 ITOBS=xITobs
 
 # -----  dependencies  -----
-PARAMO_OBJ = misc.o pwl_integ.o h5_inout.o K2.o SRtoolkit.o anaFormulae.o \
+PARAMO_OBJ = misc.o pwl_integ.o h5_inout.o K1.o K2.o SRtoolkit.o anaFormulae.o \
 	radiation.o dist_evol.o Paramo.o paramo_main.o
 ITOBS_OBJ = misc.o h5_inout.o K2.o SRtoolkit.o pwl_integ.o anaFormulae.o \
 	radiation.o IofTobs.o
@@ -106,13 +102,13 @@ ITOBS_OBJ = misc.o h5_inout.o K2.o SRtoolkit.o pwl_integ.o anaFormulae.o \
 all: $(PARAMO) $(ITOBS)
 
 # objects
-constants.o K2.o pwl_integ.o misc.o h5_inout.o: data_types.o
+constants.o K2.o K1.o pwl_integ.o misc.o h5_inout.o: data_types.o
 SRtoolkit.o: data_types.o constants.o K2.o
 magnetobrem.o: data_types.o constants.o h5_inout.o misc.o anaFormulae.o \
 	pwl_integ.o
 IofTobs.o: data_types.o h5_inout.o SRtoolkit.o pwl_integ.o radiation.o
 Paramo.o: data_types.o constants.o misc.o pwl_integ.o h5_inout.o SRtoolkit.o \
-	anaFormulae.o magnetobrem.o radiation.o dist_evol.o
+	anaFormulae.o magnetobrem.o radiation.o dist_evol.o K1.o K2.o
 paramo_main.o: data_types.o misc.o magnetobrem.o Paramo.o
 anaFormulae.o: data_types.o constants.o misc.o pwl_integ.o
 radiation.o: data_types.o constants.o misc.o pwl_integ.o SRtoolkit.o \
@@ -134,5 +130,8 @@ $(ITOBS): data_types.o constants.o $(ITOBS_OBJ)
 .PHONY: clean
 
 clean:
+	rm -vf *.o *.mod *~
+
+clean_all:
 	rm -vf *.o *.mod *~
 	rm -rvf x*

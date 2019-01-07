@@ -24,10 +24,11 @@ class parameters(object):
         self.B = 1.0                    # magnetic field magnitude
         self.b_index = 0.0              # magnetic field decay index
         self.theta_e = 10.0             # electrons temperature
+        self.zeta_e = 0.99
         self.dtacc = 1e2                # injection period
         self.tstep = 1e-2               # time step factor
         self.tmax = 1e5                 # maximum time
-        self.Q0 = 1.0                   # num. dens. of particles injected per second
+        self.Linj = 1e41                # num. dens. of particles injected per second
         self.g1 = 1e2                   # power-law min Lorentz factor
         self.g2 = 1e4                   # power-law max Lorentz factor
         self.gmin = 1.01                # EED minimum Lorentz factor
@@ -59,10 +60,11 @@ class parameters(object):
             print(fortran_double(self.B), '! magnetic field', file=f)
             print(fortran_double(self.b_index), '! magnetic field decay index', file=f)
             print(fortran_double(self.theta_e), '! electrons temperature', file=f)
+            print(fortran_double(self.zeta_e), '! fraction of nonthermal electrons', file=f)
             print(fortran_double(self.dtacc), '! injection period',  file=f)
             print(fortran_double(self.tstep), '! time step factor', file=f)
             print(fortran_double(self.tmax), '! maximum time', file=f)
-            print(fortran_double(self.Q0), '! num. dens. of particles injected', file=f)
+            print(fortran_double(self.Linj), '! injection luminosity', file=f)
             print(fortran_double(self.g1), '! power-law min Lorentz factor', file=f)
             print(fortran_double(self.g2), '! power-law max Lorentz factor', file=f)
             print(fortran_double(self.gmin), '! EED min Lorentz factor', file=f)
@@ -192,7 +194,7 @@ def PBSfile(jname, qname, xname, args=None, pream=None, depen=None, nodes=None, 
 #  #    #  ####  #    #
 class Paramo(object):
 
-    def __init__(self, wCool=False, wAbs=False, wSSC=False, flabel='DriverTest', par_kw={}, comp_kw={}):
+    def __init__(self, wCool=False, wAbs=False, wSSC=False, Hyb=False, flabel='DriverTest', par_kw={}, comp_kw={}):
         self.par = parameters(**par_kw)
         self.comp = compiler(rules='xParamo', **comp_kw)
         self.par.wParams()
@@ -201,20 +203,19 @@ class Paramo(object):
         self.wCool = wCool    # variable cooling
         self.wAbs = wAbs      # compute MBS self-absorption
         self.wSSC = wSSC      # compute SSC emissivity
+        self.Hyb = Hyb
         self.flabel = flabel  # a label to identify each output
 
     def output_file(self):
         outf = ''
         argv = []
-        if self.comp.HYB:
+
+        if self.Hyb:
             outf += 'H'
+            argv.append('T')
         else:
             outf += 'P'
-
-        if self.comp.MBS:
-            outf += 'M'
-        else:
-            outf += 'S'
+            argv.append('F')
 
         if self.wCool:
             outf += 'V'

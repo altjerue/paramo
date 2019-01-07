@@ -1,4 +1,4 @@
-subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
+subroutine Paramo(params_file, output_file, hyb_dis, with_cool, with_abs, with_ssc)
    use data_types
    use constants
    use misc
@@ -9,9 +9,11 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
    use anaFormulae
    use dist_evol, only: FP_FinDif_difu, FP_FinDif_cool, injection
    use radiation
+   use K1
+   use K2
    implicit none
    character(len=*), intent(in) :: output_file, params_file
-   logical, intent(in) :: with_cool, with_abs, with_ssc
+   logical, intent(in) :: with_cool, with_abs, with_ssc, hyb_dis
    integer, parameter :: nmod = 10
    character(len=*), parameter :: screan_head = &
       '| Iteration |        Time |   Time step |    nu_0(g2) |       N_tot |'&
@@ -21,10 +23,10 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
    integer :: i, j, k, numbins, numdf, numdt, ios, time_grid, &
       cool_kind, herror, tstop
    integer(HID_T) :: file_id, group_id
-   real(dp) :: uB, R, Q0, gmin, gmax, numin, numax, qind, B, dtacc, g1, &
+   real(dp) :: uB, R, Linj, gmin, gmax, numin, numax, qind, B, dtacc, g1, &
       g2, nu0_B, tstep, zetae, Qth, Qnth, theta_e, tmax, d_lum, z, D, &
       gamma_bulk, theta_obs, R0, Rinit, b_index, mu_obs, mu_com, u_ext, &
-      nu_ext, tesc
+      nu_ext, tesc, kappa, volume
    real(dp), allocatable, dimension(:) :: freqs, t, dg, Ntot, Imbs, gg, &
       aux_zero_arr, sen_lum, dfreqs, dtimes, dt, nu_obs, t_obs, to_com
    real(dp), allocatable, dimension(:, :) :: nu0, nn, jnut, jmbs, &
@@ -32,32 +34,33 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
 
    open(unit=77, file=params_file, iostat=ios)
    if ( ios /= 0 ) call an_error("Paramo: Parameter file "//params_file//" could not be opened")
-   read(77,*) R
-   read(77,*) R0
-   read(77,*) Rinit
-   read(77,*) d_lum
-   read(77,*) z
-   read(77,*) gamma_bulk
-   read(77,*) theta_obs
-   read(77,*) B
-   read(77,*) b_index
-   read(77,*) theta_e
-   read(77,*) dtacc
-   read(77,*) tstep
-   read(77,*) tmax
-   read(77,*) Q0
-   read(77,*) g1
-   read(77,*) g2
-   read(77,*) gmin
-   read(77,*) gmax
-   read(77,*) qind
-   read(77,*) numin
-   read(77,*) numax
-   read(77,*) numbins
-   read(77,*) numdt
-   read(77,*) numdf
-   read(77,*) cool_kind
-   read(77,*) time_grid
+   read(77, *) R
+   read(77, *) R0
+   read(77, *) Rinit
+   read(77, *) d_lum
+   read(77, *) z
+   read(77, *) gamma_bulk
+   read(77, *) theta_obs
+   read(77, *) B
+   read(77, *) b_index
+   read(77, *) theta_e
+   read(77, *) zetae
+   read(77, *) dtacc
+   read(77, *) tstep
+   read(77, *) tmax
+   read(77, *) Linj
+   read(77, *) g1
+   read(77, *) g2
+   read(77, *) gmin
+   read(77, *) gmax
+   read(77, *) qind
+   read(77, *) numin
+   read(77, *) numax
+   read(77, *) numbins
+   read(77, *) numdt
+   read(77, *) numdf
+   read(77, *) cool_kind
+   read(77, *) time_grid
    close(77)
 
    !  ####  ###### ##### #    # #####
@@ -77,14 +80,15 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
    dfreqs = 1d0
    dtimes = 1d0
 
-   !
+   call K1_init
+   call K2_init
+
    !   # #    # # #####     ####   ####  #    # #####
    !   # ##   # #   #      #    # #    # ##   # #    #
    !   # # #  # #   #      #      #    # # #  # #    #
    !   # #  # # #   #      #      #    # #  # # #    #
    !   # #   ## #   #      #    # #    # #   ## #    #
    !   # #    # #   #       ####   ####  #    # #####
-   !
    nu_ext = 1e14 * gamma_bulk
    u_ext = 1e-4 * gamma_bulk**2
    uB = B**2 / (8d0 * pi)
@@ -94,14 +98,20 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
    else
       nu0 = nu0_B
    end if
-   
-#ifdef HYB
-   zetae = 0.99d0
-#else
-   zetae = 1.0d0
-#endif
-   Qnth = zetae * Q0
-   Qth = (1d0 - zetae) * Q0
+
+   volume = 4d0 * pi * R**3 / 3d0
+   if ( hyb_dis ) then
+      kappa = 3d0 * theta_e + dexp(K1_func(-dlog(theta_e))) / dexp(K2_func(-dlog(theta_e)))
+      Qth = (1d0 - zetae) * Linj / (kappa * volume * mass_e * cLight**2)
+      Qnth = zetae * Qth * pwl_norm(1d0 - zetae, qind, g1, g2)
+   else
+      kappa = 1d0
+      Qth = 0d0
+      Qnth = Linj * pwl_norm(volume * mass_e * cLight**2, qind, g1, g2)
+   end if
+   write(*, "('g1    =', ES11.4)") g1
+   write(*, "('Q_nth =', ES11.4)") Qnth
+   write(*, "('Q_th  =', ES11.4)") Qth
    Ddif = 1d-200
    tesc = 1.5 * R / cLight
 
@@ -163,7 +173,7 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
       case(3)
          t(i) = ((tmax - tstep)) * (dble(i) / dble(numdt - 1))
       case default
-         write(*,*) "Wrong time-grid selection"
+         write(*, *) "Wrong time-grid selection"
       end select
       dt(i) = t(i) - t(i - 1)
       dtimes(i) = 1d0 / dt(i)
@@ -175,8 +185,8 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
       !  #      #      #    #
       !  ###### ###### #####
       Qinj(i, :) = injection(t(i), dtacc, gg, g1, g2, qind, theta_e, Qth, Qnth)
-      ! call FP_FinDif_difu(dt(i), gg, nn(i - 1, :), nn(i, :), nu0(i - 1, :), Ddif(i, :), Qinj(i, :), tesc)
-      call FP_FinDif_cool(dt(i), gg, nn(i - 1, :), nn(i, :), nu0(i - 1, :), Qinj(i, :), tesc)
+      call FP_FinDif_difu(dt(i), gg, nn(i - 1, :), nn(i, :), nu0(i - 1, :), Ddif(i, :), Qinj(i, :), tesc)
+      ! call FP_FinDif_cool(dt(i), gg, nn(i - 1, :), nn(i, :), nu0(i - 1, :), Qinj(i, :), tesc)
       !   ----->   Then we compute the light path
       sen_lum(i) = sum(dt(:i)) * cLight
 
@@ -244,11 +254,9 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
                nu0(i, :) = IC_cool(nu0_B, gg, freqs, R * jssc(:, i))
             case (2)
                !!!   ---{   Zacharias & Schlickeiser, 2012, 761, 110   }---
-               if (i == 1) write(*,*) "Using ZS12 cooling"
                nu0(i, :) = ssccZS12(gg, nn(i, :), B, R)
             case (3)
                !!!   ---{   Uhm & Zhang, 2014, Nat. Phys., 10, 351   }---
-               if (i == 1) write(*, *) "Using power-law dacaying magnetic field"
                nu0(i, :) = nu0_B * ((Rinit + cLight * gamma_bulk * t(i)) / R0)**(-2d0 * b_index)
             case default
                write(*, *) 'Wrong cooling selection'
@@ -304,7 +312,7 @@ subroutine Paramo(params_file, output_file, with_cool, with_abs, with_ssc)
    call h5io_wdble0(group_id, 'gamma_1', g1, herror)
    call h5io_wdble0(group_id, 'gamma_2', g2, herror)
    call h5io_wdble0(group_id, 'pwl-index', qind, herror)
-   call h5io_wdble0(group_id, 'Q0', Q0, herror)
+   call h5io_wdble0(group_id, 'L_inj', Linj, herror)
    call h5io_wdble0(group_id, 'Theta_e', theta_e, herror)
    call h5io_wdble0(group_id, 'zeta_e', zetae, herror)
    call h5io_wdble0(group_id, 'nu_min', numin, herror)

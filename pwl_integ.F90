@@ -54,6 +54,7 @@ contains
       end if
    end function Q2integ
 
+
    !     Eq. (3.19) of Rueda-Becerril (2017)
    function sscR(a, b, c, d, alpha, beta) result(res)
       implicit none
@@ -62,7 +63,8 @@ contains
       real(dp) :: eps = 1d-9
       res = c**(beta + alpha + 2d0) * a**(alpha + 1d0) * Pinteg(d / c, -(beta + alpha + 1d0), eps) * Qinteg(b / a, -alpha, eps)
    end function sscR
-   
+
+
    !     Eq. (3.21) of Rueda-Becerril (2017)
    function sscS(a, b, c, d, alpha, beta) result(res)
       implicit none
@@ -82,7 +84,8 @@ contains
             Q2integ(d_c, -beta, eps) ) )
       endif
    end function sscS
-   
+
+
    !     Eq. 2.106 of Mimica (2004)
    function sscG1ISO(a, b, c, d, alpha, beta) result(res)
       implicit none
@@ -90,7 +93,8 @@ contains
       real(dp) :: res
       res = sscR(a, b, c, d, alpha, beta) - sscR(a, b, c, d, alpha + 1d0, beta)
    end function sscG1ISO
-   
+
+
    !     Eq. 2.107 of Mimica (2004)
    function sscG2ISO(a, b, c, d, alpha, beta) result(res)
       implicit none
@@ -112,6 +116,25 @@ contains
       k = 1d0 / (norm * integ)
    end function pwl_norm
 
+
+   !
+   !   -----{   Find gamma_1   }-----
+   !
+   function get_g1(g2, k, q) result(g1)
+   implicit none
+   real(dp), intent(in) :: g2, k, q
+   real(dp), parameter :: ttol = 1d-8, eps = 1d-9
+   real(dp) :: g1, f, df, x, xn
+   xn = 100d0
+   x = -1d0
+   do while( dabs((xn - x) / x) > ttol )
+      x = xn
+      f = x * Pinteg(x, q - 1d0, eps) - g2 * k * Pinteg(x, q, eps)
+      df = Pinteg(x, q - 1d0, eps) + x**(2d0 - q) - g2 * k * x**(-q)
+      xn = x - f / df
+   enddo
+   g1 = g2 / xn
+   end function get_g1
 
 
    ! ===========================================================================

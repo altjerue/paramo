@@ -73,9 +73,9 @@ contains
 
       gdot = nu0 * g**2
       dxp2(:Ng1) = g(2:) - g(:Ng1)
-      dxp2(Ng) = g(Ng) + dxp2(Ng1)
+      dxp2(Ng) = dxp2(Ng1)
       dxm2(2:) = dxp2(:Ng1)
-      dxm2(1) = dmin1(g(1) - 1d0, g(1) - dxp2(2))
+      dxm2(1) = dmin1(g(1) - 1d0, dxm2(2))
       dx = dsqrt(dxp2 * dxm2)
 
       CCp2(:Ng1) = 0.25d0 * (DD(2:) + DD(:Ng1))
@@ -95,9 +95,11 @@ contains
       YYm2 = WWm2 / (dexp(WWm2) - 1d0)
 
       r = nin + dt * QQ
-      c = -dt * CCp2 * YYp2 / (dx * dxp2)
-      a = -dt * CCm2 * WWm2 / ( dx * dxm2 * (1d0 - dexp(-WWm2)) )
-      b = 1d0 + dt * ( 1d0 / tesc + ( CCm2 * YYm2 / dxm2 + CCp2 * WWp2 / (dxp2 * (1d0 - dexp(1d0 - WWp2))) ) / dx )
+      c = -dt * CCm2 * YYm2 / (dx * dxm2)
+      a = -dt * CCp2 * WWp2 / ( dx * dxp2 * (1d0 - dexp(-WWp2)) )
+      b = 1d0 + dt * ( 1d0 / tesc + ( CCp2 * YYp2 / dxp2 + CCm2 * WWm2 / (dxm2 * (1d0 - dexp(1d0 - WWm2))) ) / dx )
+      b(Ng) = 1d0 + dt * ( 1d0 / tesc + ( CCm2(Ng) * WWm2(Ng) / (dxm2(Ng) * (1d0 - dexp(1d0 - WWm2(Ng)))) ) / dx(Ng) )
+      b(1) = 1d0 + dt * ( 1d0 / tesc + CCp2(1) * YYp2(1) / (dxp2(1) * dx(1)) )
 
       call tridag_ser(a(2:), b, c(:Ng1), r, nout)
 
@@ -117,20 +119,21 @@ contains
 
       gdot = nu0 * g**2
       dxp2(:Ng1) = g(2:) - g(:Ng1)
-      dxp2(Ng) = g(Ng) + dxp2(Ng1)
+      dxp2(Ng) = dxp2(Ng1)
       dxm2(2:) = dxp2(:Ng1)
-      dxm2(1) = dmin1(g(1) - 1d0, g(1) - dxp2(2))
+      dxm2(1) = dmin1(g(1) - 1d0, dxm2(2))
       dx = dsqrt(dxp2 * dxm2)
 
       BBp2(:Ng1) = 0.5d0 * (gdot(2:) + gdot(:Ng1))
       BBp2(Ng) = 0.5d0 * gdot(Ng)
-      BBm2(2:) = 0.5d0 * (gdot(2:) + gdot(:Ng1))
+      BBm2(2:) = BBp2(:Ng1)
       BBm2(1) = 0.5d0 * gdot(1)
 
       r = nin + dt * QQ
       a = zeros1D(Ng)
       c = -dt * BBp2 / dx
       b = 1d0 + dt * ( 1d0 / tesc + BBm2 / dx )
+      b(1) = 1d0 + dt / tesc
 
       call tridag_ser(a(2:), b, c(:Ng1), r, nout)
 

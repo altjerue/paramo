@@ -12,7 +12,6 @@ contains
       real(dp), intent(in) :: x
       real(dp) :: res, d, dd, y, y2, sv
       integer :: i
-
       d = 0
       dd = 0d0
       y = (2d0 * x + mxxm) * oxxm
@@ -22,20 +21,16 @@ contains
          d = y2 * d - dd + Ftab(i)
          dd = sv
       enddo
-
       res = y * d - dd + 5d-1 * Ftab(1)
    end function K2_func
 
-
    subroutine K2_init
       implicit none
-
       xmin = -8d0
       xmax =  5d0
       oxxm = 1d0 / (xmax - xmin)
       mxxm = - xmin - xmax
-
-      Ftab = (/-36.06634422844878d0, &
+      Ftab = (/ -36.06634422844878d0, &
          -53.372857024015055d0, &
          -32.35629265989789d0, &
          -22.31758870210901d0, &

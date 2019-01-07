@@ -13,24 +13,24 @@ program paramo_main
 
    integer :: numArgs
    character(len=256) :: program_name, params_file, output_file, wCool, &
-      wMBSabs, wSSCem
-   logical :: with_cool, with_abs, with_ssc
+      wMBSabs, wSSCem, HybDis
+   logical :: with_cool, with_abs, with_ssc, hyb_dis
 
    numArgs = command_argument_count()
    call get_command_argument(0, program_name)
 
-   if ( numArgs /= 5 ) call an_error(args_error)
+   if ( numArgs /= 6 ) call an_error(args_error)
 
    !   ::::::::::   Opening parameters file   ::::::::::
    call get_command_argument(1, params_file)
 
 
    !    -----> With or without cooling
-   call get_command_argument(2, wCool)
-   if ( wCool == 'T' ) then
-      with_cool = .true.
-   elseif ( wCool == 'F' ) then
-      with_cool = .false.
+   call get_command_argument(2, HybDis)
+   if ( HybDis == 'T' ) then
+      hyb_dis = .true.
+   elseif ( HybDis == 'F' ) then
+      hyb_dis = .false.
    else
       call an_error(args_error)
    end if
@@ -55,9 +55,19 @@ program paramo_main
       call an_error(args_error)
    end if
 
-   !    -----> Reading output file
-   call get_command_argument(5, output_file)
+   !    -----> With or without cooling
+   call get_command_argument(5, wCool)
+   if ( wCool == 'T' ) then
+      with_cool = .true.
+   elseif ( wCool == 'F' ) then
+      with_cool = .false.
+   else
+      call an_error(args_error)
+   end if
 
-   call Paramo(trim(params_file), trim(output_file), with_cool, with_abs, with_ssc)
+   !    -----> Reading output file
+   call get_command_argument(6, output_file)
+
+   call Paramo(trim(params_file), trim(output_file), hyb_dis, with_cool, with_abs, with_ssc)
 
 end program paramo_main
