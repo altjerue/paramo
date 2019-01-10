@@ -65,8 +65,9 @@ contains
       real(dp), intent(in) :: dt, tesc
       real(dp), intent(in), dimension(:) :: g, nin, nu0, DD, QQ
       real(dp), intent(out), dimension(:) :: nout
-      integer :: Ng, Ng1
-      real(dp), dimension(size(g)) :: gdot, dx, dxp2, dxm2, CCp2, CCm2, BBp2, BBm2, YYp2, YYm2, WWp2, WWm2, a, b, c, r
+      real(dp), parameter :: eps = 1e-2
+      integer :: i, Ng, Ng1
+      real(dp), dimension(size(g)) :: gdot, dx, dxp2, dxm2, CCp2, CCm2, BBp2, BBm2, YYp2, YYm2, WWp2, WWm2, ZZp2, ZZm2, a, b, c, r
 
       Ng = size(g)
       Ng1 = Ng - 1
@@ -84,24 +85,51 @@ contains
       CCm2(1) = 0.25d0 * DD(1)
 
       BBp2(:Ng1) = 0.5d0 * ( (DD(2:) - DD(:Ng1)) / dxp2(:Ng1) - (gdot(2:) + gdot(:Ng1)) )
-      BBp2(Ng) = 0.5d0 * ( DD(Ng) / dxp2(Ng) - gdot(Ng) )
-      BBm2(2:) = 0.5d0 * ( (DD(2:) - DD(:Ng1)) / dxm2(2:) - ( gdot(2:) + gdot(:Ng1) ) )
+      BBm2(2:) = 0.5d0 * ( (DD(2:) - DD(:Ng1)) / dxm2(2:) - (gdot(2:) + gdot(:Ng1)) )
+      BBp2(Ng) = 0.5d0 * ( -DD(Ng) / dxp2(Ng) - gdot(Ng) )
       BBm2(1) = 0.5d0 * ( DD(1) / dxm2(1) - gdot(1) )
 
       WWp2 = dxp2 * BBp2 / CCp2
       WWm2 = dxm2 * BBm2 / CCm2
 
-      YYp2 = WWp2 / (dexp(WWp2) - 1d0)
-      YYm2 = WWm2 / (dexp(WWm2) - 1d0)
+      do i = 1, Ng
+
+         if ( 0.5d0 * WWp2(i) > 200d0 ) then
+            ZZp2(i) = dexp(200d0)
+         else if ( 0.5d0 * WWp2(i) < -200d0 ) then
+            ZZp2(i) = dexp(-200d0)
+         else
+            ZZp2(i) = dexp(0.5d0 * WWp2(i))
+         end if
+
+         if ( 0.5d0 * WWm2(i) > 200d0 ) then
+            ZZm2(i) = dexp(200d0)
+         else if ( 0.5d0 * WWm2(i) < -200d0 ) then
+            ZZm2(i) = dexp(-200d0)
+         else
+            ZZm2(i) = dexp(0.5d0 * WWm2(i))
+         end if
+
+         if ( 31d0 * WWp2(i)**6 < eps * 967680d0 ) then
+            YYp2(i) = 1d0 - WWp2(i)**2 / 24d0 + 7d0 * WWp2(i)**4 / 5760d0
+         else
+            YYp2(i) = WWp2(i) / ( (1d0 - 1d0 / ZZp2(i)**2 ) * ZZp2(i) )
+         end if
+
+         if ( 31d0 * WWm2(i)**6 < eps * 967680d0 ) then
+            YYm2(i) = 1d0 - WWm2(i)**2 / 24d0 + 7d0 * WWm2(i)**4 / 5760d0
+         else
+            YYm2(i) = WWm2(i) / ( (1d0 - 1d0 / ZZm2(i)**2 ) * ZZm2(i) )
+         end if
+
+      end do
 
       r = nin + dt * QQ
-      c = -dt * CCm2 * YYm2 / (dx * dxm2)
-      a = -dt * CCp2 * WWp2 / ( dx * dxp2 * (1d0 - dexp(-WWp2)) )
-      b = 1d0 + dt * ( 1d0 / tesc + ( CCp2 * YYp2 / dxp2 + CCm2 * WWm2 / (dxm2 * (1d0 - dexp(1d0 - WWm2))) ) / dx )
-      b(Ng) = 1d0 + dt * ( 1d0 / tesc + ( CCm2(Ng) * WWm2(Ng) / (dxm2(Ng) * (1d0 - dexp(1d0 - WWm2(Ng)))) ) / dx(Ng) )
-      b(1) = 1d0 + dt * ( 1d0 / tesc + CCp2(1) * YYp2(1) / (dxp2(1) * dx(1)) )
+      c = dt * CCm2 * YYm2 / (dx * dxm2 * ZZm2)
+      a = dt * CCp2 * YYp2 * ZZp2 / (dx * dxp2)
+      b = 1d0 + dt * ( CCm2 * YYm2 * ZZm2 / dxm2 + CCp2 * YYp2 / (dxp2 * ZZp2) ) / dx + dt / tesc
 
-      call tridag_ser(a(2:), b, c(:Ng1), r, nout)
+      call tridag_ser(-a(:Ng1), b, -c(2:), r, nout)
 
    end subroutine FP_FinDif_difu
 
@@ -132,13 +160,14 @@ contains
       r = nin + dt * QQ
       a = zeros1D(Ng)
       c = -dt * BBp2 / dx
-      b = 1d0 + dt * ( 1d0 / tesc + BBm2 / dx )
-      b(1) = 1d0 + dt / tesc
+      b = 1d0 + dt / tesc + BBm2 * dt / dx
+      ! b(1) = 1d0 + dt / tesc
 
-      call tridag_ser(a(2:), b, c(:Ng1), r, nout)
+      call tridag_ser(a(:Ng1), b, c(2:), r, nout)
 
    end subroutine FP_FinDif_cool
 
+   ! ===========================================================================
    !
    !   ####   ####   ####  #            #      # #    # ######  ####
    !  #    # #    # #    # #            #      # ##   # #      #

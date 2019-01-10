@@ -546,7 +546,11 @@ contains
                if ( q > 8d0 ) q = 8d0
                if ( q < -8d0 ) q = -8d0
                q1 = 0.5d0 * (q - 1d0)
+               if ( q1 > 8d0 ) q1 = 8d0
+               if ( q1 < -8d0 ) q1 = -8d0
                q2 = 0.5d0 * (q + 1d0)
+               if ( q2 > 8d0 ) q2 = 8d0
+               if ( q2 < -8d0 ) q2 = -8d0
                contrib_if: if ( 0.25d0 <= w .and. w <= g(k)**2 .and. g(k) <= gmx_star ) then
                   emis = (w / gmx_star**2)**(1d0 + q1) * &
                      Pinteg((gmx_star / g(k))**2, -q1, eps) - &
@@ -565,6 +569,5 @@ contains
       end do nu_loop
       !$OMP END PARALLEL DO
    end subroutine EIC_pwlEED
-
 
 end module radiation

@@ -28,7 +28,7 @@ subroutine Paramo(params_file, output_file, hyb_dis, with_cool, with_abs, with_s
       gamma_bulk, theta_obs, R0, Rinit, b_index, mu_obs, mu_com, u_ext, &
       nu_ext, tesc, kappa, volume
    real(dp), allocatable, dimension(:) :: freqs, t, dg, Ntot, Imbs, gg, &
-      aux_zero_arr, sen_lum, dfreqs, dtimes, dt, nu_obs, t_obs, to_com
+      sen_lum, dfreqs, dtimes, dt, nu_obs, t_obs, to_com
    real(dp), allocatable, dimension(:, :) :: nu0, nn, jnut, jmbs, &
       jssc, jeic, ambs, anut, Qinj, Ddif
 
@@ -70,7 +70,7 @@ subroutine Paramo(params_file, output_file, hyb_dis, with_cool, with_abs, with_s
    ! #    # #        #   #    # #
    !  ####  ######   #    ####  #
    allocate(t(0:numdt), freqs(numdf), dg(numbins), Ntot(numdt),&
-      aux_zero_arr(numbins - 1), dfreqs(numdf), dtimes(numdt), Imbs(numdf), &
+      dfreqs(numdf), dtimes(numdt), Imbs(numdf), &
       sen_lum(numdt), dt(numdt), nu_obs(numdf), t_obs(numdt), to_com(numdt))
    allocate(nn(0:numdt, numbins), nu0(0:numdt, numbins), gg(numbins), &
       ambs(numdf, numdt), jmbs(numdf, numdt), jnut(numdf, numdt), &
@@ -112,7 +112,7 @@ subroutine Paramo(params_file, output_file, hyb_dis, with_cool, with_abs, with_s
    write(*, "('g1    =', ES11.4)") g1
    write(*, "('Q_nth =', ES11.4)") Qnth
    write(*, "('Q_th  =', ES11.4)") Qth
-   Ddif = 1d-200
+
    tesc = 1.5 * R / cLight
 
    ! ----->>   Viewing angle
@@ -134,8 +134,8 @@ subroutine Paramo(params_file, output_file, hyb_dis, with_cool, with_abs, with_s
 
    t(0) = 0d0
    nn = 0d0
+   ! nn(0, :) = Qnth * dexp(-gg**2 / g2)
    jnut = 0d0
-   aux_zero_arr = 0d0
 
    write(*, *) '---> Calculating the emission'
    write(*, *) ''
@@ -185,8 +185,9 @@ subroutine Paramo(params_file, output_file, hyb_dis, with_cool, with_abs, with_s
       !  #      #      #    #
       !  ###### ###### #####
       Qinj(i, :) = injection(t(i), dtacc, gg, g1, g2, qind, theta_e, Qth, Qnth)
+      Ddif(i, :) = gg**2 / tesc ! 1d-200 !
       call FP_FinDif_difu(dt(i), gg, nn(i - 1, :), nn(i, :), nu0(i - 1, :), Ddif(i, :), Qinj(i, :), tesc)
-      ! call FP_FinDif_cool(dt(i), gg, nn(i - 1, :), nn(i, :), nu0(i - 1, :), Qinj(i, :), tesc)
+      ! call FP_FinDif_cool(dt(i), gg, nn(i - 1, :), nn(i, :), nu0(i - 1, :), Qinj(i, :), tmax)
       !   ----->   Then we compute the light path
       sen_lum(i) = sum(dt(:i)) * cLight
 
