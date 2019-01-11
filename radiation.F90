@@ -263,28 +263,25 @@ contains
    !   #  #          #      #    # #    # #      # #  # # #  ###
    !   #  #     #    #    # #    # #    # #      # #   ## #    #
    !  ###  #####      ####   ####   ####  ###### # #    #  ####
-   function IC_cool(nu0B, gg, freqs, Inu) result(nu0)
+   function IC_cool(gg, freqs, Inu) result(urad)
       implicit none
-      real(dp), intent(in) :: nu0B
       real(dp), intent(in), dimension(:) :: freqs, gg, Inu
       integer :: j, k
       real(dp) :: nuKN, urad, Iind, Ibol
-      real(dp), dimension(size(gg)) :: nu0
       do k = 1, size(gg)
          nuKN = 3d0 * mass_e * cLight**2 / (4d0 * hPlanck * gg(k))
          Ibol = 0d0
          freqloop: do j = 2, size(freqs)
             if ( freqs(j) >= nuKN ) exit freqloop
-            if ( Inu(j - 1) > 1d-50 .and. Inu(j) > 1d-50) then
+            if ( Inu(j - 1) > 1d-200 .and. Inu(j) > 1d-200) then
                Iind = -dlog(Inu(j) / Inu(j - 1)) / dlog(freqs(j) / freqs(j - 1))
-               if ( Iind > 8d0 ) cycle freqloop !Iind = 8d0
-               if ( Iind < -8d0 ) cycle freqloop !Iind = -8d0
-               Ibol = Ibol + Inu(j - 1) * freqs(j - 1) * Pinteg(freqs(j) / freqs(j - 1),Iind,1d-9)
+               if ( Iind > 8d0 ) Iind = 8d0
+               if ( Iind < -8d0 ) Iind = -8d0
+               Ibol = Ibol + Inu(j - 1) * freqs(j - 1) * Pinteg(freqs(j) / freqs(j - 1), Iind, 1d-9)
             end if
          end do freqloop
-         urad = 4d0 * pi * Ibol / cLight
-         nu0(k) = nu0B + 4d0 * sigmaT * urad / (3d0 * mass_e * cLight)
       end do
+      urad = 4d0 * pi * Ibol / cLight
    end function IC_cool
 
 
@@ -471,15 +468,15 @@ contains
       real(dp), intent(in), dimension(:) :: nu, n, g, Imbs
       real(dp), intent(out), dimension(:) :: jSSC
       integer :: i, j, k, Ng, Nf
-      real(dp) :: w1, w2, gmx_star, e0, l, q, f1, f2, emis, g1, g2
+      real(dp) :: w1, w2, gmx_star, e0, l, q, f1, f2, emis, g1, g2, s1, s2
       Ng = size(g, dim=1)
       Nf = size(nu, dim=1)
       !$OMP  PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
-      !$OMP& PRIVATE(i, j, k, emis, w1, w2, q, l, g1, g2, e0, f1, f2)
+      !$OMP& PRIVATE(i, j, k, emis, w1, w2, q, l, g1, g2, e0, f1, f2, s1, s2)
       nu_loop: do j = 1, Nf
          jSSC(j) = 0d0
          nu1_loop: do i = 1, Nf - 1
-            intens_if: if ( Imbs(i) > 1d-100 .and. Imbs(i + 1) > 1d-100 ) then
+            intens_if: if ( Imbs(i) > 1d-200 .and. Imbs(i + 1) > 2d-100 ) then
                l = -dlog(Imbs(i + 1) / Imbs(i)) / dlog(nu(i + 1) / nu(i))
                if ( l > 8d0 ) l = 8d0
                if ( l < -8d0 ) l = -8d0
@@ -492,21 +489,27 @@ contains
                   g_loop: do k = 1, Ng - 1
                      if ( g(k) < g1 ) cycle g_loop
                      if ( g(k) > g2 ) exit g_loop
-                     e_dist: if ( n(k) > 1d-100 .and. n(k + 1) > 1d-100 ) then
+                     e_dist: if ( n(k) > 1d-200 .and. n(k + 1) > 1d-200 ) then
                         q = -dlog(n(k + 1) / n(k)) / dlog(g(k + 1) / g(k))
                         if ( q > 8d0 ) q = 8d0
                         if ( q < -8d0 ) q = -8d0
+                        s1 = 0.5d0 * (q - 1d0)
+                        s2 = 0.5d0 * (2d0 * l - q - 1d0)
+                        if ( s1 > 8d0 ) s1 = 8d0
+                        if ( s1 < -8d0 ) s1 = -8d0
+                        if ( s2 > 8d0 ) s2 = 8d0
+                        if ( s2 < -8d0 ) s2 = -8d0
                         gmx_star = dmin1(g(k + 1), e0)
                         w1 = dmin1(f1, gmx_star**2)
                         w2 = dmax1(f2, 0.25d0)
                         contrib_if: if ( w1 > w2 ) then
                            if ( 0.25d0 < f1 .and. f1 < g(k)**2 ) then
-                              emis = sscG1ISO(1d0 / gmx_star**2, 1d0 / g(k)**2, w2, w1, 0.5d0 * (q - 1d0), 0.5d0 * (2d0 * l - q - 1d0))
+                              emis = sscG1ISO(1d0 / gmx_star**2, 1d0 / g(k)**2, w2, w1, s1, s2)
                            else if ( f2 <= g(k)**2 .and. g(k)**2 <= f1 ) then
-                              emis = sscG1ISO(1d0 / gmx_star**2, 1d0 / g(k)**2, w2, g(k)**2, 0.5d0 * (q - 1d0), 0.5d0 * (2d0 * l - q - 1d0)) + &
-                                 sscG2ISO(1d0 / gmx_star**2, 1d0, g(k)**2, w1, 0.5d0 * (q - 1d0), 0.5d0 * (2d0 * l - q - 1d0))
+                              emis = sscG1ISO(1d0 / gmx_star**2, 1d0 / g(k)**2, w2, g(k)**2, s1, s2) + &
+                                 sscG2ISO(1d0 / gmx_star**2, 1d0, g(k)**2, w1, s1, s2)
                            else if ( g(k)**2 < f2 .and. f2 <= gmx_star**2 ) then
-                              emis = sscG2ISO(1d0 / gmx_star**2, 1d0, w2, w1, 0.5d0 * (q - 1d0), 0.5d0 * (2d0 * l - q - 1d0))
+                              emis = sscG2ISO(1d0 / gmx_star**2, 1d0, w2, w1, s1, s2)
                            else
                               emis = 0d0
                            end if
@@ -537,32 +540,27 @@ contains
       !$OMP& PRIVATE(j, k, w, emis, q, q1, q2, gmx_star)
       nu_loop: do j = 1, Nf
          w = 0.25d0 * nu(j) / nuext
-         emis = 0d0
          jEIC(j) = 0d0
          g_loop: do k = 1, Ng - 1
             gmx_star = dmin1(g(k + 1), e0)
-            e_dist: if ( n(k) > 1d-100 .and. n(k + 1) > 1d-100 ) then
+            e_dist: if ( n(k) > 1d-200 .and. n(k + 1) > 1d-200 ) then
                q = -dlog(n(k + 1) / n(k)) / dlog(g(k + 1) / g(k))
                if ( q > 8d0 ) q = 8d0
                if ( q < -8d0 ) q = -8d0
                q1 = 0.5d0 * (q - 1d0)
+               q2 = 0.5d0 * (q + 1d0)
                if ( q1 > 8d0 ) q1 = 8d0
                if ( q1 < -8d0 ) q1 = -8d0
-               q2 = 0.5d0 * (q + 1d0)
                if ( q2 > 8d0 ) q2 = 8d0
                if ( q2 < -8d0 ) q2 = -8d0
                contrib_if: if ( 0.25d0 <= w .and. w <= g(k)**2 .and. g(k) <= gmx_star ) then
-                  emis = (w / gmx_star**2)**(1d0 + q1) * &
-                     Pinteg((gmx_star / g(k))**2, -q1, eps) - &
-                     (w / gmx_star**2)**(1d0 + q2) * &
-                     Pinteg((gmx_star / g(k))**2, -q2, eps)
+                  emis = (w / gmx_star**2)**q2 * ( Pinteg((gmx_star / g(k))**2, -q1, eps) - (w / gmx_star**2) * Pinteg((gmx_star / g(k))**2, -q2, eps) )
                else if ( g(k)**2 < w .and. w <= gmx_star**2 ) then
-                  emis = (w / gmx_star**2)**(1d0 + q1) * &
-                     Pinteg(gmx_star**2 / w, -q1, eps) - &
-                     (w / gmx_star**2)**(1d0 + q2) * &
-                     Pinteg(gmx_star**2 / w, -q2, eps)
+                  emis = (w / gmx_star**2)**q2 * ( Pinteg(gmx_star**2 / w, -q1, eps) - (w / gmx_star**2) * Pinteg(gmx_star**2 / w, -q2, eps) )
+               else
+                  cycle g_loop
                end if contrib_if
-               jEIC(j) = jEIC(j) + emis * n(k) * g(k)**q * w**(-q1)
+               jEIC(j) = jEIC(j) + emis * n(k) * g(k)**q / w**q1
             end if e_dist
          end do g_loop
          jEIC(j) = jEIC(j) * cLight * sigmaT * uext * 0.25d0 / (pi * nuext)

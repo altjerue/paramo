@@ -34,13 +34,11 @@ contains
          do k = 1, size(g)
             if ( Qth < 1d-100 ) then
                Qinj(k) = Qnth * powlaw_dis(g(k), g1, g2, qind)
-               ! Qinj(k) = Qnth * (g(k) / g1)**(-qind) * dexp(-g(k) / g2)
             else if ( Qnth < 1d-100 ) then
                Qinj(k) = Qth * RMaxwell(g(k), th)
             else
                if ( g(k) >= g1 .and. g(k) <= g2 ) then
                   Qinj(k) = Qnth * powlaw_dis(g(k), g1, g2, qind) + &
-               ! Qinj(k) = Qnth * (g(k) / g1)**(-qind) * dexp(-g(k) / g2) + &
                      Qth * RMaxwell(g(k), th)
                else
                   Qinj(k) = Qth * RMaxwell(g(k), th)

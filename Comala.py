@@ -14,32 +14,32 @@ class parameters(object):
 
     def rParams(self):
         # -----  PARAMETERS  -----
-        self.R = 1e18                   # radius of emitting region (assuming spherical)
-        self.R0 = 1e15                  # radius of emitting region (assuming spherical)
-        self.Rinit = 1e15               # radius of emitting region (assuming spherical)
+        self.radius = 1e18                   # radius of emitting region (assuming spherical)
+        self.pos_init = 1e15            # Distance from central engine
         self.dLum = 4.0793e26           # luminosity distance (default Mrk 421)
         self.z = 0.03                   # redshift (default Mrk 421)
         self.gamma_bulk = 1e2           # emitting region bulk Lorentz factor
         self.theta_obs = 5.0            # observer viewing angle
-        self.B = 1.0                    # magnetic field magnitude
+        self.sigma = 1.0                # magnetization (sigma)
         self.b_index = 0.0              # magnetic field decay index
         self.theta_e = 10.0             # electrons temperature
         self.zeta_e = 0.99
-        self.dtacc = 1e2                # injection period
         self.tstep = 1e-2               # time step factor
         self.tmax = 1e5                 # maximum time
-        self.Linj = 1e41                # num. dens. of particles injected per second
+        self.L_j = 1e41                # num. dens. of particles injected per second
+        self.eps_e = 0.1                # epsilon_e
         self.g1 = 1e2                   # power-law min Lorentz factor
         self.g2 = 1e4                   # power-law max Lorentz factor
         self.gmin = 1.01                # EED minimum Lorentz factor
         self.gmax = 2e4                 # EED maximum Lorentz factor
         self.qind = 2.5                 # EED power-law index
+        self.nu_ext = 1e14              # external radiation field freq.
+        self.u_ext = 1e-4               # external radiation field ener. dens.
         self.numin = 1e7                # minimum frequency
         self.numax = 1e15               # maximum frequency
         self.numbins = 128              # number of EED bins
         self.numdt = 300                # number of time steps
         self.numdf = 256                # number of frequencies
-        self.cool_kind = 1              # kind of cooling
         self.time_grid = 1              # kind of cooling
 
         self.params_file = 'input.par'  # name of the parameters file
@@ -50,35 +50,35 @@ class parameters(object):
 
     def wParams(self):
         with open(self.params_file, 'w') as f:
-            print(fortran_double(self.R), '! Radius', file=f)
-            print(fortran_double(self.R0), '! Normalization radius', file=f)
-            print(fortran_double(self.Rinit), '! Initial radius', file=f)
+            print(fortran_double(self.radius), '! Radius', file=f)
+            print(fortran_double(self.pos_init), '! Initial radius', file=f)
             print(fortran_double(self.dLum), '! luminosity distance', file=f)
             print(fortran_double(self.z), '! redshift', file=f)
             print(fortran_double(self.gamma_bulk), '! bulk Lorentz factor', file=f)
             print(fortran_double(self.theta_obs), '! viewing angle', file=f)
-            print(fortran_double(self.B), '! magnetic field', file=f)
+            print(fortran_double(self.sigma), '! magnetization', file=f)
             print(fortran_double(self.b_index), '! magnetic field decay index', file=f)
             print(fortran_double(self.theta_e), '! electrons temperature', file=f)
             print(fortran_double(self.zeta_e), '! fraction of nonthermal electrons', file=f)
-            print(fortran_double(self.dtacc), '! injection period',  file=f)
             print(fortran_double(self.tstep), '! time step factor', file=f)
             print(fortran_double(self.tmax), '! maximum time', file=f)
-            print(fortran_double(self.Linj), '! injection luminosity', file=f)
+            print(fortran_double(self.L_j), '! injection luminosity', file=f)
+            print(fortran_double(self.eps_e), '! epsilon_e', file=f)
             print(fortran_double(self.g1), '! power-law min Lorentz factor', file=f)
             print(fortran_double(self.g2), '! power-law max Lorentz factor', file=f)
             print(fortran_double(self.gmin), '! EED min Lorentz factor', file=f)
             print(fortran_double(self.gmax), '! EED max Lorentz factor', file=f)
             print(fortran_double(self.qind), '! EED power-law index', file=f)
+            print(fortran_double(self.nu_ext), '! external rad. field frequency', file=f)
+            print(fortran_double(self.u_ext), '! external rad. field ener. density', file=f)
             print(fortran_double(self.numin), '! min frequency', file=f)
             print(fortran_double(self.numax), '! max frequency', file=f)
             print(self.numbins, '! number of EED bins', file=f)
             print(self.numdt, '! number of time steps', file=f)
             print(self.numdf, '! number of frequencies', file=f)
-            print(self.cool_kind, '! kind of cooling', file=f)
             print(self.time_grid, '! kind of time grid', file=f)
             # print(self.file_label, '! label to identify each output', file=f)
-
+        print("--> Parameters file: ", self.params_file)
 
 #
 #   ####   ####  #    # #####  # #      ######
@@ -87,6 +87,8 @@ class parameters(object):
 #  #      #    # #    # #####  # #      #
 #  #    # #    # #    # #      # #      #
 #   ####   ####  #    # #      # ###### ######
+
+
 class compiler(object):
 
     # -----  COMPILER FLAGS & RULES -----
@@ -124,7 +126,7 @@ class compiler(object):
             make += ' MBS=1'
 
         os.chdir(self.compile_dir)
-        print("--> Running Makefile:\n   ", make, "\n")
+        print("--> Running Makefile:\n ", make, "\n")
         log = strftime("%a, %d %b %Y %H:%M:%S %Z", localtime())
         os.system(make)
         with open("make.log", "a") as logfile:

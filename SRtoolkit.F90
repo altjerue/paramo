@@ -354,7 +354,7 @@ contains
    end function RMaxwell_v
    
    ! :::::  Power-law distribution  :::::
-   function powlaw_dis_s(g,g1,g2,s) result(pwl)
+   function powlaw_dis_s(g, g1, g2, s) result(pwl)
       implicit none
       doubleprecision, intent(in) :: g,g1,g2,s
       doubleprecision :: pwl
@@ -363,9 +363,10 @@ contains
       else
          pwl = 0d0
       end if
+      ! pwl = g**(-s) * dexp(-(g1 / g)**2) * dexp(-(g / g2)**2)
    end function powlaw_dis_s
 
-   function powlaw_dis_v(g,g1,g2,s) result(pwl)
+   function powlaw_dis_v(g, g1, g2, s) result(pwl)
       implicit none
       doubleprecision, intent(in) :: g1,g2,s
       doubleprecision, intent(in), dimension(:) :: g
@@ -378,6 +379,7 @@ contains
             pwl(k) = 0d0
          end if
       end do
+      ! pwl = g**(-s) * dexp(-(g1 / g)**2) * dexp(-(g / g2)**2)
    end function powlaw_dis_v
    
 #if 0
