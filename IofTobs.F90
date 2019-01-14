@@ -11,10 +11,11 @@ program IofTobs
    implicit none
 
    integer(HID_T) :: file_id, group_id
-   integer :: herror, numArgs, i, ii, numdf, numdt, i_edge, i_start
-   real(dp) :: B, R, d_L, z, Gbulk, theta, mu_obs, mu_com, D, abu, s_min, s_max
+   integer :: herror, numArgs, j, i, ii, numdf, numdt, i_edge, i_start
+   real(dp) :: B, R, d_L, z, Gbulk, theta, mu_obs, mu_com, D, abu, volume, tau,&
+      s_min, s_max
    real(dp), allocatable, dimension(:) :: t, t_obs, nu, s, pos
-   real(dp), allocatable, dimension(:, :) :: jnut, anut, Iobs
+   real(dp), allocatable, dimension(:, :) :: jmbs, jssc, jeic, ambs, flux
 
    character(len=256) :: paramo_fname
    character(len=*), parameter :: args_error = "Usage:"//new_line('A')//&
@@ -31,7 +32,7 @@ program IofTobs
    call get_command_argument(1, paramo_fname)
 
    write(*, *) ''
-   write(*,*) '=======  I_nu(t_obs)  ======='
+   write(*,*) '=======  nu F_nu(t_obs)  ======='
    write(*, *) '-> Working with file: '//trim(paramo_fname)
 
    !   ----->   Opening Paramo file
@@ -49,54 +50,37 @@ program IofTobs
    call h5io_rdble0(file_id, 'Bfield', B, herror)
 
    allocate(t(numdt), nu(numdf), s(numdt), t_obs(numdt), pos(numdt))
-   allocate(jnut(numdf, numdt), anut(numdf, numdt), Iobs(numdf, numdt))
+   allocate(jmbs(numdf, numdt), ambs(numdf, numdt), flux(numdf, numdt), &
+      jssc(numdf, numdt), jeic(numdf, numdt))
 
    !   ----->   Reading data
    call h5io_rdble1(file_id, 'time', t, herror)
    call h5io_rdble1(file_id, 't_obs', t_obs, herror)
    call h5io_rdble1(file_id, 'sen_lum', s, herror)
-   call h5io_rdble1(file_id, 'nu_obs', nu, herror)
-   call h5io_rdble2(file_id, 'jnut', jnut, herror)
-   call h5io_rdble2(file_id, 'anut', anut, herror)
+   call h5io_rdble1(file_id, 'frequency', nu, herror)
+   call h5io_rdble2(file_id, 'jmbs', jmbs, herror)
+   call h5io_rdble2(file_id, 'jssc', jssc, herror)
+   call h5io_rdble2(file_id, 'jeic', jeic, herror)
+   call h5io_rdble2(file_id, 'anut', ambs, herror)
 
 
    mu_obs = dcos(theta * pi / 180d0)
    mu_com = mu_com_f(Gbulk, mu_obs)
    D = Doppler(Gbulk, mu_obs)
+   volume = 4d0 * pi * R**3 / 3d0
 
-   ! --> Light path from origin to the observer: 2 s mu_com
-   ! --> Edge of the blob: 2 R mu_com
-   ! --> Position at which we will measure the radiation:
-   i_edge = minloc(R - s, dim = 1, mask = R - s >= 0d0)
    write(*, *) '-> Solving Radiative Transfer Equation'
-   !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED)&
-   !$OMP& PRIVATE(s_min, s_max, abu, i, ii, i_start)
-   tobs_loop: do i = 1, numdt
-      if ( i <= i_edge ) then
-         i_start = 1
-      else
-         i_start = i - i_edge
-      end if
-      tcom_loop: do ii = i_start, i
-         if ( ii == 1 ) then
-            s_min = x_com_f(0d0, t_obs(i), z, Gbulk, mu_obs) * 0.5d0 / mu_com
-            s_max = x_com_f(t(1), t_obs(i), z, Gbulk, mu_obs) * 0.5d0 / mu_com
-            abu = s_max - s_min
-            call RadTrans(Iobs(:, i), abu, jnut(:, 1), anu=anut(:, 1))
-         else
-            s_min = x_com_f(t(ii - 1), t_obs(i), z, Gbulk, mu_obs) * 0.5d0 / mu_com
-            s_max = x_com_f(t(ii), t_obs(i), z, Gbulk, mu_obs) * 0.5d0 / mu_com
-            abu = s_max - s_min
-            call RadTrans(Iobs(:, i), abu, jnut(:, ii), anu=anut(:, ii), I0=Iobs(:, i))
-         end if
-      end do tcom_loop
-   end do tobs_loop
-   !$OMP END PARALLEL DO
+   do i = 1, numdt
+      do j = 1, numdf
+         tau = dmax1(1d-200, 2d0 * R * ambs(j, i))
+         flux(j, i) = D**4 * volume * ( 3d0 * nu(j) * opt_depth_blob(tau) * jmbs(j, i) / tau + nu(j) * (jssc(j, i) + jeic(j, i)) ) / (4d0 * pi * d_L**2)
+      end do
+   end do
 
    write(*, *) '-> Saving'
-   call h5lexists_f(file_id, 'Iobs', Iobs_exists, herror)
-   if ( Iobs_exists ) call h5ldelete_f(file_id, 'Iobs', herror)
-   call h5io_wdble2(file_id, 'Iobs', Iobs, herror)
+   call h5lexists_f(file_id, 'flux', Iobs_exists, herror)
+   if ( Iobs_exists ) call h5ldelete_f(file_id, 'flux', herror)
+   call h5io_wdble2(file_id, 'flux', flux, herror)
 
    ! Closing everything
    call h5io_closef(file_id, herror)

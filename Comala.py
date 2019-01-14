@@ -26,7 +26,7 @@ class parameters(object):
         self.zeta_e = 0.99
         self.tstep = 1e-2               # time step factor
         self.tmax = 1e5                 # maximum time
-        self.L_j = 1e41                # num. dens. of particles injected per second
+        self.L_j = 1e45                # num. dens. of particles injected per second
         self.eps_e = 0.1                # epsilon_e
         self.g1 = 1e2                   # power-law min Lorentz factor
         self.g2 = 1e4                   # power-law max Lorentz factor

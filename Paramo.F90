@@ -165,22 +165,23 @@ subroutine Paramo(params_file, output_file, hyb_dis, with_cool, with_abs, with_s
 
       select case(time_grid)
       case(1)
-         t(i) = tstep * ( (tmax / tstep)**(dble(i - 1) / dble(numdt - 1)) )
+         t_obs(i) = tstep * ( (tmax / tstep)**(dble(i - 1) / dble(numdt - 1)) )
       case(2)
          if ( i == 1 ) then
-            t(i) = t(i - 1) + dmin1(tstep / (nu0(max0(1, i - 1), numbins) * g2), 1e-2 * tstep)
+            t_obs(i) = t(i - 1) + dmin1(tstep / (nu0(max0(1, i - 1), numbins) * g2), 1e-2 * tstep)
          else
-            t(i) = t(i - 1) + tstep / (nu0(max0(1, i - 1), numbins) * g2)
+            t_obs(i) = t(i - 1) + tstep / (nu0(max0(1, i - 1), numbins) * g2)
          end if
          if ( t(i - 1) >= tmax ) then
             tstop = i - 1
             exit time_loop
          end if
       case(3)
-         t(i) = (tmax - tstep) * dble(i) / dble(numdt - 1)
+         t_obs(i) = (tmax - tstep) * dble(i) / dble(numdt - 1)
       case default
          write(*, *) "Wrong time-grid selection"
       end select
+      t(i) = D * t_obs(i) / (1d0 + z)
       dt(i) = t(i) - t(i - 1)
       dtimes(i) = 1d0 / dt(i)
 
@@ -259,7 +260,6 @@ subroutine Paramo(params_file, output_file, hyb_dis, with_cool, with_abs, with_s
 
       nu0(i, :) = 4d0 * sigmaT * (uB + urad) / (3d0 * mass_e * cLight)
 
-
       ! #     #
       ! ##    #         #####  ####  #####
       ! # #   #           #   #    #   #
@@ -269,8 +269,6 @@ subroutine Paramo(params_file, output_file, hyb_dis, with_cool, with_abs, with_s
       ! #     #           #    ####    #
       !         #######
       Ntot(i) = sum(nn(i, :) * dg, mask=(nn(i, :) > 1d-200))
-
-      t_obs(i) = t(i)
 
       if ( mod(i, nmod) == 0 .or. i == 1 ) &
          write(*, on_screen) i, t(i), dt(i), nu0(i, numbins), Ntot(i)

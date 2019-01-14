@@ -243,17 +243,50 @@ contains
       !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
       !$OMP& PRIVATE(j, Snu)
       do j = 1, Nf
-         if ( jnu(j) > 1d-100 ) then
-            if ( tau(j) > 1d-100 ) then
-               Snu = jnu(j) / anu(j)
-               Inu(j) = 0.25d0 * opt_depth_blob(tau(j)) * jnu(j) * s / (pi * tau(j))
-            else
-               Inu(j) = 0.25d0 * s * jnu(j) / pi
-            end if
+         if ( anu(j) > 1d-100 ) then
+            Inu(j) = 0.125d0 * opt_depth_blob(tau(j)) * jnu(j) / (pi * anu(j))
+         else
+            Inu(j) = 0.25d0 * s * jnu(j) / pi
          end if
       end do
       !$OMP END PARALLEL DO
    end subroutine RadTrans_blob
+
+
+   ! subroutine RT_line_of_sight
+   !    implicit none
+   !    integer :: i, ii, i_edge, i_start
+   !    real(dp) :: abu, s_max, s_min
+   !
+   !    ! --> Light path from origin to the observer: 2 s mu_com
+   !    ! --> Edge of the blob: 2 R mu_com
+   !    ! --> Position at which we will measure the radiation:
+   !    i_edge = minloc(R - s, dim = 1, mask = R - s >= 0d0)
+   ! 
+   !    !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED)&
+   !    !$OMP& PRIVATE(s_min, s_max, abu, i, ii, i_start)
+   !    tobs_loop: do i = 1, numdt
+   !       if ( i <= i_edge ) then
+   !          i_start = 1
+   !       else
+   !          i_start = i - i_edge
+   !       end if
+   !       tcom_loop: do ii = i_start, i
+   !          if ( ii == 1 ) then
+   !             s_min = x_com_f(0d0, t_obs(i), z, Gbulk, mu_obs) * 0.5d0 / mu_com
+   !             s_max = x_com_f(t(1), t_obs(i), z, Gbulk, mu_obs) * 0.5d0 / mu_com
+   !             abu = s_max - s_min
+   !             call RadTrans(Iobs(:, i), abu, jnut(:, 1), anu=anut(:, 1))
+   !          else
+   !             s_min = x_com_f(t(ii - 1), t_obs(i), z, Gbulk, mu_obs) * 0.5d0 / mu_com
+   !             s_max = x_com_f(t(ii), t_obs(i), z, Gbulk, mu_obs) * 0.5d0 / mu_com
+   !             abu = s_max - s_min
+   !             call RadTrans(Iobs(:, i), abu, jnut(:, ii), anu=anut(:, ii), I0=Iobs(:, i))
+   !          end if
+   !       end do tcom_loop
+   !    end do tobs_loop
+   !    !$OMP END PARALLEL DO
+   ! end subroutine RT_line_of_sight
 
 
    !  ###  #####
