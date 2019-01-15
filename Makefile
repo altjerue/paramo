@@ -91,12 +91,15 @@ LOPT=$(OPTIMIZATION) $(DEFS) $(LIBS)
 # -----  executables  -----
 PARAMO=xParamo
 ITOBS=xITobs
+TESTS=xTests
 
 # -----  dependencies  -----
 PARAMO_OBJ = misc.o pwl_integ.o h5_inout.o K1.o K2.o SRtoolkit.o anaFormulae.o \
 	radiation.o dist_evol.o Paramo.o paramo_main.o
 ITOBS_OBJ = misc.o h5_inout.o K2.o SRtoolkit.o pwl_integ.o anaFormulae.o \
 	radiation.o IofTobs.o
+TESTS_OBJ = misc.o pwl_integ.o h5_inout.o K1.o K2.o SRtoolkit.o anaFormulae.o \
+	radiation.o dist_evol.o tests.o
 
 # -----  rules  -----
 all: $(PARAMO) $(ITOBS)
@@ -114,6 +117,8 @@ anaFormulae.o: data_types.o constants.o misc.o pwl_integ.o
 radiation.o: data_types.o constants.o misc.o pwl_integ.o SRtoolkit.o \
 	anaFormulae.o magnetobrem.o
 dist_evol.o: data_types.o constants.o misc.o pwl_integ.o SRtoolkit.o
+tests.o: data_types.o constants.o misc.o pwl_integ.o h5_inout.o SRtoolkit.o \
+	anaFormulae.o magnetobrem.o radiation.o dist_evol.o K1.o K2.o
 
 # executables
 $(PARAMO): data_types.o constants.o $(PARAMO_OBJ)
@@ -122,6 +127,8 @@ $(PARAMO): data_types.o constants.o $(PARAMO_OBJ)
 $(ITOBS): data_types.o constants.o $(ITOBS_OBJ)
 	$(FC) $(LOPT) -o $@ $^
 
+$(TESTS): data_types.o constants.o $(TESTS_OBJ)
+	$(FC) $(LOPT) -o $@ $^
 
 %.o: %.F90
 	$(FC) $(COPT) $(DEFS) $< -o $@
