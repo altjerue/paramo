@@ -6,12 +6,12 @@ module dist_evol
    use SRtoolkit
    implicit none
 
-   integer :: d_Ng, d_Nt
-   real(dp) :: d_dtinj, d_g1, d_g2, d_tcurr, d_tesc
-   real(dp), allocatable, dimension(:) :: d_gg, d_qind, d_Q0, d_t
-   real(dp), allocatable, dimension(:, :) :: d_nu0, d_dist
-   public :: d_ng, d_t, d_dtinj, d_g1, d_g2, d_tcurr, d_qind, &
-      d_Q0, d_Nt, d_dist, d_tesc
+   ! integer :: d_Ng, d_Nt
+   ! real(dp) :: d_dtinj, d_g1, d_g2, d_tcurr, d_tesc
+   ! real(dp), allocatable, dimension(:) :: d_gg, d_qind, d_Q0, d_t
+   ! real(dp), allocatable, dimension(:, :) :: d_nu0, d_dist
+   ! public :: d_ng, d_t, d_dtinj, d_g1, d_g2, d_tcurr, d_qind, &
+   !    d_Q0, d_Nt, d_dist, d_tesc
 
 contains
 
@@ -63,7 +63,7 @@ contains
       real(dp), intent(in) :: dt, tesc
       real(dp), intent(in), dimension(:) :: g, nin, nu0, DD, QQ
       real(dp), intent(out), dimension(:) :: nout
-      real(dp), parameter :: eps = 1e-2
+      real(dp), parameter :: eps = 1e-4
       integer :: i, Ng, Ng1
       real(dp), dimension(size(g)) :: gdot, dx, dxp2, dxm2, CCp2, CCm2, BBp2, BBm2, YYp2, YYm2, WWp2, WWm2, ZZp2, ZZm2, a, b, c, r
 
@@ -78,56 +78,58 @@ contains
       dx = dsqrt(dxp2 * dxm2)
 
       CCp2(:Ng1) = 0.25d0 * (DD(2:) + DD(:Ng1))
-      CCp2(Ng) = 0.25d0 * DD(Ng)
       CCm2(2:) = CCp2(:Ng1)
+      CCp2(Ng) = 0.25d0 * DD(Ng)
       CCm2(1) = 0.25d0 * DD(1)
 
       BBp2(:Ng1) = 0.5d0 * ( (DD(2:) - DD(:Ng1)) / dxp2(:Ng1) - (gdot(2:) + gdot(:Ng1)) )
       BBm2(2:) = 0.5d0 * ( (DD(2:) - DD(:Ng1)) / dxm2(2:) - (gdot(2:) + gdot(:Ng1)) )
-      BBp2(Ng) = 0.5d0 * ( -DD(Ng) / dxp2(Ng) - gdot(Ng) )
-      BBm2(1) = 0.5d0 * ( DD(1) / dxm2(1) - gdot(1) )
+      BBp2(Ng) = 0d0
+      BBm2(1) = 0d0
 
-      WWp2 = dxp2 * BBp2 / CCp2
-      WWm2 = dxm2 * BBm2 / CCm2
+      WWp2(:Ng1) = dxp2(:Ng1) * BBp2(:Ng1) / CCp2(:Ng1)
+      WWm2(2:) = dxm2(2:) * BBm2(2:) / CCm2(2:)
+      WWp2(Ng) = 0d0
+      WWm2(1) = 0d0
 
       do i = 1, Ng
-
-         if ( 0.5d0 * WWp2(i) > 200d0 ) then
-            ZZp2(i) = dexp(200d0)
-         else if ( 0.5d0 * WWp2(i) < -200d0 ) then
-            ZZp2(i) = dexp(-200d0)
+      
+         if ( 0.5d0 * WWp2(i) > -lzero ) then
+            ZZp2(i) = dexp(-lzero)
+         else if ( 0.5d0 * WWp2(i) < lzero ) then
+            ZZp2(i) = dexp(lzero)
          else
             ZZp2(i) = dexp(0.5d0 * WWp2(i))
          end if
-
-         if ( 0.5d0 * WWm2(i) > 200d0 ) then
-            ZZm2(i) = dexp(200d0)
-         else if ( 0.5d0 * WWm2(i) < -200d0 ) then
-            ZZm2(i) = dexp(-200d0)
+      
+         if ( 0.5d0 * WWm2(i) > -lzero ) then
+            ZZm2(i) = dexp(-lzero)
+         else if ( 0.5d0 * WWm2(i) < lzero ) then
+            ZZm2(i) = dexp(lzero)
          else
             ZZm2(i) = dexp(0.5d0 * WWm2(i))
          end if
 
-         if ( 31d0 * WWp2(i)**6 < eps * 967680d0 ) then
-            YYp2(i) = 1d0 - WWp2(i)**2 / 24d0 + 7d0 * WWp2(i)**4 / 5760d0
+         if ( 127d0 * WWp2(i)**8 < eps * 154828800d0 ) then
+            YYp2(i) = 1d0 - WWp2(i)**2 / 24d0 + 7d0 * WWp2(i)**4 / 5760d0 - 31d0 * WWp2(i)**6 / 967680d0
          else
             YYp2(i) = WWp2(i) / ( (1d0 - 1d0 / ZZp2(i)**2 ) * ZZp2(i) )
          end if
 
-         if ( 31d0 * WWm2(i)**6 < eps * 967680d0 ) then
-            YYm2(i) = 1d0 - WWm2(i)**2 / 24d0 + 7d0 * WWm2(i)**4 / 5760d0
+         if ( 127d0 * WWm2(i)**8 < eps * 154828800d0 ) then
+            YYm2(i) = 1d0 - WWm2(i)**2 / 24d0 + 7d0 * WWm2(i)**4 / 5760d0 - 31d0 * WWm2(i)**6 / 967680d0
          else
             YYm2(i) = WWm2(i) / ( (1d0 - 1d0 / ZZm2(i)**2 ) * ZZm2(i) )
          end if
-
+      
       end do
 
       r = nin + dt * QQ
-      c = dt * CCm2 * YYm2 / (dx * dxm2 * ZZm2)
-      a = dt * CCp2 * YYp2 * ZZp2 / (dx * dxp2)
-      b = 1d0 + dt * ( CCm2 * YYm2 * ZZm2 / dxm2 + CCp2 * YYp2 / (dxp2 * ZZp2) ) / dx + dt / tesc
+      c = -dt * CCp2 * YYp2 / (dx * dxp2 * ZZp2)
+      a = -dt * CCm2 * YYm2 * ZZm2 / (dx * dxm2)
+      b = 1d0 + dt * ( CCp2 * YYp2 * ZZp2 / dxp2 + CCm2 * YYm2 / (dxm2 * ZZm2) ) / dx + dt / tesc
 
-      call tridag_ser(-a(:Ng1), b, -c(2:), r, nout)
+      call tridag_ser(a(2:), b, c(:Ng1), r, nout)
 
    end subroutine FP_FinDif_difu
 
@@ -151,19 +153,102 @@ contains
       dx = dsqrt(dxp2 * dxm2)
 
       BBp2(:Ng1) = 0.5d0 * (gdot(2:) + gdot(:Ng1))
-      BBp2(Ng) = 0.5d0 * gdot(Ng)
       BBm2(2:) = BBp2(:Ng1)
-      BBm2(1) = 0.5d0 * gdot(1)
+      BBp2(Ng) = 0d0 !0.5d0 * gdot(Ng)
+      BBm2(1) = 0d0 !0.5d0 * gdot(1)
 
       r = nin + dt * QQ
       a = zeros1D(Ng)
       c = -dt * BBp2 / dx
-      b = 1d0 + dt / tesc + BBm2 * dt / dx
-      ! b(1) = 1d0 + dt / tesc
+      b = 1d0 + BBm2 * dt / dx !+ dt / tesc
 
-      call tridag_ser(a(:Ng1), b, c(2:), r, nout)
+      call tridag_ser(a(2:), b, c(:Ng1), r, nout)
 
    end subroutine FP_FinDif_cool
+
+
+#if 0
+   subroutine FP_FinDif_difu2(dt, g, nin, nout, nu0, DD, QQ, tesc)
+      implicit none
+      real(dp), intent(in) :: dt, tesc
+      real(dp), intent(in), dimension(:) :: g, nin, nu0, DD, QQ
+      real(dp), intent(out), dimension(:) :: nout
+      real(dp), parameter :: eps = 1e-6
+      integer :: i, Ng, Ng1
+      real(dp), dimension(size(g)) :: gdot, dx, dxp2, dxm2, a, b, c, r, &
+         CCp2, CCm2, BBp2, BBm2, YYp2, YYm2, XXp2, XXm2, WWp2, WWm2, ZZp2, ZZm2
+
+      Ng = size(g)
+      Ng1 = Ng - 1
+
+      gdot = nu0 * g**2
+      dxp2(:Ng1) = g(2:) - g(:Ng1)
+      dxp2(Ng) = dxp2(Ng1)
+      dxm2(2:) = dxp2(:Ng1)
+      dxm2(1) = dmin1(g(1) - 1d0, dxm2(2))
+      dx = dsqrt(dxp2 * dxm2)
+
+      CCp2(:Ng1) = 0.25d0 * (DD(2:) + DD(:Ng1))
+      CCm2(2:) = CCp2(:Ng1)
+      CCp2(Ng) = 0.25d0 * DD(Ng)
+      CCm2(1) = 0.25d0 * DD(1)
+
+      BBp2(:Ng1) = 0.5d0 * ( (DD(2:) - DD(:Ng1)) / dxp2(:Ng1) - (gdot(2:) + gdot(:Ng1)) )
+      BBm2(2:) = 0.5d0 * ( (DD(2:) - DD(:Ng1)) / dxm2(2:) - (gdot(2:) + gdot(:Ng1)) )
+      BBp2(Ng) = 0d0 !0.5d0 * ( -DD(Ng) / dxp2(Ng) - gdot(Ng) )
+      BBm2(1) = 0d0 !0.5d0 * ( DD(1) / dxm2(1) - gdot(1) )
+
+      WWp2(:Ng1) = dxp2(:Ng1) * BBp2(:Ng1) / CCp2(:Ng1)
+      WWm2(2:) = dxm2(2:) * BBm2(2:) / CCm2(2:)
+      WWp2(Ng) = 0d0
+      WWm2(1) = 0d0
+
+      do i = 1, Ng
+
+         if ( 0.5d0 * WWp2(i) > -lzero ) then
+            XXp2(i) = dexp(-lzero)
+            YYp2(i) = dexp(lzero)
+         else if ( 0.5d0 * WWp2(i) < lzero ) then
+            XXp2(i) = dexp(lzero)
+            YYp2(i) = dexp(-lzero)
+         else
+            XXp2(i) = dexp(0.5d0 * WWp2(i))
+            YYp2(i) = dexp(-0.5d0 * WWp2(i))
+         end if
+
+         if ( 0.5d0 * WWm2(i) > -lzero ) then
+            XXm2(i) = dexp(-lzero)
+            YYm2(i) = dexp(lzero)
+         else if ( 0.5d0 * WWm2(i) < lzero ) then
+            XXm2(i) = dexp(lzero)
+            YYm2(i) = dexp(-lzero)
+         else
+            XXm2(i) = dexp(0.5d0 * WWm2(i))
+            YYm2(i) = dexp(-0.5d0 * WWm2(i))
+         end if
+
+         if ( 127d0 * WWp2(i)**8 < eps * 154828800d0 ) then
+            ZZp2(i) = 1d0 - WWp2(i)**2 / 24d0 + 7d0 * WWp2(i)**4 / 5760d0 - 31d0 * WWp2(i)**6 / 967680d0
+         else
+            ZZp2(i) = 0.5d0 * WWp2(i) / dsinh(0.5d0 * WWp2(i))
+         end if
+
+         if ( 127d0 * WWm2(i)**8 < eps * 154828800d0 ) then
+            ZZm2(i) = 1d0 - WWm2(i)**2 / 24d0 + 7d0 * WWm2(i)**4 / 5760d0 - 31d0 * WWm2(i)**6 / 967680d0
+         else
+            ZZm2(i) = 0.5d0 * WWm2(i) / dsinh(0.5d0 * WWm2(i))
+         end if
+      
+      end do
+
+      r = nin + dt * QQ
+      a = -dt * CCm2 * ZZm2 * YYm2 / (dx * dxm2)
+      c = -dt * CCp2 * ZZp2 * XXp2 / (dx * dxp2)
+      b = 1d0 + dt * ( CCp2 * ZZp2 * YYp2 / dxp2 + CCm2 * ZZm2 * XXm2 / dxm2 ) / dx !+ dt / tesc
+
+      call tridag_ser(a(2:), b, c(:Ng1), r, nout)
+
+   end subroutine FP_FinDif_difu2
 
    ! ===========================================================================
    !
@@ -332,6 +417,6 @@ contains
       end do contrib_loop
 
    end function distrib
-
+#endif
 
 end module dist_evol

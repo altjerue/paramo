@@ -344,13 +344,10 @@ contains
       real(dp), intent(out), dimension(*) :: buf
       integer(HID_T) :: dset
       integer(HSIZE_T), dimension(num_dims) :: ddims
-
       ddims(1:num_dims) = dims(1:num_dims)
       call h5dopen_f(num_id, trim(dname), dset, error)
       call h5dread_f(dset, H5T_NATIVE_DOUBLE, buf, ddims, error)
       call h5dclose_f(dset, error)
-      
-      return
    end subroutine h5io_read_double
 
 end module h5_inout

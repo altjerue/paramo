@@ -50,34 +50,34 @@ class parameters(object):
 
     def wParams(self):
         with open(self.params_file, 'w') as f:
-            print(fortran_double(self.radius), '! Radius', file=f)
-            print(fortran_double(self.pos_init), '! Initial radius', file=f)
-            print(fortran_double(self.dLum), '! luminosity distance', file=f)
-            print(fortran_double(self.z), '! redshift', file=f)
-            print(fortran_double(self.gamma_bulk), '! bulk Lorentz factor', file=f)
-            print(fortran_double(self.theta_obs), '! viewing angle', file=f)
-            print(fortran_double(self.sigma), '! magnetization', file=f)
-            print(fortran_double(self.b_index), '! magnetic field decay index', file=f)
-            print(fortran_double(self.theta_e), '! electrons temperature', file=f)
-            print(fortran_double(self.zeta_e), '! fraction of nonthermal electrons', file=f)
-            print(fortran_double(self.tstep), '! time step factor', file=f)
-            print(fortran_double(self.tmax), '! maximum time', file=f)
-            print(fortran_double(self.L_j), '! injection luminosity', file=f)
-            print(fortran_double(self.eps_e), '! epsilon_e', file=f)
-            print(fortran_double(self.g1), '! power-law min Lorentz factor', file=f)
-            print(fortran_double(self.g2), '! power-law max Lorentz factor', file=f)
-            print(fortran_double(self.gmin), '! EED min Lorentz factor', file=f)
-            print(fortran_double(self.gmax), '! EED max Lorentz factor', file=f)
-            print(fortran_double(self.qind), '! EED power-law index', file=f)
-            print(fortran_double(self.nu_ext), '! external rad. field frequency', file=f)
-            print(fortran_double(self.u_ext), '! external rad. field ener. density', file=f)
-            print(fortran_double(self.numin), '! min frequency', file=f)
-            print(fortran_double(self.numax), '! max frequency', file=f)
-            print(self.numbins, '! number of EED bins', file=f)
-            print(self.numdt, '! number of time steps', file=f)
-            print(self.numdf, '! number of frequencies', file=f)
-            print(self.time_grid, '! kind of time grid', file=f)
-            # print(self.file_label, '! label to identify each output', file=f)
+            print(fortran_double(self.radius), ' ! Radius', file=f)
+            print(fortran_double(self.pos_init), ' ! Initial radius', file=f)
+            print(fortran_double(self.dLum), ' ! luminosity distance', file=f)
+            print(fortran_double(self.z), ' ! redshift', file=f)
+            print(fortran_double(self.gamma_bulk), ' ! bulk Lorentz factor', file=f)
+            print(fortran_double(self.theta_obs), ' ! viewing angle', file=f)
+            print(fortran_double(self.sigma), ' ! magnetization', file=f)
+            print(fortran_double(self.b_index), ' ! magnetic field decay index', file=f)
+            print(fortran_double(self.theta_e), ' ! electrons temperature', file=f)
+            print(fortran_double(self.zeta_e), ' ! fraction of nonthermal electrons', file=f)
+            print(fortran_double(self.tstep), ' ! time step factor', file=f)
+            print(fortran_double(self.tmax), ' ! maximum time', file=f)
+            print(fortran_double(self.L_j), ' ! injection luminosity', file=f)
+            print(fortran_double(self.eps_e), ' ! epsilon_e', file=f)
+            print(fortran_double(self.g1), ' ! power-law min Lorentz factor', file=f)
+            print(fortran_double(self.g2), ' ! power-law max Lorentz factor', file=f)
+            print(fortran_double(self.gmin), ' ! EED min Lorentz factor', file=f)
+            print(fortran_double(self.gmax), ' ! EED max Lorentz factor', file=f)
+            print(fortran_double(self.qind), ' ! EED power-law index', file=f)
+            print(fortran_double(self.nu_ext), ' ! external rad. field frequency', file=f)
+            print(fortran_double(self.u_ext), ' ! external rad. field ener. density', file=f)
+            print(fortran_double(self.numin), ' ! min frequency', file=f)
+            print(fortran_double(self.numax), ' ! max frequency', file=f)
+            print(self.numbins, ' ! number of EED bins', file=f)
+            print(self.numdt, ' ! number of time steps', file=f)
+            print(self.numdf, ' ! number of frequencies', file=f)
+            print(self.time_grid, ' ! kind of time grid', file=f)
+            # print(self.file_label, ' ! label to identify each output', file=f)
         print("--> Parameters file: ", self.params_file)
 
 #
@@ -136,7 +136,7 @@ class compiler(object):
 
     def cleanup(self):
         os.chdir(self.compile_dir)
-        os.system("make clean")
+        os.system("make clean_all")
         os.chdir(self.cwd)
 
 
@@ -243,12 +243,15 @@ class Paramo(object):
         return outf + '-' + self.flabel + '.jp.h5', argv
 
     def run_Paramo(self, pream=None):
+        self.comp.cleanup()
         self.comp.compile()
         outfile, argv = self.output_file()
         if pream is None:
             run_cmd = '{0}xParamo {1} {2} {3}'.format(self.comp.compile_dir, self.par.params_file, " ".join(argv), outfile)
         else:
             run_cmd = '{0} {1}xParamo {2} {3} {4}'.format(pream, self.comp.compile_dir, self.par.params_file, " ".join(argv), outfile)
+        print("\n--> Parameters:")
+        os.system("cat -n " + self.par.params_file)
         print("\n--> Running:\n  ", run_cmd, "\n")
         os.system(run_cmd)
         print("\n--> Paramo finished")
