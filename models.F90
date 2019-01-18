@@ -12,16 +12,15 @@ contains
    ! #     # #       #    ## #     # #     #
    !  #####  #       #     #  #####   #####
    !
-   subroutine setup_SPN89(t, G0, E0, eps_e, eps_B, n, pind, B, Gshock, Rshock, n_bs, g1, g2, adiab)
+   subroutine shock_afterglow(t, G0, E0, eps_e, eps_B, n, B, Gshock, Rshock, n_bs, ue_bs, adiab)
       ! ************************************************************************
       !  Description:
       !     This is the setup for the model in Sari, Piran & Narayan, 1998,
       !     ApJ, 497, L17.
       ! ************************************************************************
       implicit none
-      real(dp), intent(in) :: eps_e, eps_B, pind, t, G0, E0, n
-      real(dp), intent(out) :: B, Gshock, Rshock, n_bs
-      real(dp), optional, intent(out) :: g1, g2
+      real(dp), intent(in) :: eps_e, eps_B, t, G0, E0, n
+      real(dp), intent(out) :: B, Gshock, Rshock, n_bs, ue_bs
       logical, optional, value :: adiab
       real(dp) :: M0,L
 
@@ -35,19 +34,7 @@ contains
       B = dsqrt(32d0 * pi * mass_p * eps_B * n) * Gshock * cLight
       
       n_bs = 4d0 * Gshock * n
-      ! e_bs = 4d0 * Gshock**2 * n * mp * cspeed**2
-
-      if ( present(g1) ) g1 = dmax1(1.01d0, eps_e * mass_p * Gshock * (pind - 2d0) / (pind - 1d0) / mass_e)
-      if ( present(g2) ) g2 = 1e3 * g1
-
-      ! Ne = 4.0 * pi * Rshock**3 * n / 3.0
-
-      ! Pnu_max = me * cspeed**2 * sigmaT * Gshock * B / (3.0 * eCharge)
-      ! gc = 6.0 * pi * me * cspeed / (sigmaT * B**2 * Gshock * t)
-      ! nug = nucons * B * Gshock * ge
-      ! num = MBS.nu_g(B) * Gbulk * gm
-      ! nuc = MBS.nu_g(B) * Gbulk * gc
-      ! Fnu_max = Ne * Pnu_max / (4.0 * np.pi * dist**2)
+      ue_bs = 4d0 * Gshock**2 * n * mp * cspeed**2
 
    contains
 
@@ -93,6 +80,6 @@ contains
          end if
       end function shock_Lorentz
 
-   end subroutine setup_SPN89
+   end subroutine shock_afterglow
 
 end module models

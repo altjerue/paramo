@@ -28,6 +28,7 @@ class parameters(object):
         self.tmax = 1e5                 # maximum time
         self.L_j = 1e45                # num. dens. of particles injected per second
         self.eps_e = 0.1                # epsilon_e
+        self.eps_B = 0.03                # epsilon_B
         self.g1 = 1e2                   # power-law min Lorentz factor
         self.g2 = 1e4                   # power-law max Lorentz factor
         self.gmin = 1.01                # EED minimum Lorentz factor
@@ -64,6 +65,7 @@ class parameters(object):
             print(fortran_double(self.tmax), ' ! maximum time', file=f)
             print(fortran_double(self.L_j), ' ! injection luminosity', file=f)
             print(fortran_double(self.eps_e), ' ! epsilon_e', file=f)
+            print(fortran_double(self.eps_B), ' ! epsilon_B', file=f)
             print(fortran_double(self.g1), ' ! power-law min Lorentz factor', file=f)
             print(fortran_double(self.g2), ' ! power-law max Lorentz factor', file=f)
             print(fortran_double(self.gmin), ' ! EED min Lorentz factor', file=f)
