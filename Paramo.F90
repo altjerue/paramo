@@ -1,6 +1,7 @@
 subroutine Paramo(params_file, output_file, hyb_dis, with_cool, with_abs, with_ssc)
    use data_types
    use constants
+   use params
    use misc
    use pwl_integ
    use hdf5
@@ -25,42 +26,40 @@ subroutine Paramo(params_file, output_file, hyb_dis, with_cool, with_abs, with_s
    real(dp) :: uB, uext, urad, R, L_j, gmin, gmax, numin, numax, qind, B, &
       tacc, g1, g2, tstep, zetae, Qth, Qnth, theta_e, tmax, d_lum, z, D, &
       gamma_bulk, theta_obs, R0, b_index, mu_obs, mu_com, nu_ext, tesc, kappa, &
-      volume, sigma, beta_bulk, eps_e, L_B, mu_mag, Iind
+      volume, sigma, beta_bulk, eps_e, L_B, mu_mag, Iind, eps_B
    real(dp), allocatable, dimension(:) :: freqs, t, Ntot, Inu, gg, sen_lum, &
       dt, nu_obs, t_obs, dg
    real(dp), allocatable, dimension(:, :) :: nu0, nn, jnut, jmbs, jssc, jeic, &
       ambs, anut, Qinj, Ddif
 
-   open(unit=77, file=params_file, iostat=ios)
-   if ( ios /= 0 ) call an_error("Paramo: Parameter file "//params_file//" could not be opened")
-   read(77, *) R
-   read(77, *) R0
-   read(77, *) d_lum
-   read(77, *) z
-   read(77, *) gamma_bulk
-   read(77, *) theta_obs
-   read(77, *) sigma
-   read(77, *) b_index
-   read(77, *) theta_e
-   read(77, *) zetae
-   read(77, *) tstep
-   read(77, *) tmax
-   read(77, *) L_j
-   read(77, *) eps_e
-   read(77, *) g1
-   read(77, *) g2
-   read(77, *) gmin
-   read(77, *) gmax
-   read(77, *) qind
-   read(77, *) nu_ext
-   read(77, *) uext
-   read(77, *) numin
-   read(77, *) numax
-   read(77, *) numbins
-   read(77, *) numdt
-   read(77, *) numdf
-   read(77, *) time_grid
-   close(77)
+   call read_params(params_file)
+   R = par_R
+   R0 = par_R0
+   d_lum = par_d_lum
+   z = par_z
+   gamma_bulk = par_gamma_bulk
+   theta_obs = par_theta_obs
+   zetae = par_zetae
+   tstep = par_tstep
+   tmax = par_tmax
+   L_j = par_L_j
+   eps_e = par_eps_e
+   eps_B = par_eps_B
+   sigma = par_sigma
+   g1 = par_g1
+   g2 = par_g2
+   gmin = par_gmin
+   gmax = par_gmax
+   qind = par_qind
+   nu_ext = par_nu_ext
+   uext = par_uext
+   numin = par_numin
+   numax = par_numax
+   numbins = par_numbins
+   numdt = par_numdt
+   numdf = par_numdf
+   time_grid = par_time_grid
+
 
    !  ####  ###### ##### #    # #####
    ! #      #        #   #    # #    #
@@ -85,10 +84,13 @@ subroutine Paramo(params_file, output_file, hyb_dis, with_cool, with_abs, with_s
    !   # #   ## #   #      #    # #    # #   ## #    #
    !   # #    # #   #       ####   ####  #    # #####
    beta_bulk = bofg(gamma_bulk)
+   mu_obs = dcos(theta_obs * pi / 180d0)
+   mu_com = mu_com_f(gamma_bulk, mu_obs)
+   D = Doppler(gamma_bulk, mu_obs)
 
    ! --->    External radiation field
-   nu_ext = nu_ext * gamma_bulk
-   uext = uext * gamma_bulk**2
+   nu_ext = nu_ext / D ! * gamma_bulk
+   uext = uext * gamma_bulk**2 * (1d0 + beta_bulk**2 / 3d0) !  Eq. (5.25) Dermer & Menon (2009)
 
    ! --->    Magnetic field
    L_B = sigma * L_j / (1d0 + sigma)
@@ -108,23 +110,23 @@ subroutine Paramo(params_file, output_file, hyb_dis, with_cool, with_abs, with_s
    else
       kappa = 1d0
       Qth = 0d0
-      Qnth = eps_e * (L_j - L_B) * pwl_norm(volume * mass_e * cLight**2, qind, g1, g2)
+      ! Qnth = eps_e * (L_j - L_B) * pwl_norm(volume * mass_e * cLight**2, qind - 1d0, g1, g2)
+      Qnth = eps_e * L_B * pwl_norm(volume * mass_e * cLight**2, qind - 1d0, g1, g2)
    end if
 
    write(*, *) ' ---> Simulation setup'
    write(*, *) ''
-   write(*, "('Q_nth =', ES15.7)") Qnth
-   write(*, "('Q_th  =', ES15.7)") Qth
-   write(*, "('t_esc =', ES15.7)") tesc
-   write(*, "('t_acc =', ES15.7)") tacc
-   write(*, "('B     =', ES15.7)") B
-   write(*, "('mu    =', ES15.7)") mu_mag
+   write(*, "('Doppler =', ES15.7)") D
+   write(*, "('Q_nth   =', ES15.7)") Qnth
+   write(*, "('Q_th    =', ES15.7)") Qth
+   write(*, "('t_dyn   =', ES15.7)") R / cLight
+   write(*, "('t_esc   =', ES15.7)") tesc
+   write(*, "('t_acc   =', ES15.7)") tacc
+   write(*, "('L_B     =', ES15.7)") L_B
+   write(*, "('u_B     =', ES15.7)") uB
+   write(*, "('B       =', ES15.7)") B
+   write(*, "('mu      =', ES15.7)") mu_mag
 
-
-   ! ----->>   Viewing angle
-   mu_obs = dcos(theta_obs * pi / 180d0)
-   mu_com = mu_com_f(gamma_bulk, mu_obs)
-   D = Doppler(gamma_bulk, mu_obs)
 
    build_f: do j=1,numdf
       nu_obs(j) = numin * ( (numax / numin)**(dble(j - 1) / dble(numdf - 1)) )
@@ -160,7 +162,7 @@ subroutine Paramo(params_file, output_file, hyb_dis, with_cool, with_abs, with_s
       case(1)
          t_obs(i) = tstep * ( (tmax / tstep)**(dble(i - 1) / dble(numdt - 1)) )
       case(2)
-         t_obs(i) = t(i - 1) + tstep / (nu0(max0(1, i - 1), numbins) * g2)
+         t_obs(i) = t_obs(i - 1) + tstep / (nu0(max0(1, i - 1), numbins) * g2)
       case(3)
          t_obs(i) = tmax * dble(i) / dble(numdt)
       case default

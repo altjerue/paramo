@@ -105,19 +105,6 @@ contains
 
 
    !
-   !   -----{   Power-law distribution Normalization   }-----
-   !
-   function pwl_norm(norm, index, e1, e2) result(k)
-      implicit none
-      real(dp), intent(in) :: norm, index, e1, e2
-      real(dp), parameter :: eps = 1e-9
-      real(dp) :: k, integ
-      integ = e1**(1.0 - index) * Pinteg(e2 / e1, index, eps)
-      k = 1d0 / (norm * integ)
-   end function pwl_norm
-
-
-   !
    !   -----{   Find gamma_1   }-----
    !
    function get_g1(g2, k, q) result(g1)

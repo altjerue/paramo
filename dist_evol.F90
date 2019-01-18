@@ -51,6 +51,19 @@ contains
    end function injection
 
 
+   !
+   !   -----{   Power-law distribution Normalization   }-----
+   !
+   function pwl_norm(norm, index, e1, e2) result(k)
+      implicit none
+      real(dp), intent(in) :: norm, index, e1, e2
+      real(dp), parameter :: eps = 1d-6
+      real(dp) :: k, integ
+      integ = e1**(1d0 - index) * Pinteg(e2 / e1, index, eps)
+      k = 1d0 / (norm * integ)
+   end function pwl_norm
+
+
    !  #######          ######
    !  #       # #    # #     # # ######
    !  #       # ##   # #     # # #
@@ -63,7 +76,7 @@ contains
       real(dp), intent(in) :: dt, tesc
       real(dp), intent(in), dimension(:) :: g, nin, nu0, DD, QQ
       real(dp), intent(out), dimension(:) :: nout
-      real(dp), parameter :: eps = 1e-4
+      real(dp), parameter :: eps = 1e-3
       integer :: i, Ng, Ng1
       real(dp), dimension(size(g)) :: gdot, dx, dxp2, dxm2, CCp2, CCm2, BBp2, BBm2, YYp2, YYm2, WWp2, WWm2, ZZp2, ZZm2, a, b, c, r
 
@@ -74,7 +87,7 @@ contains
       dxp2(:Ng1) = g(2:) - g(:Ng1)
       dxp2(Ng) = dxp2(Ng1)
       dxm2(2:) = dxp2(:Ng1)
-      dxm2(1) = dmin1(g(1) - 1d0, dxm2(2))
+      dxm2(1) = dxm2(2)
       dx = dsqrt(dxp2 * dxm2)
 
       CCp2(:Ng1) = 0.25d0 * (DD(2:) + DD(:Ng1))
@@ -84,28 +97,26 @@ contains
 
       BBp2(:Ng1) = 0.5d0 * ( (DD(2:) - DD(:Ng1)) / dxp2(:Ng1) - (gdot(2:) + gdot(:Ng1)) )
       BBm2(2:) = 0.5d0 * ( (DD(2:) - DD(:Ng1)) / dxm2(2:) - (gdot(2:) + gdot(:Ng1)) )
-      BBp2(Ng) = 0d0
-      BBm2(1) = 0d0
+      BBp2(Ng) = 0.5d0 * ( (DD(Ng) - DD(Ng1)) / dxp2(Ng) - (gdot(Ng) + gdot(Ng1)) )
+      BBm2(1) = 0.5d0 * ( (DD(2) - DD(1)) / dxm2(1) - (gdot(2) + gdot(1)) )
 
-      WWp2(:Ng1) = dxp2(:Ng1) * BBp2(:Ng1) / CCp2(:Ng1)
-      WWm2(2:) = dxm2(2:) * BBm2(2:) / CCm2(2:)
-      WWp2(Ng) = 0d0
-      WWm2(1) = 0d0
+      WWp2 = dxp2 * BBp2 / CCp2
+      WWm2 = dxm2 * BBm2 / CCm2
 
       do i = 1, Ng
       
-         if ( 0.5d0 * WWp2(i) > -lzero ) then
-            ZZp2(i) = dexp(-lzero)
-         else if ( 0.5d0 * WWp2(i) < lzero ) then
-            ZZp2(i) = dexp(lzero)
+         if ( 0.5d0 * WWp2(i) > 200d0 ) then
+            ZZp2(i) = dexp(200d0)
+         else if ( 0.5d0 * WWp2(i) < -200d0 ) then
+            ZZp2(i) = dexp(-200d0)
          else
             ZZp2(i) = dexp(0.5d0 * WWp2(i))
          end if
       
-         if ( 0.5d0 * WWm2(i) > -lzero ) then
-            ZZm2(i) = dexp(-lzero)
-         else if ( 0.5d0 * WWm2(i) < lzero ) then
-            ZZm2(i) = dexp(lzero)
+         if ( 0.5d0 * WWm2(i) > 200d0 ) then
+            ZZm2(i) = dexp(200d0)
+         else if ( 0.5d0 * WWm2(i) < -200d0 ) then
+            ZZm2(i) = dexp(-200d0)
          else
             ZZm2(i) = dexp(0.5d0 * WWm2(i))
          end if
@@ -149,25 +160,34 @@ contains
       dxp2(:Ng1) = g(2:) - g(:Ng1)
       dxp2(Ng) = dxp2(Ng1)
       dxm2(2:) = dxp2(:Ng1)
-      dxm2(1) = dmin1(g(1) - 1d0, dxm2(2))
+      dxm2(1) = dxm2(2)
       dx = dsqrt(dxp2 * dxm2)
 
       BBp2(:Ng1) = 0.5d0 * (gdot(2:) + gdot(:Ng1))
       BBm2(2:) = BBp2(:Ng1)
-      BBp2(Ng) = 0d0 !0.5d0 * gdot(Ng)
-      BBm2(1) = 0d0 !0.5d0 * gdot(1)
+      BBp2(Ng) = 0.5d0 * (gdot(Ng) + gdot(Ng1))
+      BBm2(1) = 0.5d0 * (gdot(2) + gdot(1))
 
       r = nin + dt * QQ
       a = zeros1D(Ng)
       c = -dt * BBp2 / dx
-      b = 1d0 + BBm2 * dt / dx !+ dt / tesc
+      b = 1d0 + BBm2 * dt / dx + dt / tesc
 
       call tridag_ser(a(2:), b, c(:Ng1), r, nout)
 
    end subroutine FP_FinDif_cool
 
 
+
+
+
+
+
 #if 0
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    subroutine FP_FinDif_difu2(dt, g, nin, nout, nu0, DD, QQ, tesc)
       implicit none
       real(dp), intent(in) :: dt, tesc

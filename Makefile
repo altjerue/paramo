@@ -92,20 +92,22 @@ LOPT=$(OPTIMIZATION) $(DEFS) $(LIBS)
 PARAMO=xParamo
 ITOBS=xITobs
 TESTS=xTests
+EBL=xEBL
 
 # -----  dependencies  -----
-PARAMO_OBJ = misc.o pwl_integ.o h5_inout.o K1.o K2.o SRtoolkit.o anaFormulae.o \
+PARAMO_OBJ = params.o misc.o pwl_integ.o h5_inout.o K1.o K2.o SRtoolkit.o anaFormulae.o \
 	radiation.o dist_evol.o Paramo.o paramo_main.o
 ITOBS_OBJ = misc.o h5_inout.o K2.o SRtoolkit.o pwl_integ.o anaFormulae.o \
 	radiation.o IofTobs.o
-TESTS_OBJ = misc.o pwl_integ.o h5_inout.o K1.o K2.o SRtoolkit.o anaFormulae.o \
+TESTS_OBJ = params.o misc.o pwl_integ.o h5_inout.o K1.o K2.o SRtoolkit.o anaFormulae.o \
 	radiation.o dist_evol.o tests.o
 
 # -----  rules  -----
-all: $(PARAMO) $(ITOBS)
+all: $(PARAMO) $(ITOBS) $(TESTS)
 
 # objects
 constants.o K2.o K1.o pwl_integ.o misc.o h5_inout.o: data_types.o
+params.o: data_types.o misc.o
 SRtoolkit.o: data_types.o constants.o K2.o
 magnetobrem.o: data_types.o constants.o h5_inout.o misc.o anaFormulae.o \
 	pwl_integ.o
