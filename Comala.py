@@ -14,7 +14,7 @@ class parameters(object):
 
     def rParams(self):
         # -----  PARAMETERS  -----
-        self.radius = 1e18                   # radius of emitting region (assuming spherical)
+        self.radius = 1e16                   # radius of emitting region (assuming spherical)
         self.pos_init = 1e15            # Distance from central engine
         self.dLum = 4.0793e26           # luminosity distance (default Mrk 421)
         self.z = 0.03                   # redshift (default Mrk 421)

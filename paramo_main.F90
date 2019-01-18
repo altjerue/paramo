@@ -24,7 +24,6 @@ program paramo_main
    !   ::::::::::   Opening parameters file   ::::::::::
    call get_command_argument(1, params_file)
 
-
    !    -----> With or without cooling
    call get_command_argument(2, HybDis)
    if ( HybDis == 'T' ) then

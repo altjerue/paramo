@@ -24,7 +24,7 @@ contains
 
       if ( .not. present(adiab) ) adiab = .true.
 
-      M0 = E0 / (G0 * cspeed**2)
+      M0 = E0 / (G0 * cLight**2)
       L = ( 17d0 * M0 / (16d0 * pi * mass_p * n) )**(1d0 / 3d0)
    
       Gshock = shock_Lorentz(t, E0, G0, n, L, adiab)
@@ -32,7 +32,7 @@ contains
       B = dsqrt(32d0 * pi * mass_p * eps_B * n) * Gshock * cLight
       
       n_bs = 4d0 * Gshock * n
-      ue_bs = 4d0 * Gshock**2 * n * mp * cspeed**2
+      ue_bs = 4d0 * Gshock**2 * n * mass_p * cLight**2
 
    contains
 

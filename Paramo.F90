@@ -13,13 +13,14 @@ subroutine Paramo(params_file, output_file, hyb_dis, with_cool, with_abs, with_s
    use K1
    use K2
    implicit none
+
    character(len=*), intent(in) :: output_file, params_file
    logical, intent(in) :: with_cool, with_abs, with_ssc, hyb_dis
    integer, parameter :: nmod = 10
    character(len=*), parameter :: screan_head = &
       '| Iteration |        Time |   Time step |    nu_0(g2) |       N_tot |'&
       //new_line('A')//&
-      ' ---------------------------------------------------------------------', &
+      ' ---------------------------------------------------------------------',&
       on_screen = "(' | ', I9, ' | ', ES11.4, ' | ', ES11.4, ' | ', ES11.4, ' | ', ES11.4, ' |')"
    integer(HID_T) :: file_id, group_id
    integer :: i, j, k, numbins, numdf, numdt, time_grid, herror
@@ -130,7 +131,7 @@ subroutine Paramo(params_file, output_file, hyb_dis, with_cool, with_abs, with_s
 
    build_f: do j=1,numdf
       nu_obs(j) = numin * ( (numax / numin)**(dble(j - 1) / dble(numdf - 1)) )
-      freqs(j) = nu_com_f(nu_obs(j), z, gamma_bulk, mu_com)
+      freqs(j) = nu_com_f(nu_obs(j), z, gamma_bulk, mu_obs)
    end do build_f
 
    build_g: do k = 1, numbins
@@ -246,23 +247,17 @@ subroutine Paramo(params_file, output_file, hyb_dis, with_cool, with_abs, with_s
 
       nu0(i, :) = 4d0 * sigmaT * (uB + urad) / (3d0 * mass_e * cLight)
 
-      ! #     #
-      ! ##    #         #####  ####  #####
-      ! # #   #           #   #    #   #
-      ! #  #  #           #   #    #   #
-      ! #   # #           #   #    #   #
-      ! #    ##           #   #    #   #
-      ! #     #           #    ####    #
-      !         #######
+      ! ----->   N_tot
       Ntot(i) = sum(nn(i, :) * dg, mask=nn(i, :) > 1d-200)
 
-      if ( mod(i, nmod) == 0 .or. i == 1 ) &
-         write(*, on_screen) i, t(i), dt(i), nu0(i, numbins), Ntot(i)
-
+      ! ----->   nu F_nu
       do j = 1, numdf
          tau = dmax1(1d-200, 2d0 * R * ambs(j, i))
          flux(j, i) = D**4 * volume * ( 3d0 * freqs(j) * opt_depth_blob(tau) * jmbs(j, i) / tau + freqs(j) * (jssc(j, i) + jeic(j, i)) ) / (4d0 * pi * d_lum**2)
       end do
+
+      if ( mod(i, nmod) == 0 .or. i == 1 ) &
+         write(*, on_screen) i, t(i), dt(i), nu0(i, numbins), Ntot(i)
 
    end do time_loop
 

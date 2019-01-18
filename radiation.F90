@@ -240,7 +240,7 @@ contains
       Nf = size(jnu, dim=1)
       tau = opt_depth(anu, s)
       !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
-      !$OMP& PRIVATE(j, Snu)
+      !$OMP& PRIVATE(j)
       do j = 1, Nf
          if ( anu(j) > 1d-100 ) then
             Inu(j) = 0.125d0 * opt_depth_blob(tau(j)) * jnu(j) / (pi * anu(j))

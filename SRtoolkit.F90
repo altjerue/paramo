@@ -204,7 +204,7 @@ contains
       implicit none
       real(dp), intent(in) :: gamma, mu
       real(dp) :: muo
-      muo = (mu + bofg(gamma)) / (1 + bofg(gamma) * mu)
+      muo = (mu + bofg(gamma)) / (1d0 + bofg(gamma) * mu)
    end function mu_obs_f
 
 
@@ -215,7 +215,7 @@ contains
       implicit none
       real(dp), intent(in) :: gamma, mu
       real(dp) :: muc
-      muc = (mu - bofg(gamma)) / (1 - bofg(gamma) * mu)
+      muc = (mu - bofg(gamma)) / (1d0 - bofg(gamma) * mu)
    end function mu_com_f
 
 
@@ -225,19 +225,16 @@ contains
    function nu_obs_s(nu, z, gamma, mu) result(nuobs)
       implicit none
       real(dp), intent(in) :: nu, z, gamma, mu
-      real(dp) :: D,nuobs
-      D = Doppler(gamma, mu)
-      nuobs = nu * D / (1d0 + z)
+      real(dp) ::nuobs
+      nuobs = nu * Doppler(gamma, mu) / (1d0 + z)
     end function nu_obs_s
 
     function nu_obs_v(nu, z, gamma, mu) result(nuobs)
       implicit none
       real(dp), intent(in) :: z, gamma, mu
       real(dp), intent(in), dimension(:) :: nu
-      real(dp) :: D
       real(dp), dimension(size(nu)) :: nuobs
-      D = Doppler(gamma, mu)
-      nuobs = nu * D / (1d0 + z)
+      nuobs = nu * Doppler(gamma, mu) / (1d0 + z)
     end function nu_obs_v
 
 
@@ -247,19 +244,16 @@ contains
    function nu_com_s(nu, z, gamma, mu) result(nucom)
       implicit none
       real(dp), intent(in) :: nu, z, gamma, mu
-      real(dp) :: D,nucom
-      D = Doppler(gamma, mu)
-      nucom = nu * (1d0 + z) / D
+      real(dp) :: nucom
+      nucom = nu * (1d0 + z) / Doppler(gamma, mu)
    end function nu_com_s
 
     function nu_com_v(nu, z, gamma, mu) result(nucom)
       implicit none
       real(dp), intent(in) :: z, gamma, mu
       real(dp), intent(in), dimension(:) :: nu
-      real(dp) :: D
       real(dp), dimension(size(nu)) :: nucom
-      D = Doppler(gamma, mu)
-      nucom = nu * (1d0 + z) / D
+      nucom = nu * (1d0 + z) / Doppler(gamma, mu)
    end function nu_com_v
 
 
