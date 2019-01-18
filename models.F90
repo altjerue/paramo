@@ -3,7 +3,6 @@ module models
    use constants
    implicit none
 contains
-   !
    !  #####  ######  #     #  #####   #####
    ! #     # #     # ##    # #     # #     #
    ! #       #     # # #   # #     # #     #
@@ -11,7 +10,6 @@ contains
    !       # #       #   # #       # #     #
    ! #     # #       #    ## #     # #     #
    !  #####  #       #     #  #####   #####
-   !
    subroutine shock_afterglow(t, G0, E0, eps_e, eps_B, n, B, Gshock, Rshock, n_bs, ue_bs, adiab)
       ! ************************************************************************
       !  Description:

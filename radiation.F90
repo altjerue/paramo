@@ -236,7 +236,6 @@ contains
       real(dp), intent(in), dimension(:) :: jnu, anu
       real(dp), intent(out), dimension(:) :: Inu
       integer :: j, Nf
-      real(dp) :: Snu
       real(dp), dimension(size(jnu, dim=1)) :: tau
       Nf = size(jnu, dim=1)
       tau = opt_depth(anu, s)

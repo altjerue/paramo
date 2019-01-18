@@ -23,9 +23,6 @@ ifeq ($(BROWN),1)
 endif
 
 
-
-
-
 # optimization level
 ifeq ($(DBG),1)
 
@@ -90,20 +87,19 @@ LOPT=$(OPTIMIZATION) $(DEFS) $(LIBS)
 
 # -----  executables  -----
 PARAMO=xParamo
-ITOBS=xITobs
 TESTS=xTests
-EBL=xEBL
+AFGLOW=xAfterglow
 
 # -----  dependencies  -----
-PARAMO_OBJ = params.o misc.o pwl_integ.o h5_inout.o K1.o K2.o SRtoolkit.o anaFormulae.o \
-	radiation.o dist_evol.o Paramo.o paramo_main.o
-ITOBS_OBJ = misc.o h5_inout.o K2.o SRtoolkit.o pwl_integ.o anaFormulae.o \
-	radiation.o IofTobs.o
-TESTS_OBJ = params.o misc.o pwl_integ.o h5_inout.o K1.o K2.o SRtoolkit.o anaFormulae.o \
-	radiation.o dist_evol.o tests.o
+PARAMO_OBJ = params.o misc.o pwl_integ.o h5_inout.o K1.o K2.o SRtoolkit.o \
+	anaFormulae.o radiation.o dist_evol.o Paramo.o paramo_main.o
+TESTS_OBJ = params.o misc.o pwl_integ.o h5_inout.o K1.o K2.o SRtoolkit.o \
+	anaFormulae.o radiation.o dist_evol.o tests.o
+AFGLOW_OBJ = params.o misc.o pwl_integ.o h5_inout.o K1.o K2.o SRtoolkit.o \
+	anaFormulae.o radiation.o dist_evol.o afterglow.o
 
 # -----  rules  -----
-all: $(PARAMO) $(ITOBS) $(TESTS)
+all: $(PARAMO) $(TESTS) $(AFGLOW)
 
 # objects
 constants.o K2.o K1.o pwl_integ.o misc.o h5_inout.o: data_types.o
@@ -111,7 +107,6 @@ params.o: data_types.o misc.o
 SRtoolkit.o: data_types.o constants.o K2.o
 magnetobrem.o: data_types.o constants.o h5_inout.o misc.o anaFormulae.o \
 	pwl_integ.o
-IofTobs.o: data_types.o h5_inout.o SRtoolkit.o pwl_integ.o radiation.o
 Paramo.o: data_types.o constants.o misc.o pwl_integ.o h5_inout.o SRtoolkit.o \
 	anaFormulae.o magnetobrem.o radiation.o dist_evol.o K1.o K2.o
 paramo_main.o: data_types.o misc.o magnetobrem.o Paramo.o
@@ -126,11 +121,12 @@ tests.o: data_types.o constants.o misc.o pwl_integ.o h5_inout.o SRtoolkit.o \
 $(PARAMO): data_types.o constants.o $(PARAMO_OBJ)
 	$(FC) $(LOPT) -o $@ $^
 
-$(ITOBS): data_types.o constants.o $(ITOBS_OBJ)
-	$(FC) $(LOPT) -o $@ $^
-
 $(TESTS): data_types.o constants.o $(TESTS_OBJ)
 	$(FC) $(LOPT) -o $@ $^
+
+$(AFGLOW): data_types.o constants.o $(AFGLOW_OBJ)
+	$(FC) $(LOPT) -o $@ $^
+
 
 %.o: %.F90
 	$(FC) $(COPT) $(DEFS) $< -o $@

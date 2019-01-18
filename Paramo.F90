@@ -22,15 +22,15 @@ subroutine Paramo(params_file, output_file, hyb_dis, with_cool, with_abs, with_s
       ' ---------------------------------------------------------------------', &
       on_screen = "(' | ', I9, ' | ', ES11.4, ' | ', ES11.4, ' | ', ES11.4, ' | ', ES11.4, ' |')"
    integer(HID_T) :: file_id, group_id
-   integer :: i, j, k, numbins, numdf, numdt, ios, time_grid, herror
+   integer :: i, j, k, numbins, numdf, numdt, time_grid, herror
    real(dp) :: uB, uext, urad, R, L_j, gmin, gmax, numin, numax, qind, B, &
       tacc, g1, g2, tstep, zetae, Qth, Qnth, theta_e, tmax, d_lum, z, D, &
       gamma_bulk, theta_obs, R0, b_index, mu_obs, mu_com, nu_ext, tesc, kappa, &
-      volume, sigma, beta_bulk, eps_e, L_B, mu_mag, Iind, eps_B
+      volume, sigma, beta_bulk, eps_e, L_B, mu_mag, Iind, eps_B, tau
    real(dp), allocatable, dimension(:) :: freqs, t, Ntot, Inu, gg, sen_lum, &
       dt, nu_obs, t_obs, dg
    real(dp), allocatable, dimension(:, :) :: nu0, nn, jnut, jmbs, jssc, jeic, &
-      ambs, anut, Qinj, Ddif
+      ambs, anut, Qinj, Ddif, flux
 
    call read_params(params_file)
    R = par_R
@@ -72,7 +72,7 @@ subroutine Paramo(params_file, output_file, hyb_dis, with_cool, with_abs, with_s
    allocate(nn(0:numdt, numbins), nu0(0:numdt, numbins), gg(numbins), &
       ambs(numdf, numdt), jmbs(numdf, numdt), jnut(numdf, numdt), &
       jssc(numdf, numdt), anut(numdf, numdt), jeic(numdf, numdt), &
-      Qinj(numdt, numbins), Ddif(numdt, numbins))
+      Qinj(numdt, numbins), Ddif(numdt, numbins), flux(numdf, numdt))
 
    call K1_init
    call K2_init
@@ -259,6 +259,11 @@ subroutine Paramo(params_file, output_file, hyb_dis, with_cool, with_abs, with_s
       if ( mod(i, nmod) == 0 .or. i == 1 ) &
          write(*, on_screen) i, t(i), dt(i), nu0(i, numbins), Ntot(i)
 
+      do j = 1, numdf
+         tau = dmax1(1d-200, 2d0 * R * ambs(j, i))
+         flux(j, i) = D**4 * volume * ( 3d0 * freqs(j) * opt_depth_blob(tau) * jmbs(j, i) / tau + freqs(j) * (jssc(j, i) + jeic(j, i)) ) / (4d0 * pi * d_lum**2)
+      end do
+
    end do time_loop
 
 
@@ -324,6 +329,7 @@ subroutine Paramo(params_file, output_file, hyb_dis, with_cool, with_abs, with_s
    call h5io_wdble2(file_id, 'jeic', jeic, herror)
    call h5io_wdble2(file_id, 'anut', anut, herror)
    call h5io_wdble2(file_id, 'ambs', ambs, herror)
+   call h5io_wdble2(file_id, 'flux', flux, herror)
    call h5io_wdble2(file_id, 'distrib', nn(1:, :), herror)
    call h5io_wdble2(file_id, 'nu0_tot', nu0(1:, :), herror)
 

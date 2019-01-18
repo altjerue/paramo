@@ -1,4 +1,4 @@
-program EBL_GRBs
+program afterglow
    use data_types
    use constants
    use params
@@ -26,7 +26,7 @@ program EBL_GRBs
    real(dp) :: uB, uext, urad, R, L_j, gmin, gmax, numin, numax, qind, B, &
       tacc, g1, g2, tstep, zetae, Qth, Qnth, theta_e, tmax, d_lum, z, D, &
       gamma_bulk, theta_obs, R0, b_index, mu_obs, mu_com, nu_ext, tesc, kappa, &
-      volume, sigma, beta_bulk, eps_e, L_B, mu_mag, Iind
+      volume, sigma, beta_bulk, eps_e, eps_B, mu_mag, E0
    real(dp), allocatable, dimension(:) :: freqs, t, Ntot, Inu, gg, sen_lum, &
       dt, nu_obs, t_obs, dg
    real(dp), allocatable, dimension(:, :) :: nu0, nn, jnut, jmbs, jssc, jeic, &
@@ -50,23 +50,17 @@ program EBL_GRBs
    call K1_init
    call K2_init
 
-   E0 = 1e55
+   E0 = 1d55
    n_ext = 0.1d0
    eps_e = par_eps_e
    eps_B = par_eps_B
    gamma_bulk0 = par_gamma_bulk
-   d_L = par_d_lum
+   d_lum = par_d_lum
    theta = par_theta_obs
    z = par_z
    mu_obs = dcos(theta * pi / 180d0)
+   nu_ext = nu_ext / D ! * gamma_bul
 
-
-   nu_ext = nu_ext / D ! * gamma_bulk
-   uext = uext * gamma_bulk**2 * (1d0 + beta_bulk**2 / 3d0) !  Eq. (5.25) Dermer & Menon (2009)
-
-   nu0 = 4d0 * sigmaT * uB / (3d0 * mass_e * cLight)
-
-   ! --->   Injection of particles
    tesc = 1d200
    tacc = 0.5d0 * R / cLight
 
@@ -139,14 +133,9 @@ program EBL_GRBs
       y = 125d0
       ! u_ph = 7.5d-7
       u_ext = y * u_B / gamma_bulk**2
-      nu_ext = 
+      nu0 = 4d0 * sigmaT * uB / (3d0 * mass_e * cLight)
 
-      !  ###### ###### #####
-      !  #      #      #    #
-      !  #####  #####  #    #
-      !  #      #      #    #
-      !  #      #      #    #
-      !  ###### ###### #####
+
       Qinj(i, :) = injection(t(i), tacc, gg, g1, g2, qind, theta_e, Qth, Qnth)
       Ddif(i, :) = 1d-200 !0.5d0 * gg**2 / tacc !
       call FP_FinDif_difu(dt(i), gg, nn(i - 1, :), nn(i, :), nu0(i - 1, :), Ddif(i, :), Qinj(i, :), tesc)
@@ -220,7 +209,7 @@ program EBL_GRBs
       D = Doppler(gamma_bulk, mu_obs)
       do j = 1, numdf
          tau = dmax1(1d-200, 2d0 * R * ambs(j, i))
-         flux(j, i) = D**4 * volume * ( 3d0 * nu(j) * opt_depth_blob(tau) * jmbs(j, i) / tau + nu(j) * (jssc(j, i) + jeic(j, i)) ) / (4d0 * pi * d_L**2)
+         flux(j, i) = D**4 * volume * ( 3d0 * nu(j) * opt_depth_blob(tau) * jmbs(j, i) / tau + nu(j) * (jssc(j, i) + jeic(j, i)) ) / (4d0 * pi * d_lum**2)
       end do
 
    end do time_loop
@@ -295,10 +284,7 @@ program EBL_GRBs
    call h5io_closef(file_id, herror)
    call h5close_f(herror)
 
-   write(*,*) '=======  FINISHED  ======='
+   write(*, "('==========  FINISHED  ==========')")
    write(*,*) ''
 
-
-   write(*, "('==========  FINISHED  ==========')")
-
-end program EBL_GRBs
+end program afterglow
