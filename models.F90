@@ -72,7 +72,7 @@ contains
          end if
 
          if ( ad ) then
-            Gsh = dmax1(1d0, ( 17d0 * E / (1024d0 * pi * mass_p * nn * cLight**5 * tt**3) )**0.125)
+            Gsh = dmax1(1d0, ( 17d0 * E / (1024d0 * pi * mass_p * nn * cLight**5 * tt**3) )**0.125d0)
          else
             Gsh = dmax1(1d0, ( 4d0 * cLight * tt / LL)**(-3d0 / 7d0))
          end if

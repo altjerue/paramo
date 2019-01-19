@@ -26,7 +26,7 @@ subroutine Paramo(params_file, output_file, hyb_dis, with_cool, with_abs, with_s
    integer :: i, j, k, numbins, numdf, numdt, time_grid, herror
    real(dp) :: uB, uext, urad, R, L_j, gmin, gmax, numin, numax, qind, B, &
       tacc, g1, g2, tstep, zetae, Qth, Qnth, theta_e, tmax, d_lum, z, D, &
-      gamma_bulk, theta_obs, R0, b_index, mu_obs, mu_com, nu_ext, tesc, kappa, &
+      gamma_bulk, theta_obs, R0, b_index, mu_obs, nu_ext, tesc, kappa, &
       volume, sigma, beta_bulk, eps_e, L_B, mu_mag, Iind, eps_B, tau
    real(dp), allocatable, dimension(:) :: freqs, t, Ntot, Inu, gg, sen_lum, &
       dt, nu_obs, t_obs, dg
@@ -39,7 +39,6 @@ subroutine Paramo(params_file, output_file, hyb_dis, with_cool, with_abs, with_s
    d_lum = par_d_lum
    z = par_z
    gamma_bulk = par_gamma_bulk
-   theta_obs = par_theta_obs
    zetae = par_zetae
    tstep = par_tstep
    tmax = par_tmax
@@ -84,9 +83,9 @@ subroutine Paramo(params_file, output_file, hyb_dis, with_cool, with_abs, with_s
    !   # #  # # #   #      #      #    # #  # # #    #
    !   # #   ## #   #      #    # #    # #   ## #    #
    !   # #    # #   #       ####   ####  #    # #####
+   theta_obs = 1d0 / gamma_bulk ! par_theta_obs * pi / 180d0
    beta_bulk = bofg(gamma_bulk)
-   mu_obs = dcos(theta_obs * pi / 180d0)
-   mu_com = mu_com_f(gamma_bulk, mu_obs)
+   mu_obs = dcos(theta_obs)
    D = Doppler(gamma_bulk, mu_obs)
 
    ! --->    External radiation field
@@ -117,16 +116,17 @@ subroutine Paramo(params_file, output_file, hyb_dis, with_cool, with_abs, with_s
 
    write(*, *) ' ---> Simulation setup'
    write(*, *) ''
-   write(*, "('Doppler =', ES15.7)") D
-   write(*, "('Q_nth   =', ES15.7)") Qnth
-   write(*, "('Q_th    =', ES15.7)") Qth
-   write(*, "('t_dyn   =', ES15.7)") R / cLight
-   write(*, "('t_esc   =', ES15.7)") tesc
-   write(*, "('t_acc   =', ES15.7)") tacc
-   write(*, "('L_B     =', ES15.7)") L_B
-   write(*, "('u_B     =', ES15.7)") uB
-   write(*, "('B       =', ES15.7)") B
-   write(*, "('mu      =', ES15.7)") mu_mag
+   write(*, "('theta_obs =', ES15.7)") theta_obs
+   write(*, "('Doppler   =', ES15.7)") D
+   write(*, "('Q_nth     =', ES15.7)") Qnth
+   write(*, "('Q_th      =', ES15.7)") Qth
+   write(*, "('t_dyn     =', ES15.7)") R / cLight
+   write(*, "('t_esc     =', ES15.7)") tesc
+   write(*, "('t_acc     =', ES15.7)") tacc
+   write(*, "('L_B       =', ES15.7)") L_B
+   write(*, "('u_B       =', ES15.7)") uB
+   write(*, "('B         =', ES15.7)") B
+   write(*, "('mu        =', ES15.7)") mu_mag
 
 
    build_f: do j=1,numdf

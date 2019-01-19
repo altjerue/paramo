@@ -26,9 +26,10 @@ class parameters(object):
         self.zeta_e = 0.99
         self.tstep = 1e-2               # time step factor
         self.tmax = 1e5                 # maximum time
-        self.L_j = 1e45                # num. dens. of particles injected per second
+        self.tvar = 2e0                 # variability time scale
+        self.L_j = 1e45                 # num. dens. of particles injected per second
         self.eps_e = 0.1                # epsilon_e
-        self.eps_B = 0.03                # epsilon_B
+        self.eps_B = 0.03               # epsilon_B
         self.g1 = 1e2                   # power-law min Lorentz factor
         self.g2 = 1e4                   # power-law max Lorentz factor
         self.gmin = 1.01                # EED minimum Lorentz factor
@@ -63,7 +64,8 @@ class parameters(object):
             print(fortran_double(self.zeta_e), ' ! fraction of nonthermal electrons', file=f)
             print(fortran_double(self.tstep), ' ! time step factor', file=f)
             print(fortran_double(self.tmax), ' ! maximum time', file=f)
-            print(fortran_double(self.L_j), ' ! injection luminosity', file=f)
+            print(fortran_double(self.tvar), ' ! variability time scale', file=f)
+            print(fortran_double(self.L_j), ' ! jet luminosity', file=f)
             print(fortran_double(self.eps_e), ' ! epsilon_e', file=f)
             print(fortran_double(self.eps_B), ' ! epsilon_B', file=f)
             print(fortran_double(self.g1), ' ! power-law min Lorentz factor', file=f)
@@ -273,17 +275,17 @@ class Paramo(object):
         return run_cmd, args
 
 
-class ITobs(object):
+class Aglow(object):
 
     def __init__(self, paramo_file, comp_kw={}):
-        self.comp = compiler(rules='xITobs', **comp_kw)
+        self.comp = compiler(rules='xAglow', **comp_kw)
         self.Pfile = paramo_file
         self.cwd = os.getcwd()
 
-    def run_ITobs(self, pream=None):
+    def run_Aglow(self, pream=None):
         self.comp.compile()
         if pream is None:
-            run_cmd = '{0}xITobs {1}'.format(self.comp.compile_dir, self.Pfile)
+            run_cmd = '{0}xAglow {1}'.format(self.comp.compile_dir, self.Pfile)
         else:
             run_cmd = '{0} {1}xITobs {2}'.format(pream, self.comp.compile_dir, self.Pfile)
         print("\n--> Running:\n  ", run_cmd, "\n")

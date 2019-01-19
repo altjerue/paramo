@@ -7,12 +7,12 @@ module params
    real(dp) :: par_R, par_R0, par_d_lum, par_z, par_gamma_bulk, par_theta_obs, &
       par_sigma, par_b_index, par_theta_e, par_zetae, par_tstep, par_tmax, &
       par_L_j, par_eps_e, par_eps_B, par_g1, par_g2, par_gmin, par_gmax, &
-      par_qind, par_nu_ext, par_uext, par_numin, par_numax
+      par_qind, par_nu_ext, par_uext, par_numin, par_numax, par_tvar
    public :: par_numbins, par_numdt, par_numdf, par_time_grid, par_R, par_R0, &
       par_d_lum, par_z, par_gamma_bulk, par_theta_obs, par_sigma, par_b_index, &
       par_theta_e, par_zetae, par_tstep, par_tmax, par_L_j, par_eps_e, &
       par_eps_B, par_g1, par_g2, par_gmin, par_gmax, par_qind, par_nu_ext, &
-      par_uext, par_numin, par_numax
+      par_uext, par_numin, par_numax, par_tvar
 
 contains
 
@@ -34,6 +34,7 @@ contains
       read(77, *) par_zetae
       read(77, *) par_tstep
       read(77, *) par_tmax
+      read(77, *) par_tvar
       read(77, *) par_L_j
       read(77, *) par_eps_e
       read(77, *) par_eps_B
