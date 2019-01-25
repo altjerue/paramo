@@ -129,7 +129,7 @@ subroutine afterglow(params_file, output_file, with_cool)
          dt(i) = t(i) - t(i - 1)
       end if
       R = bw_radius / gamma_bulk
-      tesc = 1.5d0 * R / cLight
+      tesc = 1.1d0 * R / cLight
       B = dsqrt(32d0 * pi * mass_p * eps_B * n_ext) * gamma_bulk * cLight
       uB = 0.125d0 * B**2 / pi
       volume = 4d0 * pi * R**3 / 3d0
