@@ -1,6 +1,7 @@
 module models
    use data_types
    use constants
+   use SRtoolkit
    implicit none
 contains
    !  #####  ######  #     #  #####   #####
@@ -10,29 +11,31 @@ contains
    !       # #       #   # #       # #     #
    ! #     # #       #    ## #     # #     #
    !  #####  #       #     #  #####   #####
-   subroutine shock_afterglow(t, G0, E0, eps_e, eps_B, n, B, Gshock, Rshock, n_bs, ue_bs, adiab)
+   subroutine shock_afterglow(t, G0, E0, n, Gshock, Rshock, adiab)
       ! ************************************************************************
       !  Description:
       !     This is the setup for the model in Sari, Piran & Narayan, 1998,
       !     ApJ, 497, L17.
       ! ************************************************************************
       implicit none
-      real(dp), intent(in) :: eps_e, eps_B, t, G0, E0, n
-      real(dp), intent(out) :: B, Gshock, Rshock, n_bs, ue_bs
+      real(dp), intent(in) :: t, G0, E0, n
+      real(dp), intent(out) :: Gshock, Rshock!, n_bs, ue_b
       logical, optional, value :: adiab
-      real(dp) :: M0,L
+      real(dp) :: M0, L
 
       if ( .not. present(adiab) ) adiab = .true.
 
       M0 = E0 / (G0 * cLight**2)
       L = ( 17d0 * M0 / (16d0 * pi * mass_p * n) )**(1d0 / 3d0)
-   
-      Gshock = shock_Lorentz(t, E0, G0, n, L, adiab)
-      Rshock = shock_radius(t, E0, n, L, adiab)
-      B = dsqrt(32d0 * pi * mass_p * eps_B * n) * Gshock * cLight
-      
-      n_bs = 4d0 * Gshock * n
-      ue_bs = 4d0 * Gshock**2 * n * mass_p * cLight**2
+      ! if ( 4d0 * G0**2 * cLight * t <= L ) then
+      !    Gshock = G0
+      !    Rshock = 4d0 * G0**2 * cLight * t
+      ! else
+         Gshock = shock_Lorentz(t, E0, n, L, adiab)
+         Rshock = shock_radius(t, E0, n, L, adiab)
+      ! end if
+      ! n_bs = 4d0 * Gshock * n
+      ! ue_bs = 4d0 * Gshock**2 * n * mass_p * cLight**2
 
    contains
 
@@ -53,23 +56,18 @@ contains
          logical, intent(in) :: ad
          real(dp) :: R
          if ( ad ) then
-            R = ( 17d0 * E * tt / (4d0 * pi * mass_p * nn * cLight) )**0.25
+            R = ( 17d0 * E * tt / (4d0 * pi * mass_p * nn * cLight) )**0.25d0
          else
             R = ( 4d0 * cLight * tt / LL)**(1d0 / 7d0) * LL
          end if
       end function shock_radius
 
 
-      function shock_Lorentz(tt, E, G, nn, LL, ad) result(Gsh)
+      function shock_Lorentz(tt, E, nn, LL, ad) result(Gsh)
          implicit none
-         real(dp), intent(in) :: E, G, nn, tt, LL
+         real(dp), intent(in) :: E, nn, tt, LL
          logical, intent(in) :: ad
          real(dp) :: Gsh
-
-         if ( tt <= 0d0 ) then
-            Gsh = G
-            return
-         end if
 
          if ( ad ) then
             Gsh = dmax1(1d0, ( 17d0 * E / (1024d0 * pi * mass_p * nn * cLight**5 * tt**3) )**0.125d0)

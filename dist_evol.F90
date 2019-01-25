@@ -71,20 +71,22 @@ contains
    !  #       # #  # # #     # # #
    !  #       # #   ## #     # # #
    !  #       # #    # ######  # #
-   subroutine FP_FinDif_difu(dt, g, nin, nout, nu0, DD, QQ, tesc)
+   subroutine FP_FinDif_difu(dt, g, nin, nout, nu0, DD, QQ, AA, tesc)
       implicit none
-      real(dp), intent(in) :: dt, tesc
+      real(dp), intent(in) :: dt, tesc, AA
       real(dp), intent(in), dimension(:) :: g, nin, nu0, DD, QQ
       real(dp), intent(out), dimension(:) :: nout
       real(dp), parameter :: eps = 1e-3
       integer :: i, Ng, Ng1
-      real(dp), dimension(size(g)) :: gdot, dx, dxp2, dxm2, CCp2, CCm2, BBp2, BBm2, YYp2, YYm2, WWp2, WWm2, ZZp2, ZZm2, a, b, c, r
+      real(dp) :: dBB
+      real(dp), dimension(size(g)) :: gdot, dx, dxp2, dxm2, CCp2, CCm2, BBp2, BBm2, YYp2, YYm2, WWp2, WWm2, ZZp2, ZZm2, a, b, c, r, x
 
       Ng = size(g)
       Ng1 = Ng - 1
 
-      gdot = nu0 * g**2
-      dxp2(:Ng1) = g(2:) - g(:Ng1)
+      gdot = - nu0 * g**2 - AA * g
+      x = g - 1d0
+      dxp2(:Ng1) = x(2:) - x(:Ng1)
       dxp2(Ng) = dxp2(Ng1)
       dxm2(2:) = dxp2(:Ng1)
       dxm2(1) = dxm2(2)
@@ -95,10 +97,10 @@ contains
       CCp2(Ng) = 0.25d0 * DD(Ng)
       CCm2(1) = 0.25d0 * DD(1)
 
-      BBp2(:Ng1) = 0.5d0 * ( (DD(2:) - DD(:Ng1)) / dxp2(:Ng1) - (gdot(2:) + gdot(:Ng1)) )
-      BBm2(2:) = 0.5d0 * ( (DD(2:) - DD(:Ng1)) / dxm2(2:) - (gdot(2:) + gdot(:Ng1)) )
-      BBp2(Ng) = 0.5d0 * ( (DD(Ng) - DD(Ng1)) / dxp2(Ng) - (gdot(Ng) + gdot(Ng1)) )
-      BBm2(1) = 0.5d0 * ( (DD(2) - DD(1)) / dxm2(1) - (gdot(2) + gdot(1)) )
+      BBp2(:Ng1) = 0.5d0 * ( (DD(2:) - DD(:Ng1)) / dxp2(:Ng1) + (gdot(2:) + gdot(:Ng1)) )
+      BBm2(2:) = 0.5d0 * ( (DD(2:) - DD(:Ng1)) / dxm2(2:) + (gdot(2:) + gdot(:Ng1)) )
+      BBp2(Ng) = 0.5d0 * ( (DD(Ng) - DD(Ng1)) / dxp2(Ng) + (gdot(Ng) + gdot(Ng1)) )
+      call polint(x(2:), BBm2(2:), x(1), BBm2(1), dBB)
 
       WWp2 = dxp2 * BBp2 / CCp2
       WWm2 = dxm2 * BBm2 / CCm2
@@ -106,43 +108,47 @@ contains
       do i = 1, Ng
       
          if ( 0.5d0 * WWp2(i) > 200d0 ) then
-            ZZp2(i) = dexp(200d0)
+            ZZp2(i) = 200d0
          else if ( 0.5d0 * WWp2(i) < -200d0 ) then
-            ZZp2(i) = dexp(-200d0)
+            ZZp2(i) = -200d0
          else
-            ZZp2(i) = dexp(0.5d0 * WWp2(i))
+            ZZp2(i) = 0.5d0 * WWp2(i)
          end if
       
          if ( 0.5d0 * WWm2(i) > 200d0 ) then
-            ZZm2(i) = dexp(200d0)
+            ZZm2(i) = 200d0
          else if ( 0.5d0 * WWm2(i) < -200d0 ) then
-            ZZm2(i) = dexp(-200d0)
+            ZZm2(i) = -200d0
          else
-            ZZm2(i) = dexp(0.5d0 * WWm2(i))
+            ZZm2(i) = 0.5d0 * WWm2(i)
          end if
 
-         if ( 127d0 * WWp2(i)**8 < eps * 154828800d0 ) then
+         ! if ( 127d0 * WWp2(i)**8 < eps * 154828800d0 ) then
+         if ( dabs(WWp2(i)) < 0.1d0 ) then
             YYp2(i) = 1d0 - WWp2(i)**2 / 24d0 + 7d0 * WWp2(i)**4 / 5760d0 - 31d0 * WWp2(i)**6 / 967680d0
          else
-            YYp2(i) = WWp2(i) / ( (1d0 - 1d0 / ZZp2(i)**2 ) * ZZp2(i) )
+            YYp2(i) = dabs(WWp2(i)) * dexp(-dabs(ZZp2(i))) / ( 1d0 - dexp(-2d0 * dabs(ZZp2(i))) )
+            ! YYp2(i) = dabs(WWp2(i)) / ( (1d0 - 1d0 / ZZp2(i)**2 ) * ZZp2(i) )
          end if
 
-         if ( 127d0 * WWm2(i)**8 < eps * 154828800d0 ) then
+         ! if ( 127d0 * WWm2(i)**8 < eps * 154828800d0 ) then
+         if ( dabs(WWm2(i)) < 0.1d0 ) then
             YYm2(i) = 1d0 - WWm2(i)**2 / 24d0 + 7d0 * WWm2(i)**4 / 5760d0 - 31d0 * WWm2(i)**6 / 967680d0
          else
-            YYm2(i) = WWm2(i) / ( (1d0 - 1d0 / ZZm2(i)**2 ) * ZZm2(i) )
+            YYm2(i) = dabs(WWm2(i)) / ( dexp(dabs(ZZm2(i))) - dexp(-dabs(ZZm2(i))) )
          end if
       
       end do
 
       r = nin + dt * QQ
-      c = -dt * CCp2 * YYp2 / (dx * dxp2 * ZZp2)
-      a = -dt * CCm2 * YYm2 * ZZm2 / (dx * dxm2)
-      b = 1d0 + dt * ( CCp2 * YYp2 * ZZp2 / dxp2 + CCm2 * YYm2 / (dxm2 * ZZm2) ) / dx + dt / tesc
+      c = -dt * CCp2 * YYp2 * dexp(-ZZp2)/ (dx * dxp2)
+      a = -dt * CCm2 * YYm2 * dexp(ZZm2) / (dx * dxm2)
+      b = 1d0 + dt * ( CCp2 * YYp2 * dexp(ZZp2) / dxp2 + CCm2 * YYm2 * dexp(-ZZm2) / dxm2 ) / dx + dt / tesc
 
       call tridag_ser(a(2:), b, c(:Ng1), r, nout)
 
    end subroutine FP_FinDif_difu
+
 
 
    subroutine FP_FinDif_cool(dt, g, nin, nout, nu0, QQ, tesc)

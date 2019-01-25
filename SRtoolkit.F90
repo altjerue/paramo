@@ -283,11 +283,11 @@ contains
    !
    ! NOTE: Argument 'x' is the position in the comoving frame
    !
-   function t_com_s(t, z, gamma, x, muo) result(tcom)
+   function t_com_s(tobs, z, gamma, x, muo) result(tcom)
       implicit none
-      real(dp), intent(in) :: t, z, gamma, x, muo
+      real(dp), intent(in) :: tobs, z, gamma, x, muo
       real(dp) :: tcom
-      tcom = Doppler(gamma, muo) * ((t / (1d0 + z)) + (gamma * x * (muo - bofg(gamma))) / cLight)
+      tcom = Doppler(gamma, muo) * ((tobs / (1d0 + z)) + (gamma * x * (muo - bofg(gamma))) / cLight)
    end function t_com_s
 
    function t_com_v(t, z, gamma, x, muo) result(tcom)

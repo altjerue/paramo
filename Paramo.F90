@@ -27,7 +27,7 @@ subroutine Paramo(params_file, output_file, hyb_dis, with_cool, with_abs, with_s
    real(dp) :: uB, uext, urad, R, L_j, gmin, gmax, numin, numax, qind, B, &
       tacc, g1, g2, tstep, zetae, Qth, Qnth, theta_e, tmax, d_lum, z, D, &
       gamma_bulk, theta_obs, R0, b_index, mu_obs, nu_ext, tesc, kappa, &
-      volume, sigma, beta_bulk, eps_e, L_B, mu_mag, Iind, eps_B, tau
+      volume, sigma, beta_bulk, eps_e, L_B, mu_mag, Iind, eps_B
    real(dp), allocatable, dimension(:) :: freqs, t, Ntot, Inu, gg, sen_lum, &
       dt, nu_obs, t_obs, dg
    real(dp), allocatable, dimension(:, :) :: nu0, nn, jnut, jmbs, jssc, jeic, &
@@ -161,15 +161,15 @@ subroutine Paramo(params_file, output_file, hyb_dis, with_cool, with_abs, with_s
 
       select case(time_grid)
       case(1)
-         t_obs(i) = tstep * ( (tmax / tstep)**(dble(i - 1) / dble(numdt - 1)) )
+         t(i) = tstep * ( (tmax / tstep)**(dble(i - 1) / dble(numdt - 1)) )
       case(2)
-         t_obs(i) = t_obs(i - 1) + tstep / (nu0(max0(1, i - 1), numbins) * g2)
+         t(i) = t(i - 1) + tstep / (nu0(max0(1, i - 1), numbins) * g2)
       case(3)
-         t_obs(i) = tmax * dble(i) / dble(numdt)
+         t(i) = tmax * dble(i) / dble(numdt)
       case default
          write(*, *) "Wrong time-grid selection"
       end select
-      t(i) = D * t_obs(i) / (1d0 + z)
+      t_obs(i) = (1d0 + z) * t(i) / D
       dt(i) = t(i) - t(i - 1)
 
 
@@ -181,8 +181,9 @@ subroutine Paramo(params_file, output_file, hyb_dis, with_cool, with_abs, with_s
       !  ###### ###### #####
       Qinj(i, :) = injection(t(i), tacc, gg, g1, g2, qind, theta_e, Qth, Qnth)
       Ddif(i, :) = 1d-200 !0.5d0 * gg**2 / tacc !
-      call FP_FinDif_difu(dt(i), gg, nn(i - 1, :), nn(i, :), nu0(i - 1, :), Ddif(i, :), Qinj(i, :), tesc)
+      call FP_FinDif_difu(dt(i), gg, nn(i - 1, :), nn(i, :), nu0(i - 1, :), Ddif(i, :), Qinj(i, :), 0d0, tesc)
       ! call FP_FinDif_cool(dt(i), gg, nn(i - 1, :), nn(i, :), nu0(i - 1, :), Qinj(i, :), tesc)
+      
       !   ----->   Then we compute the light path
       sen_lum(i) = sum(dt(:i)) * cLight
 
@@ -193,31 +194,33 @@ subroutine Paramo(params_file, output_file, hyb_dis, with_cool, with_abs, with_s
       !  #####  ###### #    # # ######   #   # #    # #  # #
       !  #   #  #    # #    # # #    #   #   # #    # #   ##
       !  #    # #    # #####  # #    #   #   #  ####  #    #
-      !
-      ! ----->>   magnetobrem   <<-----
-      call mbs_emissivity(jmbs(:, i), freqs, gg, nn(i, :), B)
+      do j = 1, numdf
+         ! ----->>   magnetobrem   <<-----
+         call mbs_emissivity(jmbs(j, i), freqs(j), gg, nn(i, :), B)
 
-      ! ----->>   Absorption   <<-----
-      if ( with_abs ) then
-         call mbs_absorption(ambs(:, i), freqs, gg, nn(i, :), B)
-      else
-         ambs(:, i) = 0d0
-      end if
+         ! ----->>   Absorption   <<-----
+         if ( with_abs ) then
+            call mbs_absorption(ambs(j, i), freqs(j), gg, nn(i, :), B)
+         else
+            ambs(j, i) = 0d0
+         end if
+         Inu(j) = opt_depth_blob(ambs(j, i), R) * jmbs(j, i) * R
+      end do
 
-      ! ----->>   Inverse Compton   <<-----
-      call RadTrans_blob(Inu, R, jmbs(:, i), ambs(:, i))
-      if ( with_ssc ) then
-         call SSC_pwlEED(jssc(:, i), freqs, Inu, nn(i, :), gg)
-         call EIC_pwlEED(jeic(:, i), freqs, uext, nu_ext, nn(i, :), gg)
-      else
-         jeic(:, i) = 0d0
-         jssc(:, i) = 0d0
-      end if
+      do j = 1, numdf
+         ! ----->>   Inverse Compton   <<-----
+         if ( with_ssc ) then
+            call IC_iso_powlaw(jssc(j, i), freqs(j), freqs, Inu, nn(i, :), gg)
+            call IC_iso_monochrom(jeic(j, i), freqs(j), uext, nu_ext, nn(i, :), gg)
+         else
+            jeic(j, i) = 0d0
+            jssc(j, i) = 0d0
+         end if
 
-      ! ----->>   Totals   <<-----
-      jnut(:, i) = jmbs(:, i) + jssc(:, i) + jeic(:, i)
-      anut(:, i) = ambs(:, i)
-
+         ! ----->>   Totals   <<-----
+         jnut(j, i) = jmbs(j, i) + jssc(j, i) + jeic(j, i)
+         anut(j, i) = ambs(j, i)
+      end do
 
       !   ####   ####   ####  #      # #    #  ####
       !  #    # #    # #    # #      # ##   # #    #
@@ -252,8 +255,7 @@ subroutine Paramo(params_file, output_file, hyb_dis, with_cool, with_abs, with_s
 
       ! ----->   nu F_nu
       do j = 1, numdf
-         tau = dmax1(1d-200, 2d0 * R * ambs(j, i))
-         flux(j, i) = D**4 * volume * ( 3d0 * freqs(j) * opt_depth_blob(tau) * jmbs(j, i) / tau + freqs(j) * (jssc(j, i) + jeic(j, i)) ) / (4d0 * pi * d_lum**2)
+         flux(j, i) = D**4 * volume * ( freqs(j) * opt_depth_blob(ambs(j, i), R) * jmbs(j, i) + 0.25d0 * freqs(j) * (jssc(j, i) + jeic(j, i)) / pi ) / d_lum**2
       end do
 
       if ( mod(i, nmod) == 0 .or. i == 1 ) &

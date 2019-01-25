@@ -43,11 +43,11 @@ contains
    subroutine polint(xa, ya, x, y, dy)
       implicit none
       real(dp), intent(in) :: x
-      real(dp), dimension(:), intent(in) :: xa,ya
-      real(dp), intent(out) :: y,dy
-      integer :: m,n,ns
+      real(dp), dimension(:), intent(in) :: xa, ya
+      real(dp), intent(out) :: y, dy
+      integer :: m, n, ns
       integer, dimension(1) :: iminloc
-      real(dp), dimension(size(xa)) :: c,d,den,ho
+      real(dp), dimension(size(xa)) :: c, d, den, ho
       
       if ( size(xa) == size(ya) ) then
          n = size(xa)
@@ -81,28 +81,21 @@ contains
          y = y + dy
       end do
    end subroutine polint
-   
+
    ! :::::  Linear interpolation  :::::
-   subroutine linint(x1,x2,x,y1,y2,y)
+   subroutine linint(x1, x2, x, y1, y2, y)
    implicit none
-   
    real(dp), intent(out) :: y
-   real(dp), intent(in) :: y1,y2,x1,x2,x
-   real(dp) :: dx1,dx2,dx,dy1,dy2,dy3
-   
+   real(dp), intent(in) :: y1, y2, x1, x2, x
+   real(dp) :: dx1, dx2, dx, dy1, dy2, dy3
    dx = abs(x2 - x1)
    dx1 = abs(x1 - x)
    dx2 = abs(x2 - x)
-
-   if (dx1 + dx2 > dx) &
-      call an_error('interpolation: x not between x1 and x2')
-   
+   if (dx1 + dx2 > dx) call an_error('interpolation: x not between x1 and x2')
    y = y1 + ( y2 - y1 ) * ( x - x1 ) / dx
-   
    dy1 = abs(y2 - y)
    dy2 = abs(y1 - y)
    dy3 = abs(y2 - y)
-   
    if(dy1 + dy2 > dy3) then
       write(*, *) y1, y2, y
       call an_error('interpolation: Interpolation not between y1 and y2')

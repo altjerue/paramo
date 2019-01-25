@@ -103,7 +103,7 @@ all: $(PARAMO) $(TESTS) $(AFGLOW)
 
 # objects
 constants.o K2.o K1.o pwl_integ.o misc.o h5_inout.o: data_types.o
-models.o: data_types.o constants.o
+models.o: data_types.o constants.o SRtoolkit.o
 params.o: data_types.o misc.o
 SRtoolkit.o: data_types.o constants.o K2.o
 Paramo.o: data_types.o constants.o misc.o pwl_integ.o h5_inout.o SRtoolkit.o \

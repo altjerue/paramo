@@ -12,10 +12,10 @@ program tests
    use K1
    use K2
    implicit none
-   character(*), parameter :: dir = "/Users/jesus/lab/2018/blazMag/output/"
+   character(*), parameter :: dir = "/Users/jesus/lab/2019/blazMag/output/"
 
    call steady_state
-   call rad_procs
+   ! call rad_procs
 
    write(*,*) '=======  FINISHED  ======='
    write(*,*) ''
@@ -82,12 +82,12 @@ contains
          ! call FP_FinDif_cool(dt(i), g, n1(i - 1, :), n1(i, :), C0, zero2, 1d200)
          ! call FP_FinDif_cool(dt(i), g, n2(i - 1, :), n2(i, :), C0, Q0, 1d200)
          ! call FP_FinDif_cool(dt(i), g, n3(i - 1, :), n3(i, :), C0, Q0, tesc)
-         call FP_FinDif_difu(dt(i), g, n1(i - 1, :), n1(i, :), C0, zero1, zero2, 1d200)
-         call FP_FinDif_difu(dt(i), g, n2(i - 1, :), n2(i, :), C0, zero1, Q0, 1d200)
-         call FP_FinDif_difu(dt(i), g, n3(i - 1, :), n3(i, :), C0, zero1, Q0, tesc)
-         call FP_FinDif_difu(dt(i), g, n4(i - 1, :), n4(i, :), C0, D0, zero2, 1d200)
-         call FP_FinDif_difu(dt(i), g, n5(i - 1, :), n5(i, :), C0, D0, Q0, 1d200)
-         call FP_FinDif_difu(dt(i), g, n6(i - 1, :), n6(i, :), C0, D0, Q0, tesc)
+         call FP_FinDif_difu(dt(i), g, n1(i - 1, :), n1(i, :), C0, zero1, zero2, 0d0, 1d200)
+         call FP_FinDif_difu(dt(i), g, n2(i - 1, :), n2(i, :), C0, zero1, Q0, 0d0, 1d200)
+         call FP_FinDif_difu(dt(i), g, n3(i - 1, :), n3(i, :), C0, zero1, Q0, 0d0, tesc)
+         call FP_FinDif_difu(dt(i), g, n4(i - 1, :), n4(i, :), C0, D0, zero2, 0d0, 1d200)
+         call FP_FinDif_difu(dt(i), g, n5(i - 1, :), n5(i, :), C0, D0, Q0, 0d0, 1d200)
+         call FP_FinDif_difu(dt(i), g, n6(i - 1, :), n6(i, :), C0, D0, Q0, 0d0, tesc)
 
          Ntot1(i) = sum(n1(i, :) * dg)
          Ntot2(i) = sum(n2(i, :) * dg)
@@ -135,6 +135,7 @@ contains
    end subroutine steady_state
 
 
+#if 0
    !  #####    ##   #####     #####  #####   ####  #####
    !  #    #  #  #  #    #    #    # #    # #    # #    #
    !  #    # #    # #    #    #    # #    # #    # #####
@@ -170,21 +171,28 @@ contains
       p = 2.2d0
       alpha = 0.5d0
 
-      k0 = u_0 * cLight * pwl_norm(1d0, alpha, nu1, nu2)
-      do j = 1, numf
-         nuj(j) = numin * ( (numax / numin)**(dble(j - 1) / dble(numf - 1)) )
-         Iin(j) = k0 * powlaw_dis(nuj(j), nu1, nu2, alpha)
-      end do
-
       ke = u_e * pwl_norm(mass_e * cLight**2, p - 1d0, g1, g2)
       do j = 1, numg
          g(j) = g1 * (g2 / g1)**(dble(j - 1) / dble(numg - 1))
          n(j) = ke * powlaw_dis(g(j), g1, g2, p)
       end do
 
-      call mbs_emissivity(jmbs, nuj, g, n, B)
-      call SSC_pwlEED(jssc, nuj, Iin, n, g)
-      call EIC_pwlEED(jeic, nuj, u_ext, nu_ext, n, g)
+      !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
+      !$OMP& PRIVATE(j)
+      k0 = u_0 * cLight * pwl_norm(1d0, alpha, nu1, nu2)
+      do j = 1, numf
+         nuj(j) = numin * ( (numax / numin)**(dble(j - 1) / dble(numf - 1)) )
+         Iin(j) = k0 * powlaw_dis(nuj(j), nu1, nu2, alpha)
+         call mbs_emissivity(jmbs(j), nuj(j), g, n, B)
+      end do
+      !$OMP END PARALLEL DO
+
+      !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
+      !$OMP& PRIVATE(j)
+      do j = 1, numdf
+         call EIC_pwlEED(jeic, nuj, u_ext, nu_ext, n, g)
+      end do
+      !$OMP END PARALLEL DO
 
       call h5open_f(herror)
       call h5io_createf(dir//"Rad.h5", file_id, herror)
@@ -260,8 +268,6 @@ contains
    end subroutine rad_procs
 
 
-
-#if 0
    subroutine no_diff_CG99
 
       call K1_init
