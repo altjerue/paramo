@@ -118,7 +118,7 @@ subroutine afterglow(params_file, output_file, with_cool)
 
       t_obs(i) = tstep * ( (tmax / tstep)**(dble(i - 1) / dble(numdt - 1)) )
 
-      call shock_afterglow(t_obs(i) / (1d0 + z), gamma_bulk0, E0, n_ext, gamma_bulk, bw_radius, .true.)
+      call adiab_blast_wave(t_obs(i) / (1d0 + z), gamma_bulk0, E0, n_ext, gamma_bulk, bw_radius)
 
       beta_bulk = bofg(gamma_bulk)
       D = Doppler(gamma_bulk, mu_obs)
@@ -129,11 +129,11 @@ subroutine afterglow(params_file, output_file, with_cool)
          dt(i) = t(i) - t(i - 1)
       end if
       R = bw_radius / gamma_bulk
-      tesc = 1.1d0 * R / cLight
+      tesc = 1.5d0 * R / cLight
       B = dsqrt(32d0 * pi * mass_p * eps_B * n_ext) * gamma_bulk * cLight
       uB = 0.125d0 * B**2 / pi
       volume = 4d0 * pi * R**3 / 3d0
-      L_e = eps_e * pi * R**2 * n_ext * mass_p * cLight**3 * beta_bulk * gamma_bulk * (gamma_bulk - 1d0)
+      L_e = eps_e * pi * bw_radius**2 * n_ext * mass_p * cLight**3 * beta_bulk * gamma_bulk * (gamma_bulk - 1d0)
       g2 = sqrt(6d0 * pi * eCharge * 5d-2 / (sigmaT * B))
       ! g2 = 2e8 * sqrt(1d-4 / gamma_bulk0) / (eps_B**0.25d0 * n_ext)
       g1 = dmin1(g2 * 1d-2, eps_e * (gamma_bulk - 1d0) * mass_p * (qind - 2d0) / ((qind - 1d0) * mass_e))
@@ -156,7 +156,7 @@ subroutine afterglow(params_file, output_file, with_cool)
          urad = 0d0
       end if
 
-      Aadi = 2d0 * beta_bulk * gamma_bulk * cLight / (3d0 * bw_radius)
+      Aadi = 0d0! 2d0 * beta_bulk * gamma_bulk * cLight / (3d0 * bw_radius)
       nu0(i, :) = 4d0 * sigmaT * (uB + urad) / (3d0 * mass_e * cLight)
       Qinj(i, :) = injection(t(i), tacc, gg, g1, g2, qind, theta_e, 0d0, Q0)
       Ddif(i, :) = 1d-200 !0.5d0 * gg**2 / tacc !
@@ -183,12 +183,7 @@ subroutine afterglow(params_file, output_file, with_cool)
          call IC_iso_monochrom(jeic(j, i), freqs(j), uext, nu_ext, nn(i, :), gg)
          jnut(j, i) = jmbs(j, i) + jssc(j, i) + jeic(j, i)
          anut(j, i) = ambs(j, i)
-      ! end do
-      ! !$OMP END PARALLEL DO
-      !
-      ! !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
-      ! !$OMP& PRIVATE(j)
-      ! do j = 1, numdf
+
          Fmbs(j, i) = D**4 * volume * freqs(j) * jmbs(j, i) * opt_depth_blob(ambs(j, i), R) / d_lum**2
          Fssc(j, i) = 0.25d0 * D**4 * volume * freqs(j) * jssc(j, i) / (pi * d_lum**2)
          Feic(j, i) = 0.25d0 * D**4 * volume * freqs(j) * jeic(j, i) / (pi * d_lum**2)
@@ -199,7 +194,7 @@ subroutine afterglow(params_file, output_file, with_cool)
       Ntot(i) = sum(nn(i, 2:) * (gg(2:) - gg(:numbins - 1)))
 
       if ( mod(i, nmod) == 0 .or. i == 1 ) &
-         write(*, on_screen) i, t(i), dt(i), nu0(i, numbins), Ntot(i)
+         write(*, on_screen) i, R, gamma_bulk, nu0(i, numbins), Ntot(i)
 
    end do time_loop
 

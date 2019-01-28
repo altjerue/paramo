@@ -3,15 +3,10 @@ module models
    use constants
    use SRtoolkit
    implicit none
+
 contains
-   !  #####  ######  #     #  #####   #####
-   ! #     # #     # ##    # #     # #     #
-   ! #       #     # # #   # #     # #     #
-   !  #####  ######  #  #  #  ######  #####
-   !       # #       #   # #       # #     #
-   ! #     # #       #    ## #     # #     #
-   !  #####  #       #     #  #####   #####
-   subroutine shock_afterglow(t, G0, E0, n, Gshock, Rshock, adiab)
+
+   subroutine adiab_blast_wave(t, G0, E0, n, Gshock, Rshock)
       ! ************************************************************************
       !  Description:
       !     This is the setup for the model in Sari, Piran & Narayan, 1998,
@@ -19,63 +14,46 @@ contains
       ! ************************************************************************
       implicit none
       real(dp), intent(in) :: t, G0, E0, n
-      real(dp), intent(out) :: Gshock, Rshock!, n_bs, ue_b
-      logical, optional, value :: adiab
-      real(dp) :: M0, L
-
-      if ( .not. present(adiab) ) adiab = .true.
-
+      real(dp), intent(out) :: Gshock, Rshock
+      real(dp) :: M0, Rd, P0, B0, Pshock, td
+      ! l = 4d0 * pi * rho0 * R0**3 / (3d0 * M0)
       M0 = E0 / (G0 * cLight**2)
-      L = ( 17d0 * M0 / (16d0 * pi * mass_p * n) )**(1d0 / 3d0)
-      ! if ( 4d0 * G0**2 * cLight * t <= L ) then
-      !    Gshock = G0
-      !    Rshock = 4d0 * G0**2 * cLight * t
-      ! else
-         Gshock = shock_Lorentz(t, E0, n, L, adiab)
-         Rshock = shock_radius(t, E0, n, L, adiab)
-      ! end if
-      ! n_bs = 4d0 * Gshock * n
-      ! ue_bs = 4d0 * Gshock**2 * n * mass_p * cLight**2
+      B0 = bofg(G0)
+      P0 = G0 * B0
+      Rd = ( 3d0 * E0 / (4d0 * pi * (G0 * cLight)**2 * mass_p * n) )**(1d0 / 3d0)
+      td = Rd / (B0 * cLight * G0**2)
+      Rshock = shock_radius(t, td, Rd, G0)
+      Pshock = shock_momentum(t, td, P0, G0)
+      Gshock = dsqrt(Pshock**2 + 1d0)
 
    contains
 
-      ! function shock_energy(Gsh, L, n, ad) result(E)
-      !    implicit none
-      !    real(dp), intent(in) :: Gsh, L, n
-      !    logical, intent(in) :: ad
-      !    if ( ad ) then
-      !       E =  16d0 * pi * Gsh**2 * R**3 * n * mp * cspeed**2 / 17d0
-      !    else
-      !       E = 16d0 * pi * Gsh * L**3 * n * mp * cspeed**2 / 17d0
-      !    end if
-      ! end function shock_energy
-
-      function shock_radius(tt, E, nn, LL, ad) result(R)
+      function shock_radius(tt, ttd, xxd, gg) result(Rsh)
          implicit none
-         real(dp), intent(in) :: E, nn, tt, LL
-         logical, intent(in) :: ad
-         real(dp) :: R
-         if ( ad ) then
-            R = ( 17d0 * E * tt / (4d0 * pi * mass_p * nn * cLight) )**0.25d0
+         real(dp), intent(in) :: tt, ttd, xxd, gg
+         real(dp) :: Rsh
+         if ( tt <= ttd ) then
+            Rsh = xxd * tt / ttd
+         else if ( tt > ttd .and. tt <= ttd * gg**(8d0 / 3d0) ) then
+            Rsh = xxd * (2d0 * tt / td)**0.25d0
          else
-            R = ( 4d0 * cLight * tt / LL)**(1d0 / 7d0) * LL
+            Rsh = xxd * (5d0 * tt / (dsqrt(8d0) * gg * ttd))**0.4d0
          end if
       end function shock_radius
 
-
-      function shock_Lorentz(tt, E, nn, LL, ad) result(Gsh)
+      function shock_momentum(tt, ttd, pp, gg) result(Psh)
          implicit none
-         real(dp), intent(in) :: E, nn, tt, LL
-         logical, intent(in) :: ad
-         real(dp) :: Gsh
-
-         if ( ad ) then
-            Gsh = dmax1(1d0, ( 17d0 * E / (1024d0 * pi * mass_p * nn * cLight**5 * tt**3) )**0.125d0)
+         real(dp), intent(in) :: tt, ttd, pp, gg
+         real(dp) :: Psh
+         if ( tt <= ttd ) then
+            Psh = pp
+         else if ( tt > ttd .and. tt <= ttd * gg**(8d0 / 3d0) ) then
+            Psh = pp * (2d0 * tt / td)**(-0.375d0) / dsqrt(2d0)
          else
-            Gsh = dmax1(1d0, ( 4d0 * cLight * tt / LL)**(-3d0 / 7d0))
+            Psh = pp * (5d0 * tt / (dsqrt(8d0) * gg * ttd))**(-0.6d0) / dsqrt(2d0)
          end if
-      end function shock_Lorentz
+      end function shock_momentum
 
-   end subroutine shock_afterglow
+   end subroutine adiab_blast_wave
 
 end module models
