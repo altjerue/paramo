@@ -11,7 +11,8 @@ from SAPyto.misc import fortran_double
 #  #      #    # #   #  #    # #    # #    #
 #  #      #    # #    # #    # #    #  ####
 class parameters(object):
-
+    '''This is the parameters class
+    '''
     def rParams(self):
         # -----  PARAMETERS  -----
         self.radius = 1e16                   # radius of emitting region (assuming spherical)
@@ -84,6 +85,7 @@ class parameters(object):
             # print(self.file_label, ' ! label to identify each output', file=f)
         print("--> Parameters file: ", self.params_file)
 
+
 #
 #   ####   ####  #    # #####  # #      ######
 #  #    # #    # ##  ## #    # # #      #
@@ -91,10 +93,9 @@ class parameters(object):
 #  #      #    # #    # #####  # #      #
 #  #    # #    # #    # #      # #      #
 #   ####   ####  #    # #      # ###### ######
-
-
 class compiler(object):
-
+    '''This is the compilation class
+    '''
     # -----  COMPILER FLAGS & RULES -----
     def flags(self):
         self.HYB = False         # compile with HYB=1 flag
@@ -103,7 +104,7 @@ class compiler(object):
         self.OMP = False         # compile with OpenMP
         self.DBG = False         # compile for debugging
         self.rules = 'all'       # rule to compile
-        self.compile_dir = './'  # address to Paramo, must end with '/'
+        self.compile_dir = './'  # the path to Paramo... must end with '/'
 
     def __init__(self, **kwargs):
         self.flags()
@@ -152,6 +153,8 @@ class compiler(object):
 #  #      #    # #    #    #      # #      #
 #  #      #####   ####     #      # ###### ######
 def PBSfile(jname, qname, xname, args=None, pream=None, depen=None, nodes=None, cores=None, mail=None, htime=None):
+    '''This function generates the PBS file to queue a simulation
+    '''
     from datetime import timedelta as td
     if htime is None:
         t = str(td(hours=2.0))
@@ -198,11 +201,12 @@ def PBSfile(jname, qname, xname, args=None, pream=None, depen=None, nodes=None, 
 #  #####  #    # #  # #
 #  #   #  #    # #   ##
 #  #    #  ####  #    #
-class Paramo(object):
-
+class Runner(object):
+    '''This class sets up the exectuable instructions.
+    '''
     def __init__(self, wCool=False, wAbs=False, wSSC=False, Hyb=False, flabel='DriverTest', par_kw={}, comp_kw={}):
         self.par = parameters(**par_kw)
-        self.comp = compiler(rules='xParamo', **comp_kw)
+        self.comp = compiler(rules='xBlazMag', **comp_kw)
         self.par.wParams()
         self.cwd = os.getcwd()
         # -----  ARGS OF THE EXECUTABLE  -----
@@ -246,58 +250,26 @@ class Paramo(object):
 
         return outf + '-' + self.flabel + '.jp.h5', argv
 
-    def run_Paramo(self, pream=None):
+    def run_blazMag(self, pream=None, cl=False):
         self.comp.cleanup()
         self.comp.compile()
         outfile, argv = self.output_file()
         if pream is None:
-            run_cmd = '{0}xParamo {1} {2} {3}'.format(self.comp.compile_dir, self.par.params_file, " ".join(argv), outfile)
+            run_cmd = '{0}xBlazMag {1} {2} {3}'.format(self.comp.compile_dir, self.par.params_file, " ".join(argv), outfile)
         else:
-            run_cmd = '{0} {1}xParamo {2} {3} {4}'.format(pream, self.comp.compile_dir, self.par.params_file, " ".join(argv), outfile)
+            run_cmd = '{0} {1}xBlazMag {2} {3} {4}'.format(pream, self.comp.compile_dir, self.par.params_file, " ".join(argv), outfile)
         print("\n--> Parameters:")
         os.system("cat -n " + self.par.params_file)
-        print("\n--> Running:\n  ", run_cmd, "\n")
-        os.system(run_cmd)
-        print("\n--> Paramo finished")
-        return outfile
-
-    def cl_Paramo(self, pream=None):
-        self.comp.compile()
-        self.outfile, self.argv = self.output_file()
-        if pream is None:
-            run_cmd = '{0}xParamo'.format(self.comp.compile_dir)
+        if cl:
+            return run_cmd
         else:
-            run_cmd = '{0} {1}xParamo'.format(pream, self.comp.compile_dir)
-        args = []
-        args.append(self.par.params_file)
-        args += self.argv
-        args.append(self.outfile)
-        return run_cmd, args
+            print("\n--> Running:\n  ", run_cmd, "\n")
+            os.system(run_cmd)
+            print("\n--> Finished")
+            # return outfile
 
 
-class Aglow(object):
 
-    def __init__(self, paramo_file, comp_kw={}):
-        self.comp = compiler(rules='xAglow', **comp_kw)
-        self.Pfile = paramo_file
-        self.cwd = os.getcwd()
-
-    def run_Aglow(self, pream=None):
-        self.comp.compile()
-        if pream is None:
-            run_cmd = '{0}xAglow {1}'.format(self.comp.compile_dir, self.Pfile)
-        else:
-            run_cmd = '{0} {1}xITobs {2}'.format(pream, self.comp.compile_dir, self.Pfile)
-        print("\n--> Running:\n  ", run_cmd, "\n")
-        os.system(run_cmd)
-        print("\n--> Paramo finished")
-
-    def cl_ITobs(self, pream=None):
-        self.comp.compile()
-        if pream is None:
-            run_cmd = '{0}xITobs'.format(self.comp.compile_dir)
-        else:
-            run_cmd = '{0} {1}xITobs'.format(pream, self.comp.compile_dir)
-        args = []
-        args.append(self.Pfile)
-        return run_cmd, args
+########################################
+#### TODO: Afterglow runner
+########################################

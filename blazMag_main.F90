@@ -1,4 +1,4 @@
-program paramo_main
+program blazMag_main
    use data_types
    use misc
    implicit none
@@ -67,6 +67,6 @@ program paramo_main
    !    -----> Reading output file
    call get_command_argument(6, output_file)
 
-   call Paramo(trim(params_file), trim(output_file), hyb_dis, with_cool, with_abs, with_ssc)
+   call blazMag(trim(params_file), trim(output_file), hyb_dis, with_cool, with_abs, with_ssc)
 
-end program paramo_main
+end program blazMag_main

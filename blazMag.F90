@@ -1,4 +1,4 @@
-subroutine Paramo(params_file, output_file, hyb_dis, with_cool, with_abs, with_ssc)
+subroutine blazMag(params_file, output_file, hyb_dis, with_cool, with_abs, with_ssc)
    use data_types
    use constants
    use params
@@ -337,4 +337,4 @@ subroutine Paramo(params_file, output_file, hyb_dis, with_cool, with_abs, with_s
    write(*,*) '=======  FINISHED  ======='
    write(*,*) ''
 
-end subroutine Paramo
+end subroutine blazMag
