@@ -19,7 +19,7 @@ endif # IFORT
 # definitions
 
 ifeq ($(BROWN),1)
-
+DEFS+=-DBRWN
 endif
 
 
@@ -77,7 +77,6 @@ endif
 
 ifeq ($(BROWN),1)
 OPTIMIZATION+=-arch ssse3 -mtune=corei7-avx
-DEFS+=-DBRWN
 endif
 
 endif # DBG
@@ -131,7 +130,7 @@ $(AFGLOW): data_types.o constants.o $(AFGLOW_OBJ)
 
 
 %.o: %.F90
-	$(FC) $(COPT) $(DEFS) $< -o $@
+	$(FC) $(COPT) $< -o $@
 
 # -----  PHONY things  -----
 .PHONY: clean
