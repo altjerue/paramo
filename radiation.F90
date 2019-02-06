@@ -408,7 +408,7 @@ contains
       end if
 
       if ( any(dabs(gev - gg) == 0d0) ) then
-         integrand = one_over_gb2(gev) * nn(kk) * fIC
+         integrand = ip2ofg(gev) * nn(kk) * fIC
          return
       else
          if ( gev < gg(kk) .or. gev > gg(Ng) ) then
@@ -420,8 +420,7 @@ contains
          if ( qq >  8d0 ) qq =  8d0
 
          nnev = nn(kk) * (gev / gg(kk))**qq
-         integrand = one_over_gb2(gev) * nnev * fIC
-         return
+         integrand = ip2ofg(gev) * nnev * fIC
       end if
    end function IC_integrand
 

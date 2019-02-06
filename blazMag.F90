@@ -27,7 +27,7 @@ subroutine blazMag(params_file, output_file, hyb_dis, with_cool, with_abs, with_
    real(dp) :: uB, uext, urad, R, L_j, gmin, gmax, numin, numax, qind, B, &
       tacc, g1, g2, tstep, zetae, Qth, Qnth, theta_e, tmax, d_lum, z, D, &
       gamma_bulk, theta_obs, R0, b_index, mu_obs, nu_ext, tesc, kappa, &
-      volume, sigma, beta_bulk, eps_e, L_B, mu_mag, Iind, eps_B
+      volume, sigma, beta_bulk, eps_e, L_B, mu_mag, Iind, eps_B, f_rec
    real(dp), allocatable, dimension(:) :: freqs, t, Ntot, Inu, gg, sen_lum, &
       dt, nu_obs, t_obs, dg
    real(dp), allocatable, dimension(:, :) :: nu0, nn, jnut, jmbs, jssc, jeic, &
@@ -46,8 +46,7 @@ subroutine blazMag(params_file, output_file, hyb_dis, with_cool, with_abs, with_
    eps_e = par_eps_e
    eps_B = par_eps_B
    sigma = par_sigma
-   g1 = par_g1
-   g2 = par_g2
+   f_rec = par_frec
    gmin = par_gmin
    gmax = par_gmax
    qind = par_qind
@@ -88,21 +87,34 @@ subroutine blazMag(params_file, output_file, hyb_dis, with_cool, with_abs, with_
    mu_obs = dcos(theta_obs)
    D = Doppler(gamma_bulk, mu_obs)
 
-   ! --->    External radiation field
+   ! ----->    External radiation field
    nu_ext = nu_ext / D ! * gamma_bulk
    uext = uext * gamma_bulk**2 * (1d0 + beta_bulk**2 / 3d0) !  Eq. (5.25) Dermer & Menon (2009)
 
-   ! --->    Magnetic field
+   ! ----->    Magnetic field
    L_B = sigma * L_j / (1d0 + sigma)
    uB = L_B / (pi * cLight * beta_bulk * (gamma_bulk * R)**2) ! B**2 / (8d0 * pi)
    B = dsqrt(uB * 8d0 * pi)
    mu_mag = gamma_bulk * (1d0 + sigma)
    nu0 = 4d0 * sigmaT * uB / (3d0 * mass_e * cLight)
 
-   ! --->   Injection of particles
+   ! ----->   Injection of particles
+   if ( qind > 2d0 ) then
+      g1 = (qind - 2d0) * f_rec * sigma * mass_p / ((qind - 1d0) * mass_e)
+      g2 = g1 * 1d3
+   else if ( qind > 1d0 .and. qind < 2d0 ) then
+      g1 = gmin
+      g2 = dsqrt(6d0 * pi * eCharge * 1d-3 / (sigmaT * B))
+      ! g2 = (sigma + 1d0) * ((2d0 - qind) / (qind - 1d0))**(1d0 / (2d0 - qind))
+   else
+      g1 = gmin
+      g2 = dsqrt(6d0 * pi * eCharge * 1d-3 / (sigmaT * B))
+   end if
+
    volume = 4d0 * pi * R**3 / 3d0
    tesc = 1.5d0 * R / cLight
    tacc = 0.5d0 * R / cLight
+
    if ( hyb_dis ) then
       kappa = 3d0 * theta_e + dexp(K1_func(-dlog(theta_e))) / dexp(K2_func(-dlog(theta_e)))
       Qth = (1d0 - zetae) * (L_j - L_B) / (kappa * volume * mass_e * cLight**2)
@@ -110,14 +122,16 @@ subroutine blazMag(params_file, output_file, hyb_dis, with_cool, with_abs, with_
    else
       kappa = 1d0
       Qth = 0d0
-      ! Qnth = eps_e * (L_j - L_B) * pwl_norm(volume * mass_e * cLight**2, qind - 1d0, g1, g2)
       Qnth = eps_e * L_B * pwl_norm(volume * mass_e * cLight**2, qind - 1d0, g1, g2)
+      ! Qnth = eps_e * (L_j - L_B) * pwl_norm(volume * mass_e * cLight**2, qind - 1d0, g1, g2)
    end if
 
-   write(*, *) ' ---> Simulation setup'
-   write(*, *) ''
+   write(*, "('--> Simulation setup')")
+   ! write(*, *) ''
    write(*, "('theta_obs =', ES15.7)") theta_obs
    write(*, "('Doppler   =', ES15.7)") D
+   write(*, "('gamma_1   =', ES15.7)") g1
+   write(*, "('gamma_2   =', ES15.7)") g2
    write(*, "('Q_nth     =', ES15.7)") Qnth
    write(*, "('Q_th      =', ES15.7)") Qth
    write(*, "('t_dyn     =', ES15.7)") R / cLight
@@ -128,14 +142,14 @@ subroutine blazMag(params_file, output_file, hyb_dis, with_cool, with_abs, with_
    write(*, "('B         =', ES15.7)") B
    write(*, "('mu        =', ES15.7)") mu_mag
 
-
    build_f: do j=1,numdf
       nu_obs(j) = numin * ( (numax / numin)**(dble(j - 1) / dble(numdf - 1)) )
       freqs(j) = nu_com_f(nu_obs(j), z, gamma_bulk, mu_obs)
    end do build_f
 
    build_g: do k = 1, numbins
-      gg(k) = gmin * (gmax / gmin)**(dble(k - 1) / dble(numbins - 1))
+      ! gg(k) = gmin * (gmax / gmin)**(dble(k - 1) / dble(numbins - 1))
+      gg(k) = (gmin - 1d0) * ((gmax - 1d0) / (gmin - 1d0))**(dble(k - 1) / dble(numbins - 1)) + 1d0
       if ( k > 1 ) dg(k) = gg(k) - gg(k - 1)
    end do build_g
    dg(1) = dg(2)
@@ -144,10 +158,10 @@ subroutine blazMag(params_file, output_file, hyb_dis, with_cool, with_abs, with_
    nn = 0d0
    jnut = 0d0
 
-   write(*, *) '---> Calculating the emission'
+   write(*, "('--> Calculating the emission')")
    write(*, *) ''
-   write(*, "(' Using tstep = ', F5.3)") tstep
-   write(*, *) 'Wrting data in: ', trim(output_file)
+   write(*, "('Using tstep = ', F5.3)") tstep
+   write(*, "('Wrting data in: ', A)") trim(output_file)
    write(*, *) ''
    write(*, *) screan_head
 
@@ -163,7 +177,7 @@ subroutine blazMag(params_file, output_file, hyb_dis, with_cool, with_abs, with_
       case(1)
          t(i) = tstep * ( (tmax / tstep)**(dble(i - 1) / dble(numdt - 1)) )
       case(2)
-         t(i) = t(i - 1) + tstep / (nu0(max0(1, i - 1), numbins) * g2)
+         t(i) = t(i - 1) + 1d0 / (nu0(i - 1, numbins) * g2)
       case(3)
          t(i) = tmax * dble(i) / dble(numdt)
       case default
@@ -171,7 +185,6 @@ subroutine blazMag(params_file, output_file, hyb_dis, with_cool, with_abs, with_
       end select
       t_obs(i) = (1d0 + z) * t(i) / D
       dt(i) = t(i) - t(i - 1)
-
 
       !  ###### ###### #####
       !  #      #      #    #
@@ -183,10 +196,9 @@ subroutine blazMag(params_file, output_file, hyb_dis, with_cool, with_abs, with_
       Ddif(i, :) = 1d-200 !0.5d0 * gg**2 / tacc !
       call FP_FinDif_difu(dt(i), gg, nn(i - 1, :), nn(i, :), nu0(i - 1, :), Ddif(i, :), Qinj(i, :), 0d0, tesc)
       ! call FP_FinDif_cool(dt(i), gg, nn(i - 1, :), nn(i, :), nu0(i - 1, :), Qinj(i, :), tesc)
-      
+
       !   ----->   Then we compute the light path
       sen_lum(i) = sum(dt(:i)) * cLight
-
 
       !  #####    ##   #####  #   ##   ##### #  ####  #    #
       !  #    #  #  #  #    # #  #  #    #   # #    # ##   #
@@ -194,11 +206,10 @@ subroutine blazMag(params_file, output_file, hyb_dis, with_cool, with_abs, with_
       !  #####  ###### #    # # ######   #   # #    # #  # #
       !  #   #  #    # #    # # #    #   #   # #    # #   ##
       !  #    # #    # #####  # #    #   #   #  ####  #    #
+      !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
+      !$OMP& PRIVATE(j)
       do j = 1, numdf
-         ! ----->>   magnetobrem   <<-----
          call mbs_emissivity(jmbs(j, i), freqs(j), gg, nn(i, :), B)
-
-         ! ----->>   Absorption   <<-----
          if ( with_abs ) then
             call mbs_absorption(ambs(j, i), freqs(j), gg, nn(i, :), B)
          else
@@ -206,9 +217,11 @@ subroutine blazMag(params_file, output_file, hyb_dis, with_cool, with_abs, with_
          end if
          Inu(j) = opt_depth_blob(ambs(j, i), R) * jmbs(j, i) * R
       end do
+      !$OMP END PARALLEL DO
 
+      !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
+      !$OMP& PRIVATE(j)
       do j = 1, numdf
-         ! ----->>   Inverse Compton   <<-----
          if ( with_ssc ) then
             call IC_iso_powlaw(jssc(j, i), freqs(j), freqs, Inu, nn(i, :), gg)
             call IC_iso_monochrom(jeic(j, i), freqs(j), uext, nu_ext, nn(i, :), gg)
@@ -216,11 +229,10 @@ subroutine blazMag(params_file, output_file, hyb_dis, with_cool, with_abs, with_
             jeic(j, i) = 0d0
             jssc(j, i) = 0d0
          end if
-
-         ! ----->>   Totals   <<-----
          jnut(j, i) = jmbs(j, i) + jssc(j, i) + jeic(j, i)
          anut(j, i) = ambs(j, i)
       end do
+      !$OMP END PARALLEL DO
 
       !   ####   ####   ####  #      # #    #  ####
       !  #    # #    # #    # #      # ##   # #    #

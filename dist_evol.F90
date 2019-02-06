@@ -4,6 +4,7 @@ module dist_evol
    use misc
    use pwl_integ
    use SRtoolkit
+   use K2
    implicit none
 
    ! integer :: d_Ng, d_Nt
@@ -13,23 +14,92 @@ module dist_evol
    ! public :: d_ng, d_t, d_dtinj, d_g1, d_g2, d_tcurr, d_qind, &
    !    d_Q0, d_Nt, d_dist, d_tesc
 
+   interface RMaxwell
+      module procedure RMaxwell_s
+      module procedure RMaxwell_v
+   end interface RMaxwell
+
+   interface powlaw_dis
+      module procedure powlaw_dis_s
+      module procedure powlaw_dis_v
+   end interface powlaw_dis
+
 contains
 
-   !
+      ! #####  #  ####  ##### #####  # #####  #    # ##### #  ####  #    #  ####
+      ! #    # # #        #   #    # # #    # #    #   #   # #    # ##   # #
+      ! #    # #  ####    #   #    # # #####  #    #   #   # #    # # #  #  ####
+      ! #    # #      #   #   #####  # #    # #    #   #   # #    # #  # #      #
+      ! #    # # #    #   #   #   #  # #    # #    #   #   # #    # #   ## #    #
+      ! #####  #  ####    #   #    # # #####   ####    #   #  ####  #    #  ####
+      !
+      !  :::::   Relativistic Maxwell distribution   :::::
+      !
+      function RMaxwell_s(g, th) result(rm)
+         implicit none
+         real(dp), intent(in) :: g, th
+         real(dp) :: rm
+         call K2_init
+         rm = dmax1(1d-200, g**2 * bofg(g) * dexp(-g / th) / (th * dexp(K2_func(-dlog(th)))))
+      end function RMaxwell_s
+
+      function RMaxwell_v(g, th) result(rm)
+         implicit none
+         doubleprecision, intent(in) :: th
+         real(dp), intent(in), dimension(:) :: g
+         integer :: k
+         real(dp), dimension(size(g)) :: rm
+         call K2_init
+         do k=1,size(g)
+            rm(k) = dmax1( 1d-200, g(k)**2 * bofg(g(k)) * dexp(-g(k) / th) &
+            / (th * dexp(K2_func(-dlog(th)))) )
+         enddo
+      end function RMaxwell_v
+
+      !
+      !   :::::   Power-law distribution   :::::
+      !
+      function powlaw_dis_s(g, g1, g2, s) result(pwl)
+         implicit none
+         doubleprecision, intent(in) :: g,g1,g2,s
+         doubleprecision :: pwl
+         if ( g >= g1 .and. g <=g2 ) then
+            pwl = g**(-s)
+         else
+            pwl = 0d0
+         end if
+         ! pwl = g**(-s) * dexp(-(g1 / g)**2) * dexp(-(g / g2)**2)
+      end function powlaw_dis_s
+
+      function powlaw_dis_v(g, g1, g2, s) result(pwl)
+         implicit none
+         doubleprecision, intent(in) :: g1,g2,s
+         doubleprecision, intent(in), dimension(:) :: g
+         integer :: k
+         doubleprecision, dimension(size(g)) :: pwl
+         do k = 1, size(g)
+            if ( g(k) >= g1 .and. g(k) <= g2 ) then
+               pwl(k) = g(k)**(-s)
+            else
+               pwl(k) = 0d0
+            end if
+         end do
+         ! pwl = g**(-s) * dexp(-(g1 / g)**2) * dexp(-(g / g2)**2)
+      end function powlaw_dis_v
+
+
    ! # #    #      # ######  ####  ##### #  ####  #    #
    ! # ##   #      # #      #    #   #   # #    # ##   #
    ! # # #  #      # #####  #        #   # #    # # #  #
    ! # #  # #      # #      #        #   # #    # #  # #
    ! # #   ## #    # #      #    #   #   # #    # #   ##
    ! # #    #  ####  ######  ####    #   #  ####  #    #
-   !
    function injection(t, dtinj, g, g1, g2, qind, th, Qth, Qnth) result(Qinj)
       implicit none
       real(dp), intent(in) :: g1, g2, th, Qth, Qnth, dtinj, t, qind
       real(dp), intent(in), dimension(:) :: g
       integer :: k
       real(dp), dimension(size(g)) :: Qinj
-      
       if ( t <= dtinj ) then
          do k = 1, size(g)
             if ( Qth < 1d-100 ) then
@@ -49,10 +119,8 @@ contains
          Qinj = 0d0
       end if
    end function injection
-
-
    !
-   !   -----{   Power-law distribution Normalization   }-----
+   !   ----------{    Power-law distribution Normalization    }----------
    !
    function pwl_norm(norm, index, e1, e2) result(k)
       implicit none
@@ -150,7 +218,6 @@ contains
    end subroutine FP_FinDif_difu
 
 
-
    subroutine FP_FinDif_cool(dt, g, nin, nout, nu0, QQ, tesc)
       implicit none
       real(dp), intent(in) :: dt, tesc
@@ -184,16 +251,44 @@ contains
    end subroutine FP_FinDif_cool
 
 
+   subroutine time_step(dt, g, D, gdot, tstep, lct)
+      implicit none
+      real(dp), intent(in) :: tstep, lct
+      real(dp), intent(in), dimension(:) :: g, D, gdot
+      real(dp), intent(out) :: dt
+      integer :: Ng
+      real(dp), dimension(size(g)) :: H, dg
+      Ng = size(g)
+      dg(2:) = g(2:) - g(:Ng - 1)
+      dg(1) = dg(2)
+      H(2:) = dmax1(1d-200, dabs(D(2:) - D(:Ng - 1)) / dg(2:)) + dabs(gdot(2:))
+      H(1) = dmax1(1d-200, dabs(D(2) - D(1)) / dg(1)) + dabs(gdot(1))
+      dt = dmax1(tstep * lct, 0.5d0 * minval(dg / H, mask=H>1d-50))
+   end subroutine time_step
 
 
 
 
 
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 #if 0
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   !
+   !     Slope of the Relativistic Maxwell distribution
+   !
+   function dRMaxwell(g, th) result(drm)
+      implicit none
+      real(dp), intent(in) :: g, th
+      real(dp) :: drm
+      call K2_init
+      !!$drm = -((2d0 * g**(2) - 1d0) / (g**(2) - 1d0) - g / th)
+      drm = (g - g**3 - th + 2 * th * g**2) * dexp(-g/th) / ( dsqrt(g**2 - 1d0) * th**2 * dexp(K2_func(-dlog(th))) )
+   end function dRMaxwell
+
+
    subroutine FP_FinDif_difu2(dt, g, nin, nout, nu0, DD, QQ, tesc)
       implicit none
       real(dp), intent(in) :: dt, tesc

@@ -13,6 +13,7 @@ from SAPyto.misc import fortran_double
 class parameters(object):
     '''This is the parameters class
     '''
+
     def rParams(self):
         # -----  PARAMETERS  -----
         self.radius = 1e16                   # radius of emitting region (assuming spherical)
@@ -22,11 +23,13 @@ class parameters(object):
         self.gamma_bulk = 1e2           # emitting region bulk Lorentz factor
         self.theta_obs = 5.0            # observer viewing angle
         self.sigma = 1.0                # magnetization (sigma)
+        self.f_rec = 1.0                # magnetic reconection dissipative efficiency
         self.b_index = 0.0              # magnetic field decay index
         self.theta_e = 10.0             # electrons temperature
-        self.zeta_e = 0.99
+        self.zeta_e = 0.99              # fraction of non-thermal particles
         self.tstep = 1e-2               # time step factor
         self.tmax = 1e5                 # maximum time
+        self.tmin = 1e0                 # minimum time
         self.tvar = 2e0                 # variability time scale
         self.L_j = 1e45                 # num. dens. of particles injected per second
         self.eps_e = 0.1                # epsilon_e
@@ -60,11 +63,13 @@ class parameters(object):
             print(fortran_double(self.gamma_bulk), ' ! bulk Lorentz factor', file=f)
             print(fortran_double(self.theta_obs), ' ! viewing angle', file=f)
             print(fortran_double(self.sigma), ' ! magnetization', file=f)
+            print(fortran_double(self.f_rec), ' ! dissipative efficiency of magnetic reconection', file=f)
             print(fortran_double(self.b_index), ' ! magnetic field decay index', file=f)
             print(fortran_double(self.theta_e), ' ! electrons temperature', file=f)
             print(fortran_double(self.zeta_e), ' ! fraction of nonthermal electrons', file=f)
             print(fortran_double(self.tstep), ' ! time step factor', file=f)
             print(fortran_double(self.tmax), ' ! maximum time', file=f)
+            print(fortran_double(self.tmin), ' ! minimum time', file=f)
             print(fortran_double(self.tvar), ' ! variability time scale', file=f)
             print(fortran_double(self.L_j), ' ! jet luminosity', file=f)
             print(fortran_double(self.eps_e), ' ! epsilon_e', file=f)
@@ -97,6 +102,7 @@ class compiler(object):
     '''This is the compilation class
     '''
     # -----  COMPILER FLAGS & RULES -----
+
     def flags(self):
         self.HYB = False         # compile with HYB=1 flag
         self.MBS = False         # compile with MBS=1 flag
@@ -204,6 +210,7 @@ def PBSfile(jname, qname, xname, args=None, pream=None, depen=None, nodes=None, 
 class Runner(object):
     '''This class sets up the exectuable instructions.
     '''
+
     def __init__(self, wCool=False, wAbs=False, wSSC=False, Hyb=False, flabel='DriverTest', par_kw={}, comp_kw={}):
         self.par = parameters(**par_kw)
         self.comp = compiler(rules='xBlazMag', **comp_kw)
@@ -269,7 +276,6 @@ class Runner(object):
             # return outfile
 
 
-
 ########################################
-#### TODO: Afterglow runner
+# ### TODO: Afterglow runner
 ########################################

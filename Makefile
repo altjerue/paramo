@@ -102,9 +102,9 @@ all: $(BLAZMAG) $(TESTS) $(AFGLOW)
 
 # objects
 constants.o K2.o K1.o pwl_integ.o misc.o h5_inout.o: data_types.o
-models.o: data_types.o constants.o SRtoolkit.o
+SRtoolkit.o: data_types.o constants.o
 params.o: data_types.o misc.o
-SRtoolkit.o: data_types.o constants.o K2.o
+models.o: data_types.o constants.o SRtoolkit.o
 blazMag.o: data_types.o constants.o misc.o pwl_integ.o h5_inout.o SRtoolkit.o \
 	anaFormulae.o radiation.o dist_evol.o K1.o K2.o
 blazMag_main.o: data_types.o misc.o blazMag.o
@@ -112,7 +112,7 @@ afterglow_main.o: data_types.o misc.o afterglow.o
 anaFormulae.o: data_types.o constants.o misc.o pwl_integ.o
 radiation.o: data_types.o constants.o misc.o pwl_integ.o SRtoolkit.o \
 	anaFormulae.o
-dist_evol.o: data_types.o constants.o misc.o pwl_integ.o SRtoolkit.o
+dist_evol.o: data_types.o constants.o misc.o pwl_integ.o SRtoolkit.o K2.o
 tests.o: data_types.o constants.o misc.o pwl_integ.o h5_inout.o SRtoolkit.o \
 	anaFormulae.o radiation.o dist_evol.o K1.o K2.o
 afterglow.o: data_types.o constants.o misc.o pwl_integ.o h5_inout.o models.o \
