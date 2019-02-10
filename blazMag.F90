@@ -1,4 +1,4 @@
-subroutine blazMag(params_file, output_file, hyb_dis, with_cool, with_abs, with_ssc)
+subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    use data_types
    use constants
    use params
@@ -15,7 +15,7 @@ subroutine blazMag(params_file, output_file, hyb_dis, with_cool, with_abs, with_
    implicit none
 
    character(len=*), intent(in) :: output_file, params_file
-   logical, intent(in) :: with_cool, with_abs, with_ssc, hyb_dis
+   logical, intent(in) :: with_cool, with_abs, with_ssc
    integer, parameter :: nmod = 10
    character(len=*), parameter :: screan_head = &
       '| Iteration |        Time |   Time step |    nu_0(g2) |       N_tot |'&
@@ -31,7 +31,8 @@ subroutine blazMag(params_file, output_file, hyb_dis, with_cool, with_abs, with_
    real(dp), allocatable, dimension(:) :: freqs, t, Ntot, Inu, gg, sen_lum, &
       dt, nu_obs, t_obs, dg
    real(dp), allocatable, dimension(:, :) :: nu0, nn, jnut, jmbs, jssc, jeic, &
-      ambs, anut, Qinj, Ddif, flux
+      ambs, anut, Qinj, Ddif, Fmbs, Feic, Fssc, Fnut
+   logical :: hyb_dis
 
    call read_params(params_file)
    R = par_R
@@ -59,6 +60,7 @@ subroutine blazMag(params_file, output_file, hyb_dis, with_cool, with_abs, with_
    numdf = par_numdf
    time_grid = par_time_grid
 
+   hyb_dis = .false.
 
    !  ####  ###### ##### #    # #####
    ! #      #        #   #    # #    #
@@ -71,7 +73,8 @@ subroutine blazMag(params_file, output_file, hyb_dis, with_cool, with_abs, with_
    allocate(nn(0:numdt, numbins), nu0(0:numdt, numbins), gg(numbins), &
       ambs(numdf, numdt), jmbs(numdf, numdt), jnut(numdf, numdt), &
       jssc(numdf, numdt), anut(numdf, numdt), jeic(numdf, numdt), &
-      Qinj(numdt, numbins), Ddif(numdt, numbins), flux(numdf, numdt))
+      Qinj(numdt, numbins), Ddif(numdt, numbins), Fnut(numdf, numdt), &
+      Fmbs(numdf, numdt), Fssc(numdf, numdt), Feic(numdf, numdt))
 
    call K1_init
    call K2_init
@@ -101,11 +104,12 @@ subroutine blazMag(params_file, output_file, hyb_dis, with_cool, with_abs, with_
    ! ----->   Injection of particles
    if ( qind > 2d0 ) then
       g1 = (qind - 2d0) * f_rec * sigma * mass_p / ((qind - 1d0) * mass_e)
-      g2 = g1 * 1d3
-   else if ( qind > 1d0 .and. qind < 2d0 ) then
-      g1 = gmin
       g2 = dsqrt(6d0 * pi * eCharge * 1d-3 / (sigmaT * B))
-      ! g2 = (sigma + 1d0) * ((2d0 - qind) / (qind - 1d0))**(1d0 / (2d0 - qind))
+   else if ( qind > 1d0 .and. qind < 2d0 ) then
+      ! g1 = gmin
+      ! g2 = dsqrt(6d0 * pi * eCharge * 1d-3 / (sigmaT * B))
+      g1 = (sigma + 1d0) * ((2d0 - qind) / (qind - 1d0))**(1d0 / (2d0 - qind))
+      g2 = dsqrt(6d0 * pi * eCharge * 1d-3 / (sigmaT * B))
    else
       g1 = gmin
       g2 = dsqrt(6d0 * pi * eCharge * 1d-3 / (sigmaT * B))
@@ -231,6 +235,10 @@ subroutine blazMag(params_file, output_file, hyb_dis, with_cool, with_abs, with_
          end if
          jnut(j, i) = jmbs(j, i) + jssc(j, i) + jeic(j, i)
          anut(j, i) = ambs(j, i)
+         Fmbs(j, i) = D**4 * volume * freqs(j) * jmbs(j, i) * opt_depth_blob(ambs(j, i), R) / d_lum**2
+         Fssc(j, i) = 0.25d0 * D**4 * volume * freqs(j) * jssc(j, i) / (pi * d_lum**2)
+         Feic(j, i) = 0.25d0 * D**4 * volume * freqs(j) * jeic(j, i) / (pi * d_lum**2)
+         Fnut(j, i) = Fmbs(j, i) + Fssc(j, i) + Feic(j, i)
       end do
       !$OMP END PARALLEL DO
 
@@ -264,11 +272,6 @@ subroutine blazMag(params_file, output_file, hyb_dis, with_cool, with_abs, with_
 
       ! ----->   N_tot
       Ntot(i) = sum(nn(i, :) * dg, mask=nn(i, :) > 1d-200)
-
-      ! ----->   nu F_nu
-      do j = 1, numdf
-         flux(j, i) = D**4 * volume * ( freqs(j) * opt_depth_blob(ambs(j, i), R) * jmbs(j, i) + 0.25d0 * freqs(j) * (jssc(j, i) + jeic(j, i)) / pi ) / d_lum**2
-      end do
 
       if ( mod(i, nmod) == 0 .or. i == 1 ) &
          write(*, on_screen) i, t(i), dt(i), nu0(i, numbins), Ntot(i)
@@ -338,7 +341,10 @@ subroutine blazMag(params_file, output_file, hyb_dis, with_cool, with_abs, with_
    call h5io_wdble2(file_id, 'jeic', jeic, herror)
    call h5io_wdble2(file_id, 'anut', anut, herror)
    call h5io_wdble2(file_id, 'ambs', ambs, herror)
-   call h5io_wdble2(file_id, 'flux', flux, herror)
+   call h5io_wdble2(file_id, 'Fnut', Fnut, herror)
+   call h5io_wdble2(file_id, 'Fmbs', Fmbs, herror)
+   call h5io_wdble2(file_id, 'Fssc', Fssc, herror)
+   call h5io_wdble2(file_id, 'Feic', Feic, herror)
    call h5io_wdble2(file_id, 'distrib', nn(1:, :), herror)
    call h5io_wdble2(file_id, 'nu0_tot', nu0(1:, :), herror)
 

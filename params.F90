@@ -8,13 +8,13 @@ module params
       par_sigma, par_b_index, par_theta_e, par_zetae, par_L_j, par_eps_e, &
       par_tstep, par_tmax, par_tmin, par_eps_B, par_tvar, par_frec, par_qind, &
       par_g1, par_g2, par_gmin, par_gmax, par_nu_ext, par_uext, par_numin, &
-      par_numax
+      par_numax, par_E0, par_n_ext
    public :: par_numbins, par_numdt, par_numdf, par_time_grid
    public :: par_R, par_R0, par_d_lum, par_z, par_gamma_bulk, par_theta_obs, &
       par_sigma, par_b_index, par_theta_e, par_zetae, par_L_j, par_eps_e, &
       par_tstep, par_tmax, par_tmin, par_eps_B, par_tvar, par_frec, par_qind, &
       par_g1, par_g2, par_gmin, par_gmax, par_nu_ext, par_uext, par_numin, &
-      par_numax
+      par_numax, par_E0
 
 contains
 
@@ -40,6 +40,8 @@ contains
       read(77, *) par_tmin
       read(77, *) par_tvar
       read(77, *) par_L_j
+      read(77, *) par_E0
+      read(77, *) par_n_ext
       read(77, *) par_eps_e
       read(77, *) par_eps_B
       read(77, *) par_g1

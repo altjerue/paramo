@@ -19,19 +19,18 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
    logical, intent(in) :: with_cool, with_ic
    integer, parameter :: nmod = 50
    character(len=*), parameter :: screan_head = &
-      '| Iteration |        Time |   Time step |    nu_0(g2) |       N_tot |'&
+      '| Iteration |        Time |   Time step |  gamma_bulk |       N_tot |'&
       //new_line('A')//&
       ' ---------------------------------------------------------------------', &
       on_screen = "(' | ', I9, ' | ', ES11.4, ' | ', ES11.4, ' | ', ES11.4, ' | ', ES11.4, ' |')"
    integer(HID_T) :: file_id, group_id
    integer :: i, j, k, numbins, numdf, numdt, time_grid, herror
-   real(dp) :: uB, uext, urad, R, L_j, gmin, gmax, numin, numax, qind, B, &
-      tacc, g1, g2, tstep, zetae, Q0, theta_e, tmax, d_lum, z, D, n_ext, &
-      gamma_bulk, theta_obs, R0, mu_obs, nu_ext, tesc, uext0, dt_var, &
-      volume, sigma, beta_bulk, eps_e, eps_B, E0, gamma_bulk0, Iind, L_e, &
-      eta_delta, bw_radius, nu_ext0, Aadi, tmin
+   real(dp) :: uB, uext, urad, L_j, gmin, gmax, numin, numax, qind, B, &
+      tacc, tinj, g1, g2, tstep, Q0, theta_e, tmax, d_lum, z, D, n_ext, &
+      theta_obs, mu_obs, nu_ext, tesc, uext0, volume, beta_bulk, eps_e, &
+      eps_B, E0, gamma_bulk0, Iind, L_e, nu_ext0, Aadi, tmin, Rd, td, R
    real(dp), allocatable, dimension(:) :: freqs, t, Ntot, Inu, gg, sen_lum, &
-      dt, nu_obs, t_obs
+      dt, nu_obs, t_obs, gamma_bulk, Rbw
    real(dp), allocatable, dimension(:, :) :: nu0, nn, jnut, jmbs, jssc, jeic, &
       ambs, anut, Qinj, Ddif, Fmbs, Feic, Fssc, Fnut
 
@@ -41,11 +40,8 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
    gamma_bulk0 = par_gamma_bulk
    d_lum = par_d_lum
    z = par_z
-   bw_radius = par_R0
    tstep = par_tstep
-   tmax = par_tmax
    tmin = par_tmin
-   dt_var = par_tvar
    gmin = par_gmin
    gmax = par_gmax
    qind = par_qind
@@ -56,8 +52,12 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
    numbins = par_numbins
    numdt = par_numdt
    numdf = par_numdf
-   ! g1 = par_g1
-   ! g2 = par_g2
+   E0 = par_E0
+   n_ext = par_n_ext
+   g1 = par_g1
+   g2 = par_g2
+   time_grid = par_time_grid
+
 
    !  ####  ###### ##### #    # #####
    ! #      #        #   #    # #    #
@@ -68,7 +68,7 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
    write(*, "('--> Simulation setup')")
 
    allocate(t(0:numdt), freqs(numdf), Ntot(numdt), Inu(numdf), sen_lum(numdt), &
-      dt(numdt), nu_obs(numdf), t_obs(numdt))
+      dt(numdt), nu_obs(numdf), t_obs(numdt), Rbw(numdt), gamma_bulk(numdt))
    allocate(nn(0:numdt, numbins), nu0(0:numdt, numbins), gg(numbins), &
       ambs(numdf, numdt), jmbs(numdf, numdt), jnut(numdf, numdt), &
       jssc(numdf, numdt), anut(numdf, numdt), jeic(numdf, numdt), &
@@ -78,21 +78,40 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
    call K1_init
    call K2_init
 
-   E0 = 1d55
-   n_ext = 0.1d0
+   !
+   !   ---------->    Initial conditions     <----------
+   !
    theta_obs = par_theta_obs * pi / 180d0
    mu_obs = dcos(theta_obs)
-   gamma_bulk = gamma_bulk0
-   D = Doppler(gamma_bulk, mu_obs)
-   eta_delta = 1d0
-   R = bw_radius / gamma_bulk0
-
-   tacc = 1d200! 0.5d0 * R / cLight!
+   beta_bulk = bofg(gamma_bulk0)
+   D = Doppler(gamma_bulk0, mu_obs)
+   Rd = deceleration_radius(E0, gamma_bulk0, n_ext)
+   R = Rd / gamma_bulk0
+   volume = 4d0 * pi * R**3 / 3d0
+   tesc = 1.5d0 * R / cLight
+   B = dsqrt(32d0 * pi * mass_p * eps_B * n_ext * gamma_bulk0 * (gamma_bulk0 - 1d0)) * cLight * Rd**(-1.5d0)
+   uB = 0.125d0 * B**2 / pi
+   L_e = eps_e * 4d0 * pi * Rd**2 * n_ext * mass_p * cLight**3 * beta_bulk * gamma_bulk0 * (gamma_bulk0 - 1d0)
+   ! g2 = dsqrt(6d0 * pi * eCharge * 1d-8 / (sigmaT * B))
+   g1 = eps_e * (gamma_bulk0 - 1d0) * mass_p * (qind - 2d0) / ((qind - 1d0) * mass_e)
+   Q0 = L_e * pwl_norm(mass_e * cLight**2 * volume * cLight, qind - 1d0, g1, g2)
+   td = (1d0 + z) * Rd / (beta_bulk * cLight * gamma_bulk0**2)
+   tmin = t_com_f(td, z, gamma_bulk0, 0d0, mu_obs)
+   tinj = 1d200
+   tacc = 0.5d0 * R / cLight!
+   tmax = par_tmax + tmin
+   t(0) = 0d0
 
    write(*, "('theta_obs =', ES15.7)") theta_obs
    write(*, "('nu_ext0   =', ES15.7)") nu_ext0
+   write(*, "('Doppler   =', ES15.7)") D
+   write(*, "('tmin      =', ES15.7)") td
+   write(*, "('tmax      =', ES15.7)") t_obs_f(tmax, z, gamma_bulk0, 0d0, mu_obs)
+   write(*, "('Rd        =', ES15.7)") Rd
+   write(*, "('Gamma0    =', ES15.7)") gamma_bulk0
+   write(*, "('R         =', ES15.7)") R
 
-   build_f: do j=1,numdf
+   build_f: do j = 1, numdf
       nu_obs(j) = numin * ( (numax / numin)**(dble(j - 1) / dble(numdf - 1)) )
    end do build_f
 
@@ -100,10 +119,12 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
       gg(k) = (gmin - 1d0) * ((gmax - 1d0) / (gmin - 1d0))**(dble(k - 1) / dble(numbins - 1)) + 1d0
    end do build_g
 
-   t(0) = 0d0
    nu0 = 0d0
    Aadi = 0d0
-   ! nn(0, :) = injection(0d0, tmax, gg, g1, g2, qind, theta_e, 0d0, 1d0)
+   Ddif = 1d-200 !0.5d0 * gg**2 / tacc !
+   nn(0, :) = 0d0!injection(0d0, tmax, gg, g1, g2, qind, theta_e, 0d0, Q0)
+   ! call time_step(dt(1), gg, Ddif(0, :), nu0(0, :) * gg**2 + Aadi * gg, tstep, R / cLight)
+   ! stop
 
    write(*, "('---> Calculating the emission')")
    write(*, *) ''
@@ -120,32 +141,35 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
    ! ######   ##    ####  ######  ####    #   #  ####  #    #
    time_loop: do i = 1, numdt
 
-      if ( dabs(gamma_bulk - gamma_bulk0) > 1d-6 ) then
+      select case(time_grid)
+      case(1)
+         t(i) = tstep * ( (tmax / tstep)**(dble(i - 1) / dble(numdt - 1)) )
+         dt(i) = t(i) - t(i - 1)
+      case(2)
          call time_step(dt(i), gg, Ddif(i - 1, :), nu0(i - 1, :) * gg**2 + Aadi * gg, tstep, R / cLight)
          t(i) = t(i - 1) + dt(i)
-      else
-         t(i) = tmin * ( (tmax / tmin)**(dble(i - 1) / dble(numdt / 5 - 1)) )
-         ! t(i) = tmax * dble(i) / dble(numdt)
+      case(3)
+         t(i) = tmax * dble(i) / dble(numdt)
          dt(i) = t(i) - t(i - 1)
-      end if
-      t_obs(i) = t(i) * (1d0 + z) / D
-      call adiab_blast_wave(t_obs(i), z, gamma_bulk0, E0, n_ext, gamma_bulk, bw_radius)
-      beta_bulk = bofg(gamma_bulk)
-      D = Doppler(gamma_bulk, mu_obs)
-      ! R = bw_radius / gamma_bulk
-      ! volume = 4d0 * pi * R**3 / 3d0
-      volume = 4d0 * pi * bw_radius**3 / (12d0 * gamma_bulk)!3d0
-      R = (3d0 * volume / (4d0 * pi))**(1d0 / 3d0)
+      case default
+         write(*, *) "Wrong time-grid selection"
+      end select
+      t_obs(i) = (tmin + t(i)) * (1d0 + z) / D
+      call adiab_blast_wave(t_obs(i), z, gamma_bulk0, E0, n_ext, Rd, gamma_bulk(i), Rbw(i))
+      beta_bulk = bofg(gamma_bulk(i))
+      D = Doppler(gamma_bulk(i), mu_obs)
+      R =  Rbw(i) / gamma_bulk(i)
+      volume = 4d0 * pi * R**3 / 3d0
       tesc = 1.5d0 * R / cLight
-      B = dsqrt(32d0 * pi * mass_p * eps_B * n_ext * gamma_bulk * (gamma_bulk - 1d0)) * cLight
+      B = dsqrt(32d0 * pi * eps_B * mass_p * n_ext * gamma_bulk(i) * (gamma_bulk(i) - 1d0)) * cLight * Rbw(i)**(-1.5d0)
       uB = 0.125d0 * B**2 / pi
-      L_e = eps_e * 4d0 * pi * bw_radius**2 * n_ext * mass_p * cLight**3 * beta_bulk * gamma_bulk * (gamma_bulk - 1d0)
-      g2 = dsqrt(6d0 * pi * eCharge * 1d-8 / (sigmaT * B))
-      ! g2 = 2d8 * dsqrt(1d-6 / gamma_bulk) / (eps_B**0.25d0 * n_ext)
-      g1 = eps_e * (gamma_bulk - 1d0) * mass_p * (qind - 2d0) / ((qind - 1d0) * mass_e)
+      L_e = eps_e * 4d0 * pi * Rbw(i)**2 * n_ext * mass_p * cLight**3 * beta_bulk * gamma_bulk(i) * (gamma_bulk(i) - 1d0)
+      ! g2 = dsqrt(6d0 * pi * eCharge * 1d-8 / (sigmaT * B))
+      ! g2 = 2d8 * dsqrt(1d-6 / gamma_bulk(i)) / (eps_B**0.25d0 * n_ext)
+      g1 = eps_e * (gamma_bulk(i) - 1d0) * mass_p * (qind - 2d0) / ((qind - 1d0) * mass_e)
       Q0 = L_e * pwl_norm(mass_e * cLight**2 * volume, qind - 1d0, g1, g2)
-      uext = uext0 * gamma_bulk**2 * (1d0 + beta_bulk**2 / 3d0)
-      nu_ext = nu_ext0 / D! * gamma_bulk!
+      uext = uext0 * gamma_bulk(i)**2 * (1d0 + beta_bulk**2 / 3d0)
+      nu_ext = nu_com_f(nu_ext0, z, gamma_bulk(i), mu_obs)
 
       if ( with_cool .and. i > 1 ) then
          do j = 2, numdf
@@ -163,10 +187,10 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
          urad = 0d0
       end if
 
-      ! Aadi = 3d0 * beta_bulk * gamma_bulk * cLight / (2d0 * bw_radius)
-      Aadi = 3d0 * beta_bulk * gamma_bulk * cLight / (2d0 * R)
-      nu0(i, :) = 4d0 * sigmaT * (uB + urad) / (3d0 * mass_e * cLight)
-      Qinj(i, :) = injection(t(i), tacc, gg, g1, g2, qind, theta_e, 0d0, Q0)
+      Aadi = 0d0!3d0 * beta_bulk * gamma_bulk(i) * cLight / (2d0 * Rbw(i))
+      ! Aadi = 3d0 * cLight / (2d0 * R)
+      nu0(i, :) = 4d0 * sigmaT * (uB / Rbw(i)**3 + urad) / (3d0 * mass_e * cLight)
+      Qinj(i, :) = injection(t(i), tinj, gg, g1, g2, qind, theta_e, 0d0, Q0)
       Ddif(i, :) = 1d-200 !0.5d0 * gg**2 / tacc !
       call FP_FinDif_difu(dt(i), gg, nn(i - 1, :), nn(i, :), nu0(i, :), Ddif(i, :), Qinj(i, :), Aadi, tesc)
       ! call FP_FinDif_cool(dt(i), gg, nn(i - 1, :), nn(i, :), nu0(i, :), Qinj(i, :), tesc)
@@ -174,11 +198,11 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
       !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
       !$OMP& PRIVATE(j)
       do j = 1, numdf
-         freqs(j) = nu_com_f(nu_obs(j), z, gamma_bulk, mu_obs)
+         freqs(j) = nu_com_f(nu_obs(j), z, gamma_bulk(i), mu_obs)
          call mbs_emissivity(jmbs(j, i), freqs(j), gg, nn(i, :), B)
          call mbs_absorption(ambs(j, i), freqs(j), gg, nn(i, :), B)
-         Inu(j) = opt_depth_blob(ambs(j, i), R) * jmbs(j, i) * 2d0 * R
-         ! Inu(j) = opt_depth_slab(ambs(j, i), 2d0 * R) * jmbs(j, i) * 2d0 * R
+         ! Inu(j) = opt_depth_blob(ambs(j, i), R) * jmbs(j, i) * 2d0 * R
+         Inu(j) = opt_depth_slab(ambs(j, i), 2d0 * R) * jmbs(j, i) * 2d0 * R
          ! call RadTrans(Inu(j), R, jmbs(j, i), ambs(j, i))
       end do
       !$OMP END PARALLEL DO
@@ -187,7 +211,6 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
       !$OMP& PRIVATE(j)
       do j = 1, numdf
          if ( with_ic ) then
-            ! call IC_emis_full(freqs(j), freqs, gg, nn(i, :), Inu, jssc(j, i))
             call IC_iso_powlaw(jssc(j, i), freqs(j), freqs, Inu, nn(i, :), gg)
             call IC_iso_monochrom(jeic(j, i), freqs(j), uext, nu_ext, nn(i, :), gg)
          else
@@ -207,7 +230,7 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
       Ntot(i) = sum(nn(i, 2:) * (gg(2:) - gg(:numbins - 1)))
 
       if ( mod(i, nmod) == 0 .or. i == 1 ) &
-         write(*, on_screen) i, g1, g2, gamma_bulk, Ntot(i)
+         write(*, on_screen) i, t(i), dt(i), gamma_bulk(i), Ntot(i)
 
    end do time_loop
 
@@ -226,37 +249,46 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
 
    ! ------  Saving initial parameters  ------
    call h5io_createg(file_id, "Parameters", group_id, herror)
+
    call h5io_wint0(group_id, 'numdt', numdt, herror)
    call h5io_wint0(group_id, 'numdf', numdf, herror)
    call h5io_wint0(group_id, 'numbins', numbins, herror)
    call h5io_wint0(group_id, 'time-grid', time_grid, herror)
+
    call h5io_wdble0(group_id, 't_max', tmax, herror)
+   call h5io_wdble0(group_id, 't_min', tmin, herror)
    call h5io_wdble0(group_id, 'tstep', tstep, herror)
-   call h5io_wdble0(group_id, 'sigma', sigma, herror)
-   call h5io_wdble0(group_id, 'R', R, herror)
-   call h5io_wdble0(group_id, 'R0', R0, herror)
    call h5io_wdble0(group_id, 'd_lum', d_lum, herror)
    call h5io_wdble0(group_id, 'redshift', z, herror)
-   call h5io_wdble0(group_id, 'gamma_bulk', gamma_bulk, herror)
-   call h5io_wdble0(group_id, 'view-angle', theta_obs, herror)
+   call h5io_wdble0(group_id, 'gamma_bulk0', gamma_bulk0, herror)
+   call h5io_wdble0(group_id, 'view-angle', par_theta_obs, herror)
    call h5io_wdble0(group_id, 'gamma_min', gmin, herror)
    call h5io_wdble0(group_id, 'gamma_max', gmax, herror)
    call h5io_wdble0(group_id, 'gamma_1', g1, herror)
    call h5io_wdble0(group_id, 'gamma_2', g2, herror)
    call h5io_wdble0(group_id, 'pwl-index', qind, herror)
    call h5io_wdble0(group_id, 'L_j', L_j, herror)
-   call h5io_wdble0(group_id, 'Theta_e', theta_e, herror)
-   call h5io_wdble0(group_id, 'zeta_e', zetae, herror)
+   call h5io_wdble0(group_id, 'epsilon_e', eps_e, herror)
+   call h5io_wdble0(group_id, 'epsilon_B', eps_B, herror)
    call h5io_wdble0(group_id, 'nu_min', numin, herror)
    call h5io_wdble0(group_id, 'nu_max', numax, herror)
+   call h5io_wdble0(group_id, 'nu_ext0', nu_ext0, herror)
+   call h5io_wdble0(group_id, 'u_ext0', uext0, herror)
+   call h5io_wdble0(group_id, 'E0', E0, herror)
+   call h5io_wdble0(group_id, 'n_ext', n_ext, herror)
+
    call h5io_closeg(group_id, herror)
 
    ! ------  Saving data  ------
+   call h5io_wdble0(file_id, 'Rd', Rd, herror)
+   call h5io_wdble0(file_id, 'td', td, herror)
+
    call h5io_wdble1(file_id, 'time', t(1:), herror)
    call h5io_wdble1(file_id, 't_obs', t_obs, herror)
    call h5io_wdble1(file_id, 'Ntot', Ntot, herror)
-   call h5io_wdble1(file_id, 'sen_lum', sen_lum, herror)
-   call h5io_wdble1(file_id, 'frequency', freqs, herror)
+   call h5io_wdble1(file_id, 'Rbw', Rbw, herror)
+   call h5io_wdble1(file_id, 'Gamma_bulk', gamma_bulk, herror)
+   call h5io_wdble1(file_id, 'nu', freqs, herror)
    call h5io_wdble1(file_id, 'nu_obs', nu_obs, herror)
    call h5io_wdble1(file_id, 'gamma', gg, herror)
 

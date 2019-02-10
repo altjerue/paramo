@@ -61,7 +61,7 @@ contains
       !
       function powlaw_dis_s(g, g1, g2, s) result(pwl)
          implicit none
-         doubleprecision, intent(in) :: g,g1,g2,s
+         doubleprecision, intent(in) :: g, g1, g2, s
          doubleprecision :: pwl
          if ( g >= g1 .and. g <=g2 ) then
             pwl = g**(-s)
@@ -257,13 +257,19 @@ contains
       real(dp), intent(in), dimension(:) :: g, D, gdot
       real(dp), intent(out) :: dt
       integer :: Ng
+      real(dp) :: Hmin
       real(dp), dimension(size(g)) :: H, dg
       Ng = size(g)
       dg(2:) = g(2:) - g(:Ng - 1)
       dg(1) = dg(2)
       H(2:) = dmax1(1d-200, dabs(D(2:) - D(:Ng - 1)) / dg(2:)) + dabs(gdot(2:))
       H(1) = dmax1(1d-200, dabs(D(2) - D(1)) / dg(1)) + dabs(gdot(1))
-      dt = dmax1(tstep * lct, 0.5d0 * minval(dg / H, mask=H>1d-50))
+      Hmin = minval(dg / H, mask=H>1d-50)
+      if ( Hmin > lct ) then
+         dt = tstep * lct
+      else
+         dt = dmax1(tstep * lct, 0.5d0 * Hmin)
+      end if
    end subroutine time_step
 
 

@@ -32,6 +32,8 @@ class parameters(object):
         self.tmin = 1e0                 # minimum time
         self.tvar = 2e0                 # variability time scale
         self.L_j = 1e45                 # num. dens. of particles injected per second
+        self.E0 = 1e50                  # energy of the blast wave
+        self.n_ext = 1.0                # number density of the external medium
         self.eps_e = 0.1                # epsilon_e
         self.eps_B = 0.03               # epsilon_B
         self.g1 = 1e2                   # power-law min Lorentz factor
@@ -72,6 +74,8 @@ class parameters(object):
             print(fortran_double(self.tmin), ' ! minimum time', file=f)
             print(fortran_double(self.tvar), ' ! variability time scale', file=f)
             print(fortran_double(self.L_j), ' ! jet luminosity', file=f)
+            print(fortran_double(self.E0), ' ! energy of the blast wave', file=f)
+            print(fortran_double(self.n_ext), ' ! number density of the external medium', file=f)
             print(fortran_double(self.eps_e), ' ! epsilon_e', file=f)
             print(fortran_double(self.eps_B), ' ! epsilon_B', file=f)
             print(fortran_double(self.g1), ' ! power-law min Lorentz factor', file=f)
@@ -129,12 +133,6 @@ class compiler(object):
 
         if self.DBG:
             make += ' DBG=1'
-
-        if self.HYB:
-            make += ' HYB=1'
-
-        if self.MBS:
-            make += ' MBS=1'
 
         os.chdir(self.compile_dir)
         print("--> Running Makefile:\n ", make, "\n")
@@ -211,60 +209,36 @@ class Runner(object):
     '''This class sets up the exectuable instructions.
     '''
 
-    def __init__(self, wCool=False, wAbs=False, wSSC=False, Hyb=False, flabel='DriverTest', par_kw={}, comp_kw={}):
+    def __init__(self, wCool=False, wAbs=False, wIC=False, flabel='DriverTest', par_kw={}, comp_kw={}):
         self.par = parameters(**par_kw)
-        self.comp = compiler(rules='xBlazMag', **comp_kw)
         self.par.wParams()
         self.cwd = os.getcwd()
+        self.comp_kw = comp_kw
         # -----  ARGS OF THE EXECUTABLE  -----
-        self.wCool = wCool    # variable cooling
-        self.wAbs = wAbs      # compute MBS self-absorption
-        self.wSSC = wSSC      # compute SSC emissivity
-        self.Hyb = Hyb
+        if wCool:
+            self.wCool = 'T'
+        else:
+            self.wCool = 'F'
+        if wAbs:
+            self.wAbs = 'T'
+        else:
+            self.wAbs = 'F'
+        if wIC:
+            self.wIC = 'T'
+        else:
+            self.wIC = 'F'
         self.flabel = flabel  # a label to identify each output
 
-    def output_file(self):
-        outf = ''
-        argv = []
-
-        if self.Hyb:
-            outf += 'H'
-            argv.append('T')
-        else:
-            outf += 'P'
-            argv.append('F')
-
-        if self.wCool:
-            outf += 'V'
-            argv.append('T')
-        else:
-            outf += 'C'
-            argv.append('F')
-
-        if self.wAbs:
-            outf += 'O'
-            argv.append('T')
-        else:
-            outf += 'T'
-            argv.append('F')
-
-        if self.wSSC:
-            outf += 'wS'
-            argv.append('T')
-        else:
-            outf += 'oS'
-            argv.append('F')
-
-        return outf + '-' + self.flabel + '.jp.h5', argv
-
-    def run_blazMag(self, pream=None, cl=False):
-        self.comp.cleanup()
-        self.comp.compile()
-        outfile, argv = self.output_file()
+    def run_blazMag(self, pream=None, clean=False, cl=False):
+        if clean:
+            self.comp.cleanup()
+        comp = compiler(rules='xBlazMag', **self.comp_kw)
+        comp.compile()
+        outfile = self.flabel + '.jp.h5'
         if pream is None:
-            run_cmd = '{0}xBlazMag {1} {2} {3}'.format(self.comp.compile_dir, self.par.params_file, " ".join(argv), outfile)
+            run_cmd = '{0}xBlazMag {1} {2} {3} {4} {5}'.format(comp.compile_dir, self.par.params_file, self.wAbs, self.wIC, self.wCool, outfile)
         else:
-            run_cmd = '{0} {1}xBlazMag {2} {3} {4}'.format(pream, self.comp.compile_dir, self.par.params_file, " ".join(argv), outfile)
+            run_cmd = '{0} {1}xBlazMag {2} {3} {4} {5} {6}'.format(pream, comp.compile_dir, self.par.params_file, self.wAbs, self.wIC, self.wCool, outfile)
         print("\n--> Parameters:")
         os.system("cat -n " + self.par.params_file)
         if cl:
@@ -273,9 +247,22 @@ class Runner(object):
             print("\n--> Running:\n  ", run_cmd, "\n")
             os.system(run_cmd)
             print("\n--> Finished")
-            # return outfile
 
-
-########################################
-# ### TODO: Afterglow runner
-########################################
+    def run_afterglow(self, pream=None, clean=False, cl=False):
+        if clean:
+            self.comp.cleanup()
+        comp = compiler(rules='xAglow', **self.comp_kw)
+        comp.compile()
+        outfile = self.flabel + '.jp.h5'
+        if pream is None:
+            run_cmd = '{0}xAglow {1} {2} {3} {4}'.format(comp.compile_dir, self.wCool, self.wIC, self.par.params_file, outfile)
+        else:
+            run_cmd = '{0} {1}xAglow {2} {3} {4} {5}'.format(pream, comp.compile_dir, self.wCool, self.wIC, self.par.params_file, outfile)
+            print("\n--> Parameters:")
+        os.system("cat -n " + self.par.params_file)
+        if cl:
+            return run_cmd
+        else:
+            print("\n--> Running:\n  ", run_cmd, "\n")
+            os.system(run_cmd)
+            print("\n--> Finished")
