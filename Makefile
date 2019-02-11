@@ -95,7 +95,8 @@ BLAZMAG_OBJ = params.o misc.o pwl_integ.o h5_inout.o K1.o K2.o SRtoolkit.o \
 TESTS_OBJ = params.o misc.o pwl_integ.o h5_inout.o K1.o K2.o SRtoolkit.o \
 	anaFormulae.o radiation.o dist_evol.o tests.o
 AFGLOW_OBJ = params.o misc.o pwl_integ.o h5_inout.o K1.o K2.o SRtoolkit.o \
-	anaFormulae.o radiation.o dist_evol.o models.o afterglow.o afterglow_main.o
+	anaFormulae.o radiation.o pairs.o dist_evol.o models.o afterglow.o \
+	afterglow_main.o
 
 # -----  rules  -----
 all: $(BLAZMAG) $(TESTS) $(AFGLOW)
@@ -103,6 +104,7 @@ all: $(BLAZMAG) $(TESTS) $(AFGLOW)
 # objects
 constants.o K2.o K1.o pwl_integ.o misc.o h5_inout.o: data_types.o
 SRtoolkit.o: data_types.o constants.o
+pairs.o: data_types.o constants.o misc.o
 params.o: data_types.o misc.o
 models.o: data_types.o constants.o SRtoolkit.o
 blazMag.o: data_types.o constants.o misc.o pwl_integ.o h5_inout.o SRtoolkit.o \
