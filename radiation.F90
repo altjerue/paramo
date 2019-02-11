@@ -428,10 +428,10 @@ contains
    !
    !  -----  Inverse Compton for isotropic power-law incomming photons  -----
    !
-   subroutine IC_iso_powlaw(jnu, nuout, nu, Imbs, n, g)
+   subroutine IC_iso_powlaw(jnu, nuout, nu, urad, n, g)
       implicit none
       real(dp), intent(in) :: nuout
-      real(dp), intent(in), dimension(:) :: nu, n, g, Imbs
+      real(dp), intent(in), dimension(:) :: nu, n, g, urad
       real(dp), intent(out) :: jnu
       integer :: j, k, Ng, Nf
       real(dp) :: w1, w2, gmx_star, e0, l, q, f1, f2, emis, g1, g2, s1, s2
@@ -439,8 +439,8 @@ contains
       Nf = size(nu, dim=1)
       jnu = 0d0
       nu_loop: do j = 1, Nf - 1
-         intens_if: if ( Imbs(j) > 1d-200 .and. Imbs(j + 1) > 2d-100 ) then
-            l = -dlog(Imbs(j + 1) / Imbs(j)) / dlog(nu(j + 1) / nu(j))
+         intens_if: if ( urad(j) > 1d-200 .and. urad(j + 1) > 2d-100 ) then
+            l = -dlog(urad(j + 1) / urad(j)) / dlog(nu(j + 1) / nu(j))
             if ( l > 8d0 ) l = 8d0
             if ( l < -8d0 ) l = -8d0
             e0 = mass_e * cLight**2 / (hPlanck * nu(j + 1))
@@ -476,7 +476,7 @@ contains
                         else
                            emis = 0d0
                         end if
-                        jnu = jnu + emis * n(k) * g(k)**q * Imbs(j) * sigmaT / f1**l
+                        jnu = jnu + emis * n(k) * g(k)**q * cLight * urad(j) * sigmaT / (4d0 * pi * f1**l)
                      end if contrib_if
                   end if e_dist
                end do g_loop
@@ -520,7 +520,18 @@ contains
             jnu = jnu + emis * n(k) * g(k)**q / w**q1
          end if e_dist
       end do g_loop
-      jnu = jnu * cLight * sigmaT * uext * 0.25d0 / (pi * nuext)
+      jnu = jnu * cLight * sigmaT * uext / (4d0 * pi * nuext)
    end subroutine IC_iso_monochrom
+
+   !
+   !     ----------{     Photons evolution     }----------
+   !
+   subroutine photons_evol(dt, nin, nout, nu, jnu, tesc, Loss)
+      implicit none
+      real(dp), intent(in) :: dt, nu, jnu, tesc, Loss, nin
+      real(dp), intent(out) :: nout
+      nout = nin + dt * ( 4d0 * pi * jnu / (hPlanck * nu) - nin / tesc + Loss)
+   end subroutine photons_evol
+
 
 end module radiation
