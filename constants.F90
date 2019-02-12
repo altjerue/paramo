@@ -40,7 +40,8 @@ module constants
       eVolt = 1.60218d-12, &                        ! erg
       nuconst = 2.7992491077281560779657886d6, &    ! eCharge / (2 * pi * m_e * cLight)
       jmbconst = 6.664569709819094d-30, & ! sqrt(3) * eCharge**2 / (2 * cLight)
-      ambconst = 3.6580794221267223d-3  ! sqrt(3) * eCharge**2 / (4 * m_e * cLight)
+      ambconst = 3.6580794221267223d-3, &  ! sqrt(3) * eCharge**2 / (4 * m_e * cLight)
+      Bcritical = 4.414e13 ! mass_e**2 * cLight**3 / (eCharge * hbar)
 
 
    !

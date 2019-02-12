@@ -52,7 +52,7 @@ contains
          Lgg(i) = 0.5d0 * dlog(x(Nf) / x(1)) * (Lgg(i) + 2d0 * &
             sum(x(2:Nf - 1) * n(2:Nf - 1) * Rgg_MK95(x(i) * x(2:Nf)))) / &
             dble(Nf - 1)
-         Lgg(i) = n(i) * Lgg(i)
+         ! Lgg(i) = n(i) * Lgg(i)
       end do
    end subroutine pairs_loss_rate
 
