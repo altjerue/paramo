@@ -26,7 +26,7 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    integer :: i, j, k, numbins, numdf, numdt, time_grid, herror
    real(dp) :: uB, uext, urad, R, L_j, gmin, gmax, numin, numax, qind, B, &
       tacc, g1, g2, tstep, zetae, Qth, Qnth, theta_e, tmax, d_lum, z, D, &
-      gamma_bulk, theta_obs, R0, b_index, mu_obs, nu_ext, tesc, kappa, &
+      gamma_bulk, theta_obs, R0, b_index, mu_obs, nu_ext, tesc, kappa, tlc, &
       volume, sigma, beta_bulk, eps_e, L_B, mu_mag, Iind, eps_B, f_rec
    real(dp), allocatable, dimension(:) :: freqs, t, Ntot, Inu, gg, sen_lum, &
       dt, nu_obs, t_obs, dg
@@ -116,6 +116,7 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    end if
 
    volume = 4d0 * pi * R**3 / 3d0
+   tlc = R / cLight
    tesc = 1.5d0 * R / cLight
    tacc = 0.5d0 * R / cLight
 
@@ -138,7 +139,7 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    write(*, "('gamma_2   =', ES15.7)") g2
    write(*, "('Q_nth     =', ES15.7)") Qnth
    write(*, "('Q_th      =', ES15.7)") Qth
-   write(*, "('t_dyn     =', ES15.7)") R / cLight
+   write(*, "('t_dyn     =', ES15.7)") tlc
    write(*, "('t_esc     =', ES15.7)") tesc
    write(*, "('t_acc     =', ES15.7)") tacc
    write(*, "('L_B       =', ES15.7)") L_B
@@ -148,7 +149,7 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
 
    build_f: do j=1,numdf
       nu_obs(j) = numin * ( (numax / numin)**(dble(j - 1) / dble(numdf - 1)) )
-      freqs(j) = nu_com_f(nu_obs(j), z, gamma_bulk, mu_obs)
+      freqs(j) = nu_com_f(nu_obs(j), z, D)
    end do build_f
 
    build_g: do k = 1, numbins
@@ -198,7 +199,14 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
       !  ###### ###### #####
       Qinj(i, :) = injection(t(i), tacc, gg, g1, g2, qind, theta_e, Qth, Qnth)
       Ddif(i, :) = 1d-200 !0.5d0 * gg**2 / tacc !
-      call FP_FinDif_difu(dt(i), gg, nn(i - 1, :), nn(i, :), nu0(i - 1, :), Ddif(i, :), Qinj(i, :), 0d0, tesc)
+      call FP_FinDif_difu(dt(i), &
+            &             gg, &
+            &             nn(:, i - 1), &
+            &             nn(:, i), &
+            &             nu0(:, i) * gg**2, &
+            &             Ddif(:, i), &
+            &             Qinj(:, i), &
+            &             tesc)
       ! call FP_FinDif_cool(dt(i), gg, nn(i - 1, :), nn(i, :), nu0(i - 1, :), Qinj(i, :), tesc)
 
       !   ----->   Then we compute the light path

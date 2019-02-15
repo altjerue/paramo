@@ -201,38 +201,38 @@ contains
    !
    !     ::::::  Frequency in the observer frame  ::::::
    !
-   function nu_obs_s(nu, z, gamma, muo) result(nuobs)
+   function nu_obs_s(nu, z, dopp) result(nuobs)
       implicit none
-      real(dp), intent(in) :: nu, z, gamma, muo
+      real(dp), intent(in) :: nu, z, dopp
       real(dp) ::nuobs
-      nuobs = nu * Doppler(gamma, muo) / (1d0 + z)
+      nuobs = nu * dopp / (1d0 + z)
     end function nu_obs_s
 
-    function nu_obs_v(nu, z, gamma, muo) result(nuobs)
+    function nu_obs_v(nu, z, dopp) result(nuobs)
       implicit none
-      real(dp), intent(in) :: z, gamma, muo
+      real(dp), intent(in) :: z, dopp
       real(dp), intent(in), dimension(:) :: nu
       real(dp), dimension(size(nu)) :: nuobs
-      nuobs = nu * Doppler(gamma, muo) / (1d0 + z)
+      nuobs = nu * dopp / (1d0 + z)
     end function nu_obs_v
 
 
    !
    !     ::::::  Frequency in the comoving frame  ::::::
    !
-   function nu_com_s(nu, z, gamma, muo) result(nucom)
+   function nu_com_s(nu, z, dopp) result(nucom)
       implicit none
-      real(dp), intent(in) :: nu, z, gamma, muo
+      real(dp), intent(in) :: nu, z, dopp
       real(dp) :: nucom
-      nucom = nu * (1d0 + z) / Doppler(gamma, muo)
+      nucom = nu * (1d0 + z) / dopp
    end function nu_com_s
 
-    function nu_com_v(nu, z, gamma, muo) result(nucom)
+    function nu_com_v(nu, z, dopp) result(nucom)
       implicit none
-      real(dp), intent(in) :: z, gamma, muo
+      real(dp), intent(in) :: z, dopp
       real(dp), intent(in), dimension(:) :: nu
       real(dp), dimension(size(nu)) :: nucom
-      nucom = nu * (1d0 + z) / Doppler(gamma, muo)
+      nucom = nu * (1d0 + z) / dopp
    end function nu_com_v
 
 

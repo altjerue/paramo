@@ -132,22 +132,20 @@ contains
    !  #       # #  # # #     # # #
    !  #       # #   ## #     # # #
    !  #       # #    # ######  # #
-   subroutine FP_FinDif_difu(dt, g, nin, nout, nu0, DD, QQ, AA, tesc)
+   subroutine FP_FinDif_difu(dt, g, nin, nout, gdot, DD, QQ, tesc)
       implicit none
-      real(dp), intent(in) :: dt, tesc, AA
-      real(dp), intent(in), dimension(:) :: g, nin, nu0, DD, QQ
+      real(dp), intent(in) :: dt, tesc
+      real(dp), intent(in), dimension(:) :: g, nin, gdot, DD, QQ
       real(dp), intent(out), dimension(:) :: nout
       real(dp), parameter :: eps = 1e-3
       integer :: i, Ng, Ng1
       real(dp) :: dBB
-      real(dp), dimension(size(g)) :: gdot, dx, dxp2, dxm2, CCp2, CCm2, BBp2, BBm2, YYp2, YYm2, WWp2, WWm2, ZZp2, ZZm2, a, b, c, r, x
+      real(dp), dimension(size(g)) :: dx, dxp2, dxm2, CCp2, CCm2, BBp2, BBm2, YYp2, YYm2, WWp2, WWm2, ZZp2, ZZm2, a, b, c, r
 
       Ng = size(g)
       Ng1 = Ng - 1
 
-      gdot = - nu0 * g**2 - AA * g
-      x = g - 1d0
-      dxp2(:Ng1) = x(2:) - x(:Ng1)
+      dxp2(:Ng1) = g(2:) - g(:Ng1)
       dxp2(Ng) = dxp2(Ng1)
       dxm2(2:) = dxp2(:Ng1)
       dxm2(1) = dxm2(2)
@@ -158,10 +156,10 @@ contains
       CCp2(Ng) = 0.25d0 * DD(Ng)
       CCm2(1) = 0.25d0 * DD(1)
 
-      BBp2(:Ng1) = -0.5d0 * ((DD(2:) - DD(:Ng1)) / dxp2(:Ng1) + (gdot(2:) + gdot(:Ng1)))
-      BBm2(2:) = -0.5d0 * ((DD(2:) - DD(:Ng1)) / dxm2(2:) + (gdot(2:) + gdot(:Ng1)))
-      BBp2(Ng) = -0.5d0 * ((DD(Ng) - DD(Ng1)) / dxp2(Ng) + (gdot(Ng) + gdot(Ng1)))
-      call polint(x(2:), BBm2(2:), x(1), BBm2(1), dBB)
+      BBp2(:Ng1) = -0.5d0 * ((DD(2:) - DD(:Ng1)) / dxp2(:Ng1) - (gdot(2:) + gdot(:Ng1)))
+      BBm2(2:) = -0.5d0 * ((DD(2:) - DD(:Ng1)) / dxm2(2:) - (gdot(2:) + gdot(:Ng1)))
+      BBp2(Ng) = -0.5d0 * ((DD(Ng) - DD(Ng1)) / dxp2(Ng) - (gdot(Ng) + gdot(Ng1)))
+      call polint(g(2:), BBm2(2:), g(1), BBm2(1), dBB)
 
       WWp2 = dxp2 * BBp2 / CCp2
       WWm2 = dxm2 * BBm2 / CCm2
@@ -211,28 +209,27 @@ contains
    end subroutine FP_FinDif_difu
 
 
-   subroutine FP_FinDif_cool(dt, g, nin, nout, nu0, QQ, tesc)
+   subroutine FP_FinDif_cool(dt, g, nin, nout, gdot, QQ, tesc)
       implicit none
       real(dp), intent(in) :: dt, tesc
-      real(dp), intent(in), dimension(:) :: g, nin, nu0, QQ
+      real(dp), intent(in), dimension(:) :: g, nin, gdot, QQ
       real(dp), intent(out), dimension(:) :: nout
       integer :: Ng, Ng1
-      real(dp), dimension(size(g)) :: gdot, dx, dxp2, dxm2, BBp2, BBm2, a, b, c, r
+      real(dp), dimension(size(g)) :: dx, dxp2, dxm2, BBp2, BBm2, a, b, c, r
 
       Ng = size(g)
       Ng1 = Ng - 1
 
-      gdot = nu0 * g**2
       dxp2(:Ng1) = g(2:) - g(:Ng1)
       dxp2(Ng) = dxp2(Ng1)
       dxm2(2:) = dxp2(:Ng1)
       dxm2(1) = dxm2(2)
       dx = dsqrt(dxp2 * dxm2)
 
-      BBp2(:Ng1) = 0.5d0 * (gdot(2:) + gdot(:Ng1))
+      BBp2(:Ng1) = -0.5d0 * (gdot(2:) + gdot(:Ng1))
       BBm2(2:) = BBp2(:Ng1)
-      BBp2(Ng) = 0.5d0 * (gdot(Ng) + gdot(Ng1))
-      BBm2(1) = 0.5d0 * (gdot(2) + gdot(1))
+      BBp2(Ng) = -0.5d0 * (gdot(Ng) + gdot(Ng1))
+      BBm2(1) = -0.5d0 * (gdot(2) + gdot(1))
 
       r = nin + dt * QQ
       a = zeros1D(Ng)

@@ -26,7 +26,7 @@ contains
       M0 = E0 / (G0 * cLight**2)
       x = Rshk / R0
       l = 4d0 * pi * mass_p * n * R0**3 / (3d0 * M0)
-      Gshk = (l * (x**3 - 1d0) + G0) / dsqrt( 1d0 + 2d0 * G0 * l * (x**3 - 1d0) + l**2 * (x**3 - 1d0)**2 )
+      Gshk = (l * (x**3 - 1d0) + G0) / dsqrt( 1d0 + 2d0 * G0 * l * (x**3 - 1d0) + (l * (x**3 - 1d0))**2 )
       ! B0 = bofg(G0)
       ! P0 = pofg(G0)
       ! lSedov = Rd * G0**(2d0 / 3d0)
