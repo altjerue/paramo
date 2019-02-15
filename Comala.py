@@ -16,8 +16,8 @@ class parameters(object):
 
     def rParams(self):
         # -----  PARAMETERS  -----
-        self.radius = 1e16                   # radius of emitting region (assuming spherical)
-        self.pos_init = 1e15            # Distance from central engine
+        self.R = 1e16                   # radius of emitting region (assuming spherical)
+        self.R0 = 1e15                  # Distance from central engine
         self.dLum = 4.0793e26           # luminosity distance (default Mrk 421)
         self.z = 0.03                   # redshift (default Mrk 421)
         self.gamma_bulk = 1e2           # emitting region bulk Lorentz factor
@@ -58,8 +58,8 @@ class parameters(object):
 
     def wParams(self):
         with open(self.params_file, 'w') as f:
-            print(fortran_double(self.radius), ' ! Radius', file=f)
-            print(fortran_double(self.pos_init), ' ! Initial radius', file=f)
+            print(fortran_double(self.R), ' ! Radius', file=f)
+            print(fortran_double(self.R0), ' ! Initial radius', file=f)
             print(fortran_double(self.dLum), ' ! luminosity distance', file=f)
             print(fortran_double(self.z), ' ! redshift', file=f)
             print(fortran_double(self.gamma_bulk), ' ! bulk Lorentz factor', file=f)
