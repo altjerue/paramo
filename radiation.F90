@@ -252,13 +252,13 @@ contains
       real(dp), intent(in), dimension(:) :: freqs, gg, uu
       integer :: j, k, Ng, Nf
       real(dp) :: nuKN, uind
-      real(dp), dimension(size(gg)) :: ubol!, urad
+      real(dp), dimension(size(gg)) :: ubol
       Ng = size(gg)
       Nf = size(freqs)
       !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
       !$OMP& PRIVATE(k, j, uind, nuKN)
       do k = 1, Ng
-         nuKN = mass_e * cLight**2 / (hPlanck * gg(k))
+         nuKN = mec2_h / gg(k)
          ubol(k) = 0d0
          freqloop: do j = 2, Nf
             if ( freqs(j) >= nuKN ) exit freqloop
@@ -271,7 +271,6 @@ contains
          end do freqloop
       end do
       !$OMP END PARALLEL DO
-      ! urad = 4d0 * pi * Ibol / cLight
    end function IC_cool
 
 

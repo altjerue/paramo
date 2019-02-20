@@ -51,7 +51,6 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    gmin = par_gmin
    gmax = par_gmax
    qind = par_qind
-   nu_ext = par_nu_ext
    uext = par_uext
    numin = par_numin
    numax = par_numax
@@ -91,7 +90,7 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    D = Doppler(gamma_bulk, mu_obs)
 
    ! ----->    External radiation field
-   nu_ext = nu_ext / D
+   nu_ext = nu_com_f(par_nu_ext, z, D)
    uext = uext * gamma_bulk**2 * (1d0 + beta_bulk**2 / 3d0) !  Eq. (5.25) Dermer & Menon (2009)
 
    ! ----->    Magnetic field
@@ -128,7 +127,7 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    else
       kappa = 1d0
       Qth = 0d0
-      Qnth = eps_e * L_B * pwl_norm(volume * mass_e * cLight**2, qind - 1d0, g1, g2)
+      Qnth = f_rec * L_B * pwl_norm(volume * mass_e * cLight**2, qind - 1d0, g1, g2)
       ! Qnth = eps_e * (L_j - L_B) * pwl_norm(volume * mass_e * cLight**2, qind - 1d0, g1, g2)
    end if
 
@@ -146,6 +145,8 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    write(*, "('L_B       =', ES15.7)") L_B
    write(*, "('u_B       =', ES15.7)") uB
    write(*, "('B         =', ES15.7)") B
+   write(*, "('u_ext     =', ES15.7)") uext
+   write(*, "('nu_ext    =', ES15.7)") nu_ext
    write(*, "('mu        =', ES15.7)") mu_mag
 
    build_f: do j=1,numdf
@@ -241,16 +242,6 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
       end if
 
       if ( with_cool ) then
-         ! urad = 0d0
-         ! do j = 2, numdf
-         !    if ( Inu(j - 1) > 1d-200 .and. Inu(j) > 1d-200 ) then
-         !       Iind = -dlog(Inu(j) / Inu(j - 1)) / dlog(freqs(j) / freqs(j - 1))
-         !       if ( Iind > 8d0 ) Iind = 8d0
-         !       if ( Iind < -8d0 ) Iind = -8d0
-         !       urad = urad + Inu(j - 1) * freqs(j - 1) * Pinteg(freqs(j) / freqs(j - 1), Iind, 1d-9)
-         !    end if
-         ! end do
-         ! urad = 4d0 * pi * urad / cLight
          urad = IC_cool(gg, freqs, 4d0 * pi * tlc * jnut(:, i))
       else
          urad = 0d0
