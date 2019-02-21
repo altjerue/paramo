@@ -16,7 +16,7 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
 
    character(len=*), intent(in) :: output_file, params_file
    logical, intent(in) :: with_cool, with_abs, with_ssc
-   integer, parameter :: nmod = 10
+   integer, parameter :: nmod = 50
    character(len=*), parameter :: screan_head = &
       '| Iteration |        Time |   Time step |    nu_0(g2) |       N_tot |'&
       //new_line('A')//&
@@ -24,12 +24,12 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
       on_screen = "(' | ', I9, ' | ', ES11.4, ' | ', ES11.4, ' | ', ES11.4, ' | ', ES11.4, ' |')"
    integer(HID_T) :: file_id, group_id
    integer :: i, j, k, numbins, numdf, numdt, time_grid, herror
-   real(dp) :: uB, uext, urad, R, L_j, gmin, gmax, numin, numax, qind, B, &
-      tacc, g1, g2, tstep, zetae, Qth, Qnth, theta_e, tmax, d_lum, z, D, &
-      gamma_bulk, theta_obs, R0, b_index, mu_obs, nu_ext, tesc, kappa, &
-      volume, sigma, beta_bulk, eps_e, L_B, mu_mag, Iind, eps_B, f_rec
-   real(dp), allocatable, dimension(:) :: freqs, t, Ntot, Inu, gg, sen_lum, &
-      dt, nu_obs, t_obs, dg
+   real(dp) :: uB, uext, R, L_j, gmin, gmax, numin, numax, qind, B, D, &
+      tacc, g1, g2, tstep, zetae, Qth, Qnth, theta_e, tmax, d_lum, z, &
+      gamma_bulk, theta_obs, R0, b_index, mu_obs, nu_ext, tesc, kappa, tlc, &
+      volume, sigma, beta_bulk, eps_e, L_B, mu_mag, eps_B, f_rec
+   real(dp), allocatable, dimension(:) :: freqs, t, Ntot, Inu, gg, &
+      dt, nu_obs, t_obs, dg, urad
    real(dp), allocatable, dimension(:, :) :: nu0, nn, jnut, jmbs, jssc, jeic, &
       ambs, anut, Qinj, Ddif, Fmbs, Feic, Fssc, Fnut
    logical :: hyb_dis
@@ -51,7 +51,6 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    gmin = par_gmin
    gmax = par_gmax
    qind = par_qind
-   nu_ext = par_nu_ext
    uext = par_uext
    numin = par_numin
    numax = par_numax
@@ -68,12 +67,12 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    !      # #        #   #    # #####
    ! #    # #        #   #    # #
    !  ####  ######   #    ####  #
-   allocate(t(0:numdt), freqs(numdf), Ntot(numdt), Inu(numdf), sen_lum(numdt), &
-      dt(numdt), nu_obs(numdf), t_obs(numdt), dg(numbins))
-   allocate(nn(0:numdt, numbins), nu0(0:numdt, numbins), gg(numbins), &
+   allocate(t(0:numdt), freqs(numdf), Ntot(numdt), Inu(numdf), &
+      dt(numdt), nu_obs(numdf), t_obs(numdt), dg(numbins), urad(numbins))
+   allocate(nn(numbins, 0:numdt), nu0(numbins, 0:numdt), gg(numbins), &
       ambs(numdf, numdt), jmbs(numdf, numdt), jnut(numdf, numdt), &
       jssc(numdf, numdt), anut(numdf, numdt), jeic(numdf, numdt), &
-      Qinj(numdt, numbins), Ddif(numdt, numbins), Fnut(numdf, numdt), &
+      Qinj(numbins, numdt), Ddif(numbins, numdt), Fnut(numdf, numdt), &
       Fmbs(numdf, numdt), Fssc(numdf, numdt), Feic(numdf, numdt))
 
    call K1_init
@@ -91,7 +90,7 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    D = Doppler(gamma_bulk, mu_obs)
 
    ! ----->    External radiation field
-   nu_ext = nu_ext / D ! * gamma_bulk
+   nu_ext = nu_com_f(par_nu_ext, z, D)
    uext = uext * gamma_bulk**2 * (1d0 + beta_bulk**2 / 3d0) !  Eq. (5.25) Dermer & Menon (2009)
 
    ! ----->    Magnetic field
@@ -104,18 +103,20 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    ! ----->   Injection of particles
    if ( qind > 2d0 ) then
       g1 = (qind - 2d0) * f_rec * sigma * mass_p / ((qind - 1d0) * mass_e)
-      g2 = dsqrt(6d0 * pi * eCharge * 1d-3 / (sigmaT * B))
-   else if ( qind > 1d0 .and. qind < 2d0 ) then
-      ! g1 = gmin
+      g2 = par_g2
       ! g2 = dsqrt(6d0 * pi * eCharge * 1d-3 / (sigmaT * B))
-      g1 = (sigma + 1d0) * ((2d0 - qind) / (qind - 1d0))**(1d0 / (2d0 - qind))
-      g2 = dsqrt(6d0 * pi * eCharge * 1d-3 / (sigmaT * B))
+   else if ( qind > 1d0 .and. qind < 2d0 ) then
+      g1 = par_g1
+      ! g2 = dsqrt(6d0 * pi * eCharge * 1d-3 / (sigmaT * B))
+      g2 = (sigma + 1d0) * (mass_p / mass_e) * ((2d0 - qind) / (qind - 1d0))**(1d0 / (2d0 - qind))
    else
-      g1 = gmin
-      g2 = dsqrt(6d0 * pi * eCharge * 1d-3 / (sigmaT * B))
+      g1 = par_g1
+      g2 = par_g2
+      ! g2 = dsqrt(6d0 * pi * eCharge * 1d-3 / (sigmaT * B))
    end if
 
    volume = 4d0 * pi * R**3 / 3d0
+   tlc = R / cLight
    tesc = 1.5d0 * R / cLight
    tacc = 0.5d0 * R / cLight
 
@@ -126,7 +127,7 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    else
       kappa = 1d0
       Qth = 0d0
-      Qnth = eps_e * L_B * pwl_norm(volume * mass_e * cLight**2, qind - 1d0, g1, g2)
+      Qnth = f_rec * L_B * pwl_norm(volume * mass_e * cLight**2, qind - 1d0, g1, g2)
       ! Qnth = eps_e * (L_j - L_B) * pwl_norm(volume * mass_e * cLight**2, qind - 1d0, g1, g2)
    end if
 
@@ -138,17 +139,19 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    write(*, "('gamma_2   =', ES15.7)") g2
    write(*, "('Q_nth     =', ES15.7)") Qnth
    write(*, "('Q_th      =', ES15.7)") Qth
-   write(*, "('t_dyn     =', ES15.7)") R / cLight
+   write(*, "('t_dyn     =', ES15.7)") tlc
    write(*, "('t_esc     =', ES15.7)") tesc
    write(*, "('t_acc     =', ES15.7)") tacc
    write(*, "('L_B       =', ES15.7)") L_B
    write(*, "('u_B       =', ES15.7)") uB
    write(*, "('B         =', ES15.7)") B
+   write(*, "('u_ext     =', ES15.7)") uext
+   write(*, "('nu_ext    =', ES15.7)") nu_ext
    write(*, "('mu        =', ES15.7)") mu_mag
 
    build_f: do j=1,numdf
       nu_obs(j) = numin * ( (numax / numin)**(dble(j - 1) / dble(numdf - 1)) )
-      freqs(j) = nu_com_f(nu_obs(j), z, gamma_bulk, mu_obs)
+      freqs(j) = nu_com_f(nu_obs(j), z, D)
    end do build_f
 
    build_g: do k = 1, numbins
@@ -159,7 +162,7 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    dg(1) = dg(2)
 
    t(0) = 0d0
-   nn = 0d0
+   nn(:, 0) = injection(0d0, 1d200, gg, g1, g2, qind, theta_e, 0d0, Qnth)
    jnut = 0d0
 
    write(*, "('--> Calculating the emission')")
@@ -187,22 +190,8 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
       case default
          write(*, *) "Wrong time-grid selection"
       end select
-      t_obs(i) = (1d0 + z) * t(i) / D
       dt(i) = t(i) - t(i - 1)
-
-      !  ###### ###### #####
-      !  #      #      #    #
-      !  #####  #####  #    #
-      !  #      #      #    #
-      !  #      #      #    #
-      !  ###### ###### #####
-      Qinj(i, :) = injection(t(i), tacc, gg, g1, g2, qind, theta_e, Qth, Qnth)
-      Ddif(i, :) = 1d-200 !0.5d0 * gg**2 / tacc !
-      call FP_FinDif_difu(dt(i), gg, nn(i - 1, :), nn(i, :), nu0(i - 1, :), Ddif(i, :), Qinj(i, :), 0d0, tesc)
-      ! call FP_FinDif_cool(dt(i), gg, nn(i - 1, :), nn(i, :), nu0(i - 1, :), Qinj(i, :), tesc)
-
-      !   ----->   Then we compute the light path
-      sen_lum(i) = sum(dt(:i)) * cLight
+      t_obs(i) = (1d0 + z) * t(i) / D
 
       !  #####    ##   #####  #   ##   ##### #  ####  #    #
       !  #    #  #  #  #    # #  #  #    #   # #    # ##   #
@@ -213,13 +202,13 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
       !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
       !$OMP& PRIVATE(j)
       do j = 1, numdf
-         call mbs_emissivity(jmbs(j, i), freqs(j), gg, nn(i, :), B)
+         call mbs_emissivity(jmbs(j, i), freqs(j), gg, nn(:, i - 1), B)
          if ( with_abs ) then
-            call mbs_absorption(ambs(j, i), freqs(j), gg, nn(i, :), B)
+            call mbs_absorption(ambs(j, i), freqs(j), gg, nn(:, i - 1), B)
          else
             ambs(j, i) = 0d0
          end if
-         Inu(j) = opt_depth_blob(ambs(j, i), R) * jmbs(j, i) * R
+         Inu(j) = opt_depth_blob(ambs(j, i), R) * jmbs(j, i) * 2d0 * R
       end do
       !$OMP END PARALLEL DO
 
@@ -227,8 +216,8 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
       !$OMP& PRIVATE(j)
       do j = 1, numdf
          if ( with_ssc ) then
-            call IC_iso_powlaw(jssc(j, i), freqs(j), freqs, Inu, nn(i, :), gg)
-            call IC_iso_monochrom(jeic(j, i), freqs(j), uext, nu_ext, nn(i, :), gg)
+            call IC_iso_powlaw(jssc(j, i), freqs(j), freqs, Inu, nn(:, i - 1), gg)
+            call IC_iso_monochrom(jeic(j, i), freqs(j), uext, nu_ext, nn(:, i - 1), gg)
          else
             jeic(j, i) = 0d0
             jssc(j, i) = 0d0
@@ -253,28 +242,36 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
       end if
 
       if ( with_cool ) then
-         urad = 0d0
-         do j = 2, numdf
-            if ( Inu(j - 1) > 1d-200 .and. Inu(j) > 1d-200 ) then
-               Iind = -dlog(Inu(j) / Inu(j - 1)) / dlog(freqs(j) / freqs(j - 1))
-               if ( Iind > 8d0 ) Iind = 8d0
-               if ( Iind < -8d0 ) Iind = -8d0
-               urad = urad + Inu(j - 1) * freqs(j - 1) * Pinteg(freqs(j) / freqs(j - 1), Iind, 1d-9)
-            end if
-         end do
-         urad = 4d0 * pi * urad / cLight
-         urad = urad + IC_cool(gg, freqs, R * (jssc(:, i) + jeic(:, i)))
+         urad = IC_cool(gg, freqs, 4d0 * pi * tlc * jnut(:, i))
       else
          urad = 0d0
       end if
 
-      nu0(i, :) = 4d0 * sigmaT * (uB + urad) / (3d0 * mass_e * cLight)
+      !  ###### ###### #####
+      !  #      #      #    #
+      !  #####  #####  #    #
+      !  #      #      #    #
+      !  #      #      #    #
+      !  ###### ###### #####
+      Qinj(:, i) = injection(t(i), tacc, gg, g1, g2, qind, theta_e, Qth, Qnth)
+      Ddif(:, i) = 1d-200 !0.5d0 * gg**2 / tacc !
+      nu0(:, i) = 4d0 * sigmaT * (uB + urad) / (3d0 * mass_e * cLight)
+      call FP_FinDif_difu(dt(i), &
+            &             gg, &
+            &             nn(:, i - 1), &
+            &             nn(:, i), &
+            &             nu0(:, i) * gg**2, &
+            &             Ddif(:, i), &
+            &             Qinj(:, i), &
+            &             tesc)
+      ! call FP_FinDif_cool(dt(i), gg, nn(i - 1, :), nn(i, :), nu0(i - 1, :), Qinj(i, :), tesc)
+
 
       ! ----->   N_tot
-      Ntot(i) = sum(nn(i, :) * dg, mask=nn(i, :) > 1d-200)
+      Ntot(i) = sum(nn(:, i) * dg, mask=nn(:, i) > 1d-200)
 
       if ( mod(i, nmod) == 0 .or. i == 1 ) &
-         write(*, on_screen) i, t(i), dt(i), nu0(i, numbins), Ntot(i)
+         write(*, on_screen) i, t(i), dt(i), nu0(numbins, i), Ntot(i)
 
    end do time_loop
 
@@ -304,7 +301,7 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    call h5io_wdble0(group_id, 'R0', R0, herror)
    call h5io_wdble0(group_id, 'd_lum', d_lum, herror)
    call h5io_wdble0(group_id, 'redshift', z, herror)
-   call h5io_wdble0(group_id, 'gamma_bulk', gamma_bulk, herror)
+   call h5io_wdble0(group_id, 'Gamma_bulk', gamma_bulk, herror)
    call h5io_wdble0(group_id, 'view-angle', theta_obs, herror)
    call h5io_wdble0(group_id, 'Bfield-index', b_index, herror)
    call h5io_wdble0(group_id, 'gamma_min', gmin, herror)
@@ -330,8 +327,7 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    call h5io_wdble1(file_id, 'time', t(1:), herror)
    call h5io_wdble1(file_id, 't_obs', t_obs, herror)
    call h5io_wdble1(file_id, 'Ntot', Ntot, herror)
-   call h5io_wdble1(file_id, 'sen_lum', sen_lum, herror)
-   call h5io_wdble1(file_id, 'frequency', freqs, herror)
+   call h5io_wdble1(file_id, 'nu', freqs, herror)
    call h5io_wdble1(file_id, 'nu_obs', nu_obs, herror)
    call h5io_wdble1(file_id, 'gamma', gg, herror)
 
@@ -345,7 +341,7 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    call h5io_wdble2(file_id, 'Fmbs', Fmbs, herror)
    call h5io_wdble2(file_id, 'Fssc', Fssc, herror)
    call h5io_wdble2(file_id, 'Feic', Feic, herror)
-   call h5io_wdble2(file_id, 'distrib', nn(1:, :), herror)
+   call h5io_wdble2(file_id, 'n_e', nn(1:, :), herror)
    call h5io_wdble2(file_id, 'nu0_tot', nu0(1:, :), herror)
 
    ! ------  Closing output file  ------

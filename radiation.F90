@@ -188,6 +188,22 @@ contains
    end subroutine RadTrans_s
 
 
+   subroutine RadTrans_blob(Inu, s, jnu, anu)
+      ! Description:
+      !   This function solves the radiative transfer equation.
+      !
+      implicit none
+      real(dp), intent(in) :: s
+      real(dp), intent(in), dimension(:) :: jnu, anu
+      real(dp), intent(out), dimension(:) :: Inu
+      integer :: j, Nf
+      Nf = size(jnu, dim=1)
+      do j = 1, Nf
+         Inu(j) = 2d0 * s * jnu(j) * opt_depth_blob(anu(j), s)
+      end do
+   end subroutine RadTrans_blob
+
+
    ! subroutine RT_line_of_sight
    !    implicit none
    !    integer :: i, ii, i_edge, i_start
@@ -231,25 +247,30 @@ contains
    !   #  #          #      #    # #    # #      # #  # # #  ###
    !   #  #     #    #    # #    # #    # #      # #   ## #    #
    !  ###  #####      ####   ####   ####  ###### # #    #  ####
-   function IC_cool(gg, freqs, Inu) result(urad)
+   function IC_cool(gg, freqs, uu) result(ubol)
       implicit none
-      real(dp), intent(in), dimension(:) :: freqs, gg, Inu
-      integer :: j, k
-      real(dp) :: nuKN, urad, Iind, Ibol
-      do k = 1, size(gg)
-         nuKN = 3d0 * mass_e * cLight**2 / (4d0 * hPlanck * gg(k))
-         Ibol = 0d0
-         freqloop: do j = 2, size(freqs)
+      real(dp), intent(in), dimension(:) :: freqs, gg, uu
+      integer :: j, k, Ng, Nf
+      real(dp) :: nuKN, uind
+      real(dp), dimension(size(gg)) :: ubol
+      Ng = size(gg)
+      Nf = size(freqs)
+      !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
+      !$OMP& PRIVATE(k, j, uind, nuKN)
+      do k = 1, Ng
+         nuKN = mec2_h / gg(k)
+         ubol(k) = 0d0
+         freqloop: do j = 2, Nf
             if ( freqs(j) >= nuKN ) exit freqloop
-            if ( Inu(j - 1) > 1d-200 .and. Inu(j) > 1d-200) then
-               Iind = -dlog(Inu(j) / Inu(j - 1)) / dlog(freqs(j) / freqs(j - 1))
-               if ( Iind > 8d0 ) Iind = 8d0
-               if ( Iind < -8d0 ) Iind = -8d0
-               Ibol = Ibol + Inu(j - 1) * freqs(j - 1) * Pinteg(freqs(j) / freqs(j - 1), Iind, 1d-9)
+            if ( uu(j - 1) > 1d-200 .and. uu(j) > 1d-200) then
+               uind = -dlog(uu(j) / uu(j - 1)) / dlog(freqs(j) / freqs(j - 1))
+               if ( uind > 8d0 ) uind = 8d0
+               if ( uind < -8d0 ) uind = -8d0
+               ubol(k) = ubol(k) + uu(j - 1) * freqs(j - 1) * Pinteg(freqs(j) / freqs(j - 1), uind, 1d-9)
             end if
          end do freqloop
       end do
-      urad = 4d0 * pi * Ibol / cLight
+      !$OMP END PARALLEL DO
    end function IC_cool
 
 
@@ -520,7 +541,119 @@ contains
             jnu = jnu + emis * n(k) * g(k)**q / w**q1
          end if e_dist
       end do g_loop
-      jnu = jnu * cLight * sigmaT * uext * 0.25d0 / (pi * nuext)
+      jnu = jnu * cLight * sigmaT * uext / (4d0 * pi * nuext)
    end subroutine IC_iso_monochrom
+
+   !
+   !     ----------{     Photons evolution     }----------
+   !
+   subroutine photons_evol(dt, nin, nout, nu, QQ, tesc, Loss)
+      implicit none
+      real(dp), intent(in) :: dt, tesc
+      real(dp), intent(in), dimension(:) :: nu, QQ, Loss, nin
+      real(dp), intent(out), dimension(:) :: nout
+      integer :: Nf
+      real(dp), dimension(size(nu)) :: b, r, zero
+      Nf = size(nu)
+      zero = zeros1D(Nf)
+      r = nin + dt * QQ
+      b = 1d0 + dt * (Loss + 1d0 / tesc)
+      call tridag_ser(zero(2:), b, zero(2:), r, nout)
+   end subroutine photons_evol
+
+
+   subroutine intens_evol(dt, Iin, Iout, nu, jnu, anu)
+      implicit none
+      real(dp), intent(in) :: dt
+      real(dp), intent(in), dimension(:) :: nu, jnu, anu, Iin
+      real(dp), intent(out), dimension(:) :: Iout
+      integer :: Nf
+      real(dp), dimension(size(nu)) :: b, r, zero
+      Nf = size(nu)
+      zero = zeros1D(Nf)
+      b = 1d0 + dt * anu * cLight
+      r = Iin + dt * jnu * cLight
+      call tridag_ser(zero(2:), b, zero(2:), r, Iout)
+   end subroutine intens_evol
+
+
+   subroutine Kompaneets_FinDif(dt, nin, nout, nu, th_e, ne, tesc)
+      implicit none
+      real(dp), intent(in) :: dt, th_e, ne, tesc
+      real(dp), intent(in), dimension(:) :: nu, nin!, QQ
+      real(dp), intent(out), dimension(:) :: nout
+      real(dp), parameter :: eps = 1e-3
+      integer :: i, Ng, Ng1
+      real(dp) :: dBB, dtc, fth_e
+      real(dp), dimension(size(nu)) :: dx, dxp2, dxm2, CCp2, CCm2, BBp2, BBm2, YYp2, YYm2, WWp2, WWm2, ZZp2, ZZm2, a, b, c, r, x, DD
+
+      Ng = size(nu)
+      Ng1 = Ng - 1
+
+      dtc = ne * sigmaT * cLight * dt
+      fth_e = th_e * (1d0 + 3.683 * th_e + 4d0 * th_e**2) / (1d0 + th_e)
+      x = hPlanck * nu / (th_e * mass_e * cLight**2)
+      DD = x**4
+      dxp2(:Ng1) = x(2:) - x(:Ng1)
+      dxp2(Ng) = dxp2(Ng1)
+      dxm2(2:) = dxp2(:Ng1)
+      dxm2(1) = dxm2(2)
+      dx = dsqrt(dxp2 * dxm2)
+
+      CCp2(:Ng1) = 0.25d0 * (DD(2:) + DD(:Ng1))
+      CCm2(2:) = CCp2(:Ng1)
+      CCp2(Ng) = 0.25d0 * DD(Ng)
+      CCm2(1) = 0.25d0 * DD(1)
+      call polint(x(2:), CCm2(2:), x(1), CCm2(1), dBB)
+
+      BBp2 = CCp2
+      BBm2 = CCm2
+
+      WWp2 = dxp2 * BBp2 / CCp2
+      WWm2 = dxm2 * BBm2 / CCm2
+
+      do i = 1, Ng
+
+         if ( 0.5d0 * WWp2(i) > 200d0 ) then
+            ZZp2(i) = 200d0
+         else if ( 0.5d0 * WWp2(i) < -200d0 ) then
+            ZZp2(i) = -200d0
+         else
+            ZZp2(i) = 0.5d0 * WWp2(i)
+         end if
+
+         if ( 0.5d0 * WWm2(i) > 200d0 ) then
+            ZZm2(i) = 200d0
+         else if ( 0.5d0 * WWm2(i) < -200d0 ) then
+            ZZm2(i) = -200d0
+         else
+            ZZm2(i) = 0.5d0 * WWm2(i)
+         end if
+
+         ! if ( 127d0 * WWp2(i)**8 < eps * 154828800d0 ) then
+         if ( dabs(WWp2(i)) < 0.1d0 ) then
+            YYp2(i) = 1d0 - WWp2(i)**2 / 24d0 + 7d0 * WWp2(i)**4 / 5760d0 - 31d0 * WWp2(i)**6 / 967680d0
+         else
+            YYp2(i) = dabs(WWp2(i)) * dexp(-dabs(ZZp2(i))) / ( 1d0 - dexp(-2d0 * dabs(ZZp2(i))) )
+            ! YYp2(i) = dabs(WWp2(i)) / ( (1d0 - 1d0 / ZZp2(i)**2 ) * ZZp2(i) )
+         end if
+
+         ! if ( 127d0 * WWm2(i)**8 < eps * 154828800d0 ) then
+         if ( dabs(WWm2(i)) < 0.1d0 ) then
+            YYm2(i) = 1d0 - WWm2(i)**2 / 24d0 + 7d0 * WWm2(i)**4 / 5760d0 - 31d0 * WWm2(i)**6 / 967680d0
+         else
+            YYm2(i) = dabs(WWm2(i)) / ( dexp(dabs(ZZm2(i))) - dexp(-dabs(ZZm2(i))) )
+         end if
+
+      end do
+
+      r = nin !+ dtc * QQ
+      c = -dtc * fth_e * CCp2 * YYp2 * dexp(ZZp2)/ (dx * dxp2 * x**2)
+      a = -dtc * fth_e * CCm2 * YYm2 * dexp(-ZZm2) / (dx * dxm2 * x**2)
+      b = 1d0 + dtc * fth_e * ( CCp2 * YYp2 * dexp(-ZZp2) / dxp2 + CCm2 * YYm2 * dexp(ZZm2) / dxm2 ) / (dx * x**2) + dt / tesc !* (Loss + 1d0 / tesc)
+
+      call tridag_ser(a(2:), b, c(:Ng1), r, nout)
+
+   end subroutine Kompaneets_FinDif
 
 end module radiation
