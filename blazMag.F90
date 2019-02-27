@@ -27,7 +27,7 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    real(dp) :: uB, uext, R, L_j, gmin, gmax, numin, numax, qind, B, D, &
       tacc, g1, g2, tstep, zetae, Qth, Qnth, theta_e, tmax, d_lum, z, &
       gamma_bulk, theta_obs, R0, b_index, mu_obs, nu_ext, tesc, kappa, tlc, &
-      volume, sigma, beta_bulk, eps_e, L_B, mu_mag, eps_B, f_rec
+      volume, sigma, beta_bulk, eps_e, L_B, mu_mag, eps_B, f_rec, tinj, tvar
    real(dp), allocatable, dimension(:) :: freqs, t, Ntot, Inu, gg, &
       dt, nu_obs, t_obs, dg, urad
    real(dp), allocatable, dimension(:, :) :: nu0, nn, jnut, jmbs, jssc, jeic, &
@@ -35,8 +35,8 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    logical :: hyb_dis
 
    call read_params(params_file)
-   R = par_R
-   R0 = par_R0
+   ! R = par_R
+   ! R0 = par_R0
    d_lum = par_d_lum
    z = par_z
    gamma_bulk = par_gamma_bulk
@@ -58,6 +58,7 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    numdt = par_numdt
    numdf = par_numdf
    time_grid = par_time_grid
+   tvar =  par_tvar
 
    hyb_dis = .false.
 
@@ -88,9 +89,10 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    beta_bulk = bofg(gamma_bulk)
    mu_obs = dcos(theta_obs)
    D = Doppler(gamma_bulk, mu_obs)
+   R = 0.95d0 * D * tvar * cLight / (1d0 + z)
 
    ! ----->    External radiation field
-   nu_ext = nu_com_f(par_nu_ext, z, D)
+   nu_ext = par_nu_ext * gamma_bulk !nu_com_f(par_nu_ext, z, D)
    uext = uext * gamma_bulk**2 * (1d0 + beta_bulk**2 / 3d0) !  Eq. (5.25) Dermer & Menon (2009)
 
    ! ----->    Magnetic field
@@ -117,8 +119,9 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
 
    volume = 4d0 * pi * R**3 / 3d0
    tlc = R / cLight
-   tesc = 1.5d0 * R / cLight
-   tacc = 0.5d0 * R / cLight
+   tesc = 1.5d0 * tlc
+   tacc = 0.5d0 * tlc
+   tinj = tesc
 
    if ( hyb_dis ) then
       kappa = 3d0 * theta_e + dexp(K1_func(-dlog(theta_e))) / dexp(K2_func(-dlog(theta_e)))
@@ -162,7 +165,7 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    dg(1) = dg(2)
 
    t(0) = 0d0
-   nn(:, 0) = injection(0d0, 1d200, gg, g1, g2, qind, theta_e, 0d0, Qnth)
+   nn(:, 0) = injection(0d0, tinj, gg, g1, g2, qind, theta_e, 0d0, Qnth)
    jnut = 0d0
 
    write(*, "('--> Calculating the emission')")
@@ -171,6 +174,7 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    write(*, "('Wrting data in: ', A)") trim(output_file)
    write(*, *) ''
    write(*, *) screan_head
+
 
    ! ###### #    #  ####  #      #    # ##### #  ####  #    #
    ! #      #    # #    # #      #    #   #   # #    # ##   #
@@ -248,22 +252,22 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
       end if
 
       !  ###### ###### #####
-      !  #      #      #    #
+      !  #      #      #    #``
       !  #####  #####  #    #
       !  #      #      #    #
       !  #      #      #    #
       !  ###### ###### #####
-      Qinj(:, i) = injection(t(i), tacc, gg, g1, g2, qind, theta_e, Qth, Qnth)
+      Qinj(:, i) = injection(t(i), tinj, gg, g1, g2, qind, theta_e, Qth, Qnth)
       Ddif(:, i) = 1d-200 !0.5d0 * gg**2 / tacc !
       nu0(:, i) = 4d0 * sigmaT * (uB + urad) / (3d0 * mass_e * cLight)
       call FP_FinDif_difu(dt(i), &
-            &             gg, &
-            &             nn(:, i - 1), &
-            &             nn(:, i), &
-            &             nu0(:, i) * gg**2, &
-            &             Ddif(:, i), &
-            &             Qinj(:, i), &
-            &             tesc)
+            & gg,                &
+            & nn(:, i - 1),      &
+            & nn(:, i),          &
+            & nu0(:, i) * gg**2, &
+            & Ddif(:, i),        &
+            & Qinj(:, i),        &
+            & tesc)
       ! call FP_FinDif_cool(dt(i), gg, nn(i - 1, :), nn(i, :), nu0(i - 1, :), Qinj(i, :), tesc)
 
 
