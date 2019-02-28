@@ -27,14 +27,14 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
    integer(HID_T) :: file_id, group_id
    integer :: i, j, k, numbins, numdf, numdt, time_grid, herror
    real(dp) :: uB, uext, L_j, gmin, gmax, numin, numax, qind, B, R0, &
-      tacc, tinj, g1, g2, tstep, Q0, theta_e, tmax, d_lum, z, n_ext, &
-      theta_obs, mu_obs, nu_ext, tesc_e, tesc_ph, uext0, volume, eps_e, tlc,&
+      tacc, tinj, g1, g2, tstep, Q0, tmax, d_lum, z, n_ext, &
+      theta_obs, mu_obs, nu_ext, tesc_e, uext0, volume, eps_e, tlc,&
       eps_B, E0, gamma_bulk0, L_e, nu_ext0, Aadi, tmin, Rd, td, R, dr, &
       b_index, beta_bulk, volume_p, R_p
    real(dp), allocatable, dimension(:) :: freqs, t, Ntot, Isyn, gg, sen_lum, &
-      dt, nu_obs, t_obs, gamma_bulk, Rbw, D, Lgg, Qgg, tcool, urad
+      dt, nu_obs, t_obs, gamma_bulk, Rbw, D, tcool, urad
    real(dp), allocatable, dimension(:, :) :: nu0, n_e, jnut, jmbs, jssc, jeic, &
-      ambs, anut, Qinj, Ddif, Fmbs, Feic, Fssc, Fnut, n_ph, Inu
+      ambs, anut, Qinj, Ddif, Fmbs, Feic, Fssc, Fnut
 
    call read_params(params_file)
    eps_e = par_eps_e
@@ -62,7 +62,6 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
    R0 = par_R0
    tmax = par_tmax
    b_index = par_b_index
-   theta_e = par_theta_e
 
 
    !  ####  ###### ##### #    # #####
@@ -75,13 +74,12 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
 
    allocate(t(0:numdt), freqs(numdf), Ntot(numdt), Isyn(numdf), sen_lum(numdt), &
       dt(numdt), nu_obs(numdf), t_obs(0:numdt), Rbw(0:numdt), tcool(numbins), &
-      gamma_bulk(0:numdt), D(0:numdt), Lgg(numdf), Qgg(numbins), urad(numbins))
+      gamma_bulk(0:numdt), D(0:numdt), urad(numbins))
    allocate(n_e(numbins, 0:numdt), nu0(numbins, 0:numdt), gg(numbins), &
       ambs(numdf, numdt), jmbs(numdf, numdt), jnut(numdf, numdt), &
       jssc(numdf, numdt), anut(numdf, numdt), jeic(numdf, numdt), &
       Qinj(numbins, 0:numdt), Ddif(numbins, 0:numdt), Fnut(numdf, numdt), &
-      Fmbs(numdf, numdt), Fssc(numdf, numdt), Feic(numdf, numdt), &
-      n_ph(numdf, 0:numdt), Inu(numdf, 0:numdt))
+      Fmbs(numdf, numdt), Fssc(numdf, numdt), Feic(numdf, numdt))
 
    call K1_init
    call K2_init
@@ -114,7 +112,6 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
    tinj = 1d200
    tesc_e = 3d0 * tlc
    tacc = tesc_e
-   tesc_ph = 1.0d0 * tlc
 
    write(*, "('theta_obs =', ES15.7)") theta_obs
    write(*, "('nu_ext0   =', ES15.7)") nu_ext0
@@ -135,9 +132,7 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
    nu0 = 0d0
    Aadi = 0d0
    Ddif(:, 0) = 1d-200 ! 0.5d0 * gg**2 / tacc !
-   n_e(:, 0) = injection(0d0, tinj, gg, g1, g2, qind, theta_e, 0d0, Q0)
-   n_ph(:, 0) = 0d0 ! injection(0d0, tmax, gg, g1, g2, qind, theta_e, 0d0, Q0)
-   Inu(:, 0) = 0d0 ! injection(0d0, tmax, gg, g1, g2, qind, theta_e, 0d0, Q0)
+   n_e(:, 0) = injection_pwl(0d0, tinj, gg, g1, g2, qind, Q0)
 
    write(*, "('---> Calculating the emission')")
    write(*, *) ''
@@ -191,73 +186,33 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
          freqs(j) = nu_com_f(nu_obs(j), z, D(i))
          call mbs_emissivity(jmbs(j, i), freqs(j), gg, n_e(:, i - 1), B)
          call mbs_absorption(ambs(j, i), freqs(j), gg, n_e(:, i - 1), B)
-         ! ambs(j, i) = 0d0
-         ! usyn(j) = freqs(j) * jmbs(j, i) * tesc_ph
-         ! Isyn(j) = opt_depth_blob(ambs(j, i), R) * jmbs(j, i) * 2d0 * R
+         Isyn(j) = opt_depth_blob(ambs(j, i), R) * jmbs(j, i) * 2d0 * R
          ! Isyn(j) = opt_depth_slab(ambs(j, i), 2d0 * R) * jmbs(j, i) * 2d0 * R
-         ! call RadTrans(Inu(j), R, jmbs(j, i), ambs(j, i))
       end do
       !$OMP END PARALLEL DO
 
-      ! !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
-      ! !$OMP& PRIVATE(j)
-      ! do j = 1, numdf
-      !    if ( with_ic ) then
-      !       call IC_iso_powlaw(jssc(j, i), freqs(j), freqs, Isyn, n_e(:, i - 1), gg)
-      !       ! call IC_iso_monochrom(jeic(j, i), freqs(j), uext, nu_ext, n_e(:, i - 1), gg)
-      !    else
-      !       jeic(j, i) = 0d0
-      !       jssc(j, i) = 0d0
-      !    end if
-      jnut(:, i) = jmbs(:, i)! + jssc(j, i) + jeic(j, i)
-      anut(:, i) = ambs(:, i)
-      !
-      !    Fmbs(j, i) = D(i)**4 * volume * freqs(j) * jmbs(j, i) * opt_depth_blob(ambs(j, i), R) / d_lum**2
-      !    Fssc(j, i) = D(i)**4 * volume * freqs(j) * jssc(j, i) / (4d0 * pi * d_lum**2)
-      !    Feic(j, i) = D(i)**4 * volume * freqs(j) * jeic(j, i) / (4d0 * pi * d_lum**2)
-      ! end do
-      ! !$OMP END PARALLEL DO
+      !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
+      !$OMP& PRIVATE(j)
+      do j = 1, numdf
+         if ( with_ic ) then
+            call IC_iso_powlaw(jssc(j, i), freqs(j), freqs, Isyn, n_e(:, i - 1), gg)
+            call IC_iso_monochrom(jeic(j, i), freqs(j), uext, nu_ext, n_e(:, i - 1), gg)
+         else
+            jssc(j, i) = 0d0
+            jeic(j, i) = 0d0
+         end if
+         jnut(j, i) = jmbs(j, i) + jssc(j, i) + jeic(j, i)
+         anut(j, i) = ambs(j, i)
 
-      Ntot(i) = 0.5d0 * sum((n_e(:numbins - 1, i - 1) + n_e(2:, i - 1)) * (gg(2:) - gg(:numbins - 1)))
-      tesc_ph = 1d0 * R_p / cLight
-      ! call pairs_loss_rate(freqs, n_ph(:, i - 1) * volume_p, Lgg)
-      Lgg = 0d0
-      Lgg = cLight * anut(:, i) + Lgg * Ntot(i) * sigmaT * cLight
-      ! call photons_evol(dt(i), &
-      !       &           n_ph(:, i - 1) * volume_p, &
-      !       &           n_ph(:, i), &
-      !       &           freqs, &
-      !       &           4d0 * pi * jnut(:, i) * volume / (hPlanck * freqs), &
-      !       &           tesc_ph, &
-      !       &           Lgg)
-      n_ph(:, i - 1) = n_ph(:, i - 1) + 4d0 * pi * jnut(:, i) * tesc_ph / (hPlanck *  freqs)
-      call Kompaneets_FinDif(dt(i), &
-            &                n_ph(:, i - 1) * volume_p, &
-            &                n_ph(:, i), &
-            &                freqs, &
-            &                theta_e, &
-            &                Ntot(i), &
-            &                tesc_ph)
-      n_ph(:, i) = n_ph(:, i) / volume
-      call RadTrans_blob(Inu(:, i), R, hPlanck *  freqs * n_ph(:, i) / (4d0 * pi * tlc), anut(:, i))
-      ! call intens_evol(dt(i), &
-      !       &          Inu(:, i - 1), &
-      !       &          Inu(:, i), &
-      !       &          freqs, &
-      !       &          jnut(:, i) + hPlanck *  freqs * n_ph(:, i) / tlc, &
-      !       &          anut(:, i))
-      ! Inu(:, i) = Inu(:, i) * hPlanck *  freqs / (4d0 * pi * sigmaT * tlc)
-
-      ! Fnut(:, i) = D(i)**4 * volume * hPlanck * freqs**2 * n_ph(:, i) / (4d0 * pi * d_lum**2 * tlc)
-      Fnut(:, i) = D(i)**4 * pi * R**2 * freqs * Inu(:, i)  / d_lum**2
+         Fmbs(j, i) = D(i)**4 * volume * freqs(j) * jmbs(j, i) * opt_depth_blob(ambs(j, i), R) / d_lum**2
+         Fssc(j, i) = D(i)**4 * volume * freqs(j) * jssc(j, i) / (4d0 * pi * d_lum**2)
+         Feic(j, i) = D(i)**4 * volume * freqs(j) * jeic(j, i) / (4d0 * pi * d_lum**2)
+         Fnut(j, i) = Fmbs(j, i) + Fssc(j, i) + Feic(j, i)
+      end do
+      !$OMP END PARALLEL DO
 
       if ( with_cool ) then
-         ! urad = freqs(1)**2 * n_ph(1, i) + freqs(numdf)**2 * n_ph(numdf, i)
-         ! urad = 0.5d0 * dlog(freqs(numdf) / freqs(1)) * (urad + 2d0 * &
-         !    sum(freqs(2:numdf - 1)**2 * n_ph(2:numdf - 1, i))) / dble(numdf - 1)
-         ! urad = hPlanck * urad
-         ! if ( with_ic ) &
-         urad = IC_cool(gg, freqs, hPlanck * freqs * n_ph(:, i))
+         urad = IC_cool(gg, freqs, 4d0 * pi * tlc * jnut(:, i))
       else
          urad = 0d0
       end if
@@ -268,9 +223,7 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
       tacc = tesc_e
       tcool = 1d0 / (nu0(:, i) * pofg(gg) + Aadi)
       ! tadiab = 1d0 / (Aadi * gg(ig) * bofg(gg(ig)))
-      ! call electron_pairs_inj(gg, freqs, n_ph(:, i) * volume, Qgg)
-      Qgg = 0d0
-      Qinj(:, i) = injection(t(i), tinj, gg, g1, g2, qind, theta_e, 0d0, Q0) + Qgg / tesc_e
+      Qinj(:, i) = injection_pwl(t(i), tinj, gg, g1, g2, qind, Q0)
       Ddif(:, i) = 1d-200 !0.5d0 * gg**2 / tacc !
       call FP_FinDif_difu(dt(i), &
             &             pofg(gg), &
@@ -284,8 +237,7 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
       volume_p = volume
       R_p = R
 
-      ! Ntot(i) = 0.5d0 * sum((n_e(:numbins - 1, i) + n_e(2:, i)) * (gg(2:) - gg(:numbins - 1)))
-      Ntot(i) = 0.5d0 * sum((n_ph(:numdf, i) + n_ph(2:, i)) * (freqs(2:) - freqs(:numdf - 1)))
+      Ntot(i) = 0.5d0 * sum((n_e(:numbins - 1, i) + n_e(2:, i)) * (gg(2:) - gg(:numbins - 1)))
 
       if ( mod(i, nmod) == 0 .or. i == 1 ) &
          write(*, on_screen) i, t(i), dt(i), gamma_bulk(i), Ntot(i)
@@ -364,7 +316,6 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
    call h5io_wdble2(file_id, 'Feic', Feic, herror)
    call h5io_wdble2(file_id, 'Qinj', Qinj, herror)
    call h5io_wdble2(file_id, 'n_e', n_e(:, 1:), herror)
-   call h5io_wdble2(file_id, 'n_ph', n_ph(:, 1:), herror)
    call h5io_wdble2(file_id, 'nu0_tot', nu0(:, 1:), herror)
 
    ! ------  Closing output file  ------
