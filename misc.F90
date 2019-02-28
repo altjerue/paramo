@@ -39,7 +39,10 @@ contains
       allocate(array(size1, size2))
    end subroutine realloc_2d
 
-   ! :::: Polinomial interpolation ::::
+
+   !
+   !  ::::  Polinomial interpolation  ::::
+   !
    subroutine polint(xa, ya, x, y, dy)
       implicit none
       real(dp), intent(in) :: x
@@ -82,7 +85,10 @@ contains
       end do
    end subroutine polint
 
-   ! :::::  Linear interpolation  :::::
+
+   !
+   !     :::::   Linear interpolation   :::::
+   !
    subroutine linint(x1, x2, x, y1, y2, y)
    implicit none
    real(dp), intent(out) :: y
@@ -91,18 +97,21 @@ contains
    dx = abs(x2 - x1)
    dx1 = abs(x1 - x)
    dx2 = abs(x2 - x)
-   if (dx1 + dx2 > dx) call an_error('interpolation: x not between x1 and x2')
+   if (dx1 + dx2 > dx) then
+      write(*, *) x1, x2, x
+      call an_error('linint: x not between x1 and x2')
+   end if
    y = y1 + ( y2 - y1 ) * ( x - x1 ) / dx
-   dy1 = abs(y2 - y)
+   dy1 = abs(y2 - y1)
    dy2 = abs(y1 - y)
    dy3 = abs(y2 - y)
    if(dy1 + dy2 > dy3) then
       write(*, *) y1, y2, y
-      call an_error('interpolation: Interpolation not between y1 and y2')
+      call an_error('linint: Interpolation not between y1 and y2')
    end if
    end subroutine linint
 
-   
+
    ! :::: This produces an error message ::::
    subroutine an_error(string)
       implicit none
