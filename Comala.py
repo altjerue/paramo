@@ -25,6 +25,9 @@ class parameters(object):
         self.sigma = 1.0                # magnetization (sigma)
         self.f_rec = 1.0                # magnetic reconection dissipative efficiency
         self.b_index = 0.0              # magnetic field decay index
+        self.Bfield = 1.0              # magnetic field decay index
+        self.eps_B = 0.03               # epsilon_B
+        self.eps_e = 0.1                # epsilon_e
         self.theta_e = 10.0             # electrons temperature
         self.zeta_e = 0.99              # fraction of non-thermal particles
         self.tstep = 1e-2               # time step factor
@@ -34,8 +37,6 @@ class parameters(object):
         self.L_j = 1e45                 # num. dens. of particles injected per second
         self.E0 = 1e50                  # energy of the blast wave
         self.n_ext = 1.0                # number density of the external medium
-        self.eps_e = 0.1                # epsilon_e
-        self.eps_B = 0.03               # epsilon_B
         self.g1 = 1e2                   # power-law min Lorentz factor
         self.g2 = 1e4                   # power-law max Lorentz factor
         self.gmin = 1.01                # EED minimum Lorentz factor
@@ -67,6 +68,7 @@ class parameters(object):
             print(fortran_double(self.sigma), ' ! magnetization', file=f)
             print(fortran_double(self.f_rec), ' ! dissipative efficiency of magnetic reconection', file=f)
             print(fortran_double(self.b_index), ' ! magnetic field decay index', file=f)
+            print(fortran_double(self.Bfield), ' ! magnetic field strength', file=f)
             print(fortran_double(self.theta_e), ' ! electrons temperature', file=f)
             print(fortran_double(self.zeta_e), ' ! fraction of nonthermal electrons', file=f)
             print(fortran_double(self.tstep), ' ! time step factor', file=f)
