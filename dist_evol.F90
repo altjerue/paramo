@@ -87,7 +87,20 @@ contains
    ! # #  # #      # #      #        #   # #    # #  # #
    ! # #   ## #    # #      #    #   #   # #    # #   ##
    ! # #    #  ####  ######  ####    #   #  ####  #    #
-   function injection(t, dtinj, g, g1, g2, qind, th, Qth, Qnth) result(Qinj)
+   function injection_pwl(t, dtinj, g, g1, g2, qind, Q0) result(Qinj)
+      implicit none
+      real(dp), intent(in) :: g1, g2, Q0, dtinj, t, qind
+      real(dp), intent(in), dimension(:) :: g
+      real(dp), dimension(size(g)) :: Qinj
+      if ( t <= dtinj ) then
+         Qinj = Q0 * powlaw_dis(g, g1, g2, qind)
+      else
+         Qinj = 0d0
+      end if
+   end function injection_pwl
+
+
+   function injection_hyb(t, dtinj, g, g1, g2, qind, th, Qth, Qnth) result(Qinj)
       implicit none
       real(dp), intent(in) :: g1, g2, th, Qth, Qnth, dtinj, t, qind
       real(dp), intent(in), dimension(:) :: g
@@ -111,7 +124,7 @@ contains
       else
          Qinj = 0d0
       end if
-   end function injection
+   end function injection_hyb
    !
    !   ----------{    Power-law distribution Normalization    }----------
    !
