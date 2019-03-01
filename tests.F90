@@ -26,8 +26,7 @@ contains
       implicit none
       integer(HID_T) :: file_id
       integer :: i, k, numg, numt, herror
-      real(dp) :: g1, g2, gmin, gmax, tmax, tstep, qind, tacc, tesc, R, &
-         theta_e, zeta_e
+      real(dp) :: g1, g2, gmin, gmax, tmax, tstep, qind, tacc, tesc, R
       real(dp), allocatable, dimension(:) :: t, g, Q0, D0, C0, aux0, dt, dg, &
          Ntot1, Ntot2, Ntot3, Ntot4, Ntot5, Ntot6, zero1, zero2
       real(dp), allocatable, dimension(:, :) :: n1, n2, n3, n4, n5, n6
@@ -42,8 +41,6 @@ contains
       tmax = 5e7
       qind = 0d0
       R = 1e16
-      theta_e = 2e1
-      zeta_e = 1d0
 
       allocate(g(numg), Q0(numg), D0(numg), t(0:numt), dt(numt), dg(numg), &
          Ntot1(numt), Ntot2(numt), Ntot3(numt), Ntot4(numt), Ntot5(numt), &
@@ -64,7 +61,7 @@ contains
       tacc = 1d0 / (C0(1) * 10d0**4.5d0) !tesc
       tesc = tacc ! 1d200 ! 1.5d0 * R / cLight !
       D0 = 0.5d0 * g**2 / tacc
-      n1(0, :) = injection(1d0, tacc, g, g1, g2, 0d0, theta_e, 0d0, 1d0)
+      n1(0, :) = injection_pwl(1d0, tacc, g, g1, g2, 0d0, 1d0)
       n2(0, :) = n1(0, :)
       n3(0, :) = n1(0, :)
       n4(0, :) = n1(0, :)
@@ -78,7 +75,7 @@ contains
          t(i) = tstep * ( (tmax / tstep)**(dble(i - 1) / dble(numt - 1)) )
          dt(i) = t(i) - t(i - 1)
 
-         Q0 = injection(t(i), tacc, g, g1, g2, 0d0, theta_e, 0d0, 1d0)
+         Q0 = injection_pwl(t(i), tacc, g, g1, g2, 0d0, 1d0)
          ! call FP_FinDif_cool(dt(i), g, n1(i - 1, :), n1(i, :), C0, zero2, 1d200)
          ! call FP_FinDif_cool(dt(i), g, n2(i - 1, :), n2(i, :), C0, Q0, 1d200)
          ! call FP_FinDif_cool(dt(i), g, n3(i - 1, :), n3(i, :), C0, Q0, tesc)
@@ -109,8 +106,6 @@ contains
       call h5io_wdble0(file_id, 'gamma_1', g1, herror)
       call h5io_wdble0(file_id, 'gamma_2', g2, herror)
       call h5io_wdble0(file_id, 'pwl-index', qind, herror)
-      call h5io_wdble0(file_id, 'Theta_e', theta_e, herror)
-      call h5io_wdble0(file_id, 'zeta_e', zeta_e, herror)
       call h5io_wdble0(file_id, 't_acc', tacc, herror)
       call h5io_wdble0(file_id, 't_esc', tesc, herror)
       call h5io_wdble1(file_id, 'time', t(1:), herror)
