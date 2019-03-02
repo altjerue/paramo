@@ -25,7 +25,7 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    integer(HID_T) :: file_id, group_id
    integer :: i, j, k, numbins, numdf, numdt, time_grid, herror
    real(dp) :: uB, uext, R, L_j, gmin, gmax, numin, numax, qind, B, D, &
-      tacc, g1, g2, tstep, Qnth, tmax, d_lum, z, &
+      tacc, g1, g2, tstep, Qnth, tmax, d_lum, z, tvar, tinj,&
       gamma_bulk, theta_obs, R0, b_index, mu_obs, nu_ext, tesc, tlc, &
       volume, sigma, beta_bulk, eps_e, L_B, mu_mag, eps_B, f_rec
    real(dp), allocatable, dimension(:) :: freqs, t, Ntot, Inu, gg, &

@@ -1,20 +1,9 @@
-ifeq ($(IFC),1)
-
-ifeq ($(MPI),1)
-FC=ih5pfc
-else  # MPI
-FC=ih5fc
-endif # MPI
-
-else  # IFORT
-
 ifeq ($(MPI),1)
 FC=h5pfc
 else  # MPI
 FC=h5fc
 endif # MPI
 
-endif # IFORT
 
 # definitions
 
@@ -24,6 +13,7 @@ endif
 
 
 # optimization level
+
 ifeq ($(DBG),1)
 
 ifeq ($(IFORT),1)
