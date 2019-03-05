@@ -26,7 +26,7 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    integer :: i, j, k, numbins, numdf, numdt, time_grid, herror
    real(dp) :: uB, uext, R, L_j, gmin, gmax, numin, numax, qind, B, D, &
       tacc, g1, g2, tstep, Qnth, tmax, d_lum, z, tvar, tinj,&
-      gamma_bulk, theta_obs, R0, b_index, mu_obs, nu_ext, tesc, tlc, &
+      gamma_bulk, theta_obs, R0, mu_obs, nu_ext, tesc, tlc, &
       volume, sigma, beta_bulk, eps_e, L_B, mu_mag, eps_B, f_rec
    real(dp), allocatable, dimension(:) :: freqs, t, Ntot, Inu, gg, &
       dt, nu_obs, t_obs, dg, urad
@@ -232,9 +232,9 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
       !  #      #    # #    # #      # #  # # #  ###
       !  #    # #    # #    # #      # #   ## #    #
       !   ####   ####   ####  ###### # #    #  ####
-      if ( b_index /= 0d0 ) then
-         uB = 0.125d0 * (B * (1d0 + (cLight * gamma_bulk * t(i) / R0))**(-b_index))**2 / pi
-      end if
+!      if ( b_index /= 0d0 ) then
+!         uB = 0.125d0 * (B * (1d0 + (cLight * gamma_bulk * t(i) / R0))**(-b_index))**2 / pi
+!      end if
 
       if ( with_cool ) then
          urad = IC_cool(gg, freqs, 4d0 * pi * tlc * jnut(:, i))
@@ -298,7 +298,6 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    call h5io_wdble0(group_id, 'redshift', z, herror)
    call h5io_wdble0(group_id, 'Gamma_bulk', gamma_bulk, herror)
    call h5io_wdble0(group_id, 'view-angle', theta_obs, herror)
-   call h5io_wdble0(group_id, 'Bfield-index', b_index, herror)
    call h5io_wdble0(group_id, 'gamma_min', gmin, herror)
    call h5io_wdble0(group_id, 'gamma_max', gmax, herror)
    call h5io_wdble0(group_id, 'gamma_1', g1, herror)

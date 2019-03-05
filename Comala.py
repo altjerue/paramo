@@ -97,7 +97,6 @@ class parameters(object):
         print("--> Parameters file: ", self.params_file)
 
 
-#
 #   ####   ####  #    # #####  # #      ######
 #  #    # #    # ##  ## #    # # #      #
 #  #      #    # # ## # #    # # #      #####
@@ -110,8 +109,8 @@ class compiler(object):
     # -----  COMPILER FLAGS & RULES -----
 
     def flags(self):
-        self.HYB = False         # compile with HYB=1 flag
-        self.MBS = False         # compile with MBS=1 flag
+        self.BROWN = False       # compile with BROWN=1 flag
+        self.INTEL = False       # compile with IFORT=1 flag
         self.arch = ''           # compile with specific arch flag
         self.OMP = False         # compile with OpenMP
         self.DBG = False         # compile for debugging
@@ -136,7 +135,14 @@ class compiler(object):
         if self.DBG:
             make += ' DBG=1'
 
+        if self.BROWN:
+            make += ' BROWN=1'
+
+        if self.INTEL:
+            make += ' IFORT=1'
+
         os.chdir(self.compile_dir)
+        print(os.getcwd())
         print("--> Running Makefile:\n ", make, "\n")
         log = strftime("%a, %d %b %Y %H:%M:%S %Z", localtime())
         os.system(make)
@@ -144,21 +150,21 @@ class compiler(object):
             logfile.write(log + "\n" + make + "\n\n")
         logfile.close()
         os.chdir(self.cwd)
+        print(os.getcwd())
 
     def cleanup(self):
         os.chdir(self.compile_dir)
-        os.system("make clean_all")
+        os.system("make clean")
         os.chdir(self.cwd)
 
 
-#
 #  #####  #####   ####     ###### # #      ######
 #  #    # #    # #         #      # #      #
 #  #    # #####   ####     #####  # #      #####
 #  #####  #    #      #    #      # #      #
 #  #      #    # #    #    #      # #      #
 #  #      #####   ####     #      # ###### ######
-def PBSfile(jname, qname, xname, args=None, pream=None, depen=None, nodes=None, cores=None, mail=None, htime=None):
+def PBSfile(jname, qname, xcmd, depen=None, nodes=None, cores=None, mail=None, htime=None):
     '''This function generates the PBS file to queue a simulation
     '''
     from datetime import timedelta as td
@@ -171,36 +177,33 @@ def PBSfile(jname, qname, xname, args=None, pream=None, depen=None, nodes=None, 
         n = 1
     else:
         n = nodes
-    if cores is None:
-        c = 1
+    if cores is None or qname is 'debug':
+        c = 24
     else:
         c = cores
     with open(sname, 'w') as f:
         print("#!/bin/sh -l\n", file=f)
         print("# FILENAME: {0}\n".format(sname), file=f)
         print("#PBS -q " + qname, file=f)
-        print("#PBS -l nodes={0:d}:ppn={1:d},nacesspolicy=singleuser".format(n, c), file=f)
+        print("#PBS -l nodes={0:d}:ppn={1:d},naccesspolicy=singleuser".format(n, c), file=f)
         print("#PBS -l walltime={0}".format(t), file=f)
         print("#PBS -N " + jname, file=f)
-        print("#PBS -o /home/jruedabe/joboutput/{0}.out".format(jname), file=f)
-        print("#PBS -e /home/jruedabe/joboutput/{0}.err".format(jname), file=f)
+        print("#PBS -o /scratch/brown/jruedabe/joboutput/{0}.out".format(jname), file=f)
+        print("#PBS -e /scratch/brown/jruedabe/joboutput/{0}.err".format(jname), file=f)
         if depen is not None:
             print("#PBS -W depend=afterok:{0}".format(depen), file=f)
         if mail is not None:
             print("#PBS -M {0}".format(mail), file=f)
             print("#PBS -m bae", file=f)
-        print("\n# Run command:", file=f)
-        if pream is not None:
-            xname = "{0} {1}".format(pream, xname)
-
-        if args is None:
-            print(xname, file=f)
-        else:
-            print("{0} {1}".format(xname, " ".join(args)), file=f)
+        print("Working at: {0}".format(os.getcwd()))
+        print("\ncd {0}".format(os.getcwd()), file=f)
+        if (c > 1) or not (qname is 'debug'):
+            print("export OMP_NUM_THREADS={0}".format(c), file=f)
+        print("\n# RUN", file=f)
+        print(xcmd, file=f)
     return sname
 
 
-#
 #  #####  #    # #    #
 #  #    # #    # ##   #
 #  #    # #    # # #  #
@@ -231,10 +234,11 @@ class Runner(object):
             self.wIC = 'F'
         self.flabel = flabel  # a label to identify each output
 
+
     def run_blazMag(self, pream=None, clean=False, cl=False):
-        if clean:
-            self.comp.cleanup()
         comp = compiler(rules='xBlazMag', **self.comp_kw)
+        if clean:
+            comp.cleanup()
         comp.compile()
         outfile = self.flabel + '.jp.h5'
         if pream is None:
@@ -244,11 +248,13 @@ class Runner(object):
         print("\n--> Parameters:")
         os.system("cat -n " + self.par.params_file)
         if cl:
+            print("\n--> Running:\n  ", run_cmd, "\n")
             return run_cmd
         else:
             print("\n--> Running:\n  ", run_cmd, "\n")
             os.system(run_cmd)
             print("\n--> Finished")
+
 
     def run_afterglow(self, pream=None, clean=False, cl=False):
         if clean:

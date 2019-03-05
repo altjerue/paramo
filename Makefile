@@ -44,7 +44,7 @@ ifeq ($(OPENMP),1)
 OMP=-qopenmp
 endif #OPENMP
 
-OPTIMIZATION=-mssse3 -xssse3 -free $(FASTI) $(PARI) $(OMP)
+OPTIMIZATION=-free $(FASTI) $(PARI) $(OMP)
 
 else # IFORT
 
@@ -128,8 +128,5 @@ $(AFGLOW): data_types.o constants.o $(AFGLOW_OBJ)
 .PHONY: clean
 
 clean:
-	rm -vf *.o *.mod *~
-
-clean_all:
 	rm -vf *.o *.mod *~
 	rm -rvf x*
