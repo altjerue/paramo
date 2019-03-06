@@ -97,7 +97,6 @@ class parameters(object):
         print("--> Parameters file: ", self.params_file)
 
 
-#
 #   ####   ####  #    # #####  # #      ######
 #  #    # #    # ##  ## #    # # #      #
 #  #      #    # # ## # #    # # #      #####
@@ -151,30 +150,33 @@ class compiler(object):
         os.chdir(self.cwd)
 
 
-#
 #  #####  #####   ####     ###### # #      ######
 #  #    # #    # #         #      # #      #
 #  #    # #####   ####     #####  # #      #####
 #  #####  #    #      #    #      # #      #
 #  #      #    # #    #    #      # #      #
 #  #      #####   ####     #      # ###### ######
-def PBSfile(jname, qname, xname, args=None, pream=None, depen=None, nodes=None, cores=None, mail=None, htime=None):
+def PBSfile(jname, qname, xname, pream=None, depen=None, nodes=None, cores=None, mail=None, htime=None):
     '''This function generates the PBS file to queue a simulation
     '''
     from datetime import timedelta as td
+
     if htime is None:
         t = str(td(hours=2.0))
     else:
         t = str(td(hours=htime))
     sname = "{0}.sub".format(jname)
+
     if nodes is None:
         n = 1
     else:
         n = nodes
+
     if cores is None:
         c = 1
     else:
         c = cores
+
     with open(sname, 'w') as f:
         print("#!/bin/sh -l\n", file=f)
         print("# FILENAME: {0}\n".format(sname), file=f)
@@ -192,15 +194,10 @@ def PBSfile(jname, qname, xname, args=None, pream=None, depen=None, nodes=None, 
         print("\n# Run command:", file=f)
         if pream is not None:
             xname = "{0} {1}".format(pream, xname)
-
-        if args is None:
-            print(xname, file=f)
-        else:
-            print("{0} {1}".format(xname, " ".join(args)), file=f)
+        print(xname, file=f)
     return sname
 
 
-#
 #  #####  #    # #    #
 #  #    # #    # ##   #
 #  #    # #    # # #  #
