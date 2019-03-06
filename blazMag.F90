@@ -10,8 +10,6 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    use anaFormulae
    use dist_evol
    use radiation
-   use K1
-   use K2
    implicit none
 
    character(len=*), intent(in) :: output_file, params_file
@@ -26,13 +24,12 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    integer :: i, j, k, numbins, numdf, numdt, time_grid, herror
    real(dp) :: uB, uext, R, L_j, gmin, gmax, numin, numax, qind, B, D, &
       tacc, g1, g2, tstep, Qnth, tmax, d_lum, z, tvar, tinj,&
-      gamma_bulk, theta_obs, R0, b_index, mu_obs, nu_ext, tesc, tlc, &
+      gamma_bulk, theta_obs, R0, mu_obs, nu_ext, tesc, tlc, &
       volume, sigma, beta_bulk, eps_e, L_B, mu_mag, eps_B, f_rec
    real(dp), allocatable, dimension(:) :: freqs, t, Ntot, Inu, gg, &
       dt, nu_obs, t_obs, dg, urad
    real(dp), allocatable, dimension(:, :) :: nu0, nn, jnut, jmbs, jssc, jeic, &
       ambs, anut, Qinj, Ddif, Fmbs, Feic, Fssc, Fnut
-   logical :: hyb_dis
 
    call read_params(params_file)
    ! R = par_R
@@ -59,7 +56,6 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    time_grid = par_time_grid
    tvar =  par_tvar
 
-   hyb_dis = .false.
 
    !  ####  ###### ##### #    # #####
    ! #      #        #   #    # #    #
@@ -75,8 +71,6 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
       Qinj(numbins, numdt), Ddif(numbins, numdt), Fnut(numdf, numdt), &
       Fmbs(numdf, numdt), Fssc(numdf, numdt), Feic(numdf, numdt))
 
-   call K1_init
-   call K2_init
 
    !   # #    # # #####     ####   ####  #    # #####
    !   # ##   # #   #      #    # #    # ##   # #    #
@@ -104,12 +98,12 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    ! ----->   Injection of particles
    if ( qind > 2d0 ) then
       g1 = (qind - 2d0) * f_rec * sigma * mass_p / ((qind - 1d0) * mass_e)
-      g2 = par_g2
-      ! g2 = dsqrt(6d0 * pi * eCharge * 1d-3 / (sigmaT * B))
+      ! g2 = par_g2
+      g2 = dsqrt(6d0 * pi * eCharge * 1d-3 / (sigmaT * B))
    else if ( qind > 1d0 .and. qind < 2d0 ) then
       g1 = par_g1
       ! g2 = dsqrt(6d0 * pi * eCharge * 1d-3 / (sigmaT * B))
-      g2 = (sigma + 1d0) * (mass_p / mass_e) * ((2d0 - qind) / (qind - 1d0))**(1d0 / (2d0 - qind))
+      g2 = ((sigma + 1d0) * (mass_p / mass_e) * ((2d0 - qind) / (qind - 1d0)))**(1d0 / (2d0 - qind)) * g1**((1d0 - qind) / (2d0 - qind))
    else
       g1 = par_g1
       g2 = par_g2
@@ -232,9 +226,9 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
       !  #      #    # #    # #      # #  # # #  ###
       !  #    # #    # #    # #      # #   ## #    #
       !   ####   ####   ####  ###### # #    #  ####
-      if ( b_index /= 0d0 ) then
-         uB = 0.125d0 * (B * (1d0 + (cLight * gamma_bulk * t(i) / R0))**(-b_index))**2 / pi
-      end if
+!      if ( b_index /= 0d0 ) then
+!         uB = 0.125d0 * (B * (1d0 + (cLight * gamma_bulk * t(i) / R0))**(-b_index))**2 / pi
+!      end if
 
       if ( with_cool ) then
          urad = IC_cool(gg, freqs, 4d0 * pi * tlc * jnut(:, i))
@@ -298,7 +292,6 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    call h5io_wdble0(group_id, 'redshift', z, herror)
    call h5io_wdble0(group_id, 'Gamma_bulk', gamma_bulk, herror)
    call h5io_wdble0(group_id, 'view-angle', theta_obs, herror)
-   call h5io_wdble0(group_id, 'Bfield-index', b_index, herror)
    call h5io_wdble0(group_id, 'gamma_min', gmin, herror)
    call h5io_wdble0(group_id, 'gamma_max', gmax, herror)
    call h5io_wdble0(group_id, 'gamma_1', g1, herror)
