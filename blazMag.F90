@@ -10,8 +10,6 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    use anaFormulae
    use dist_evol
    use radiation
-   use K1
-   use K2
    implicit none
 
    character(len=*), intent(in) :: output_file, params_file
@@ -32,7 +30,6 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
       dt, nu_obs, t_obs, dg, urad
    real(dp), allocatable, dimension(:, :) :: nu0, nn, jnut, jmbs, jssc, jeic, &
       ambs, anut, Qinj, Ddif, Fmbs, Feic, Fssc, Fnut
-   logical :: hyb_dis
 
    call read_params(params_file)
    ! R = par_R
@@ -59,7 +56,6 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    time_grid = par_time_grid
    tvar =  par_tvar
 
-   hyb_dis = .false.
 
    !  ####  ###### ##### #    # #####
    ! #      #        #   #    # #    #
@@ -75,8 +71,6 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
       Qinj(numbins, numdt), Ddif(numbins, numdt), Fnut(numdf, numdt), &
       Fmbs(numdf, numdt), Fssc(numdf, numdt), Feic(numdf, numdt))
 
-   call K1_init
-   call K2_init
 
    !   # #    # # #####     ####   ####  #    # #####
    !   # ##   # #   #      #    # #    # ##   # #    #
@@ -104,12 +98,12 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    ! ----->   Injection of particles
    if ( qind > 2d0 ) then
       g1 = (qind - 2d0) * f_rec * sigma * mass_p / ((qind - 1d0) * mass_e)
-      g2 = par_g2
-      ! g2 = dsqrt(6d0 * pi * eCharge * 1d-3 / (sigmaT * B))
+      ! g2 = par_g2
+      g2 = dsqrt(6d0 * pi * eCharge * 1d-3 / (sigmaT * B))
    else if ( qind > 1d0 .and. qind < 2d0 ) then
       g1 = par_g1
       ! g2 = dsqrt(6d0 * pi * eCharge * 1d-3 / (sigmaT * B))
-      g2 = (sigma + 1d0) * (mass_p / mass_e) * ((2d0 - qind) / (qind - 1d0))**(1d0 / (2d0 - qind))
+      g2 = ((sigma + 1d0) * (mass_p / mass_e) * ((2d0 - qind) / (qind - 1d0)))**(1d0 / (2d0 - qind)) * g1**((1d0 - qind) / (2d0 - qind))
    else
       g1 = par_g1
       g2 = par_g2
