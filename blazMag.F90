@@ -25,7 +25,7 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    real(dp) :: uB, uext, R, L_j, gmin, gmax, numin, numax, qind, B, D, &
       tacc, g1, g2, tstep, Qnth, tmax, d_lum, z, tvar, tinj,&
       gamma_bulk, theta_obs, R0, mu_obs, nu_ext, tesc, tlc, &
-      volume, sigma, beta_bulk, eps_e, L_B, mu_mag, eps_B, f_rec
+      volume, sigma, beta_bulk, eps_e, L_B, eps_B, f_rec
    real(dp), allocatable, dimension(:) :: freqs, t, Ntot, Inu, gg, &
       dt, nu_obs, t_obs, dg, urad
    real(dp), allocatable, dimension(:, :) :: nu0, nn, jnut, jmbs, jssc, jeic, &
@@ -36,14 +36,17 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    ! R0 = par_R0
    d_lum = par_d_lum
    z = par_z
-   gamma_bulk = par_gamma_bulk
    tstep = par_tstep
    tmax = par_tmax
    L_j = par_L_j
-   eps_e = par_eps_e
    eps_B = par_eps_B
-   sigma = par_sigma
    f_rec = par_frec
+   sigma = par_sigma
+   if ( par_mu_mag > 1d0 ) then
+      gamma_bulk = par_mu_mag / (1d0 + sigma)
+   else
+      gamma_bulk = par_gamma_bulk
+   end if
    gmin = par_gmin
    gmax = par_gmax
    qind = par_qind
@@ -55,6 +58,7 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    numdf = par_numdf
    time_grid = par_time_grid
    tvar =  par_tvar
+
 
 
    !  ####  ###### ##### #    # #####
@@ -92,14 +96,13 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    L_B = sigma * L_j / (1d0 + sigma)
    uB = L_B / (pi * cLight * beta_bulk * (gamma_bulk * R)**2) ! B**2 / (8d0 * pi)
    B = dsqrt(uB * 8d0 * pi)
-   mu_mag = gamma_bulk * (1d0 + sigma)
    nu0 = 4d0 * sigmaT * uB / (3d0 * mass_e * cLight)
 
    ! ----->   Injection of particles
    if ( qind > 2d0 ) then
       g1 = (qind - 2d0) * f_rec * sigma * mass_p / ((qind - 1d0) * mass_e)
       ! g2 = par_g2
-      g2 = dsqrt(6d0 * pi * eCharge * 1d-3 / (sigmaT * B))
+      g2 = dsqrt(6d0 * pi * eCharge * 1d-6 / (sigmaT * B))
    else if ( qind > 1d0 .and. qind < 2d0 ) then
       g1 = par_g1
       ! g2 = dsqrt(6d0 * pi * eCharge * 1d-3 / (sigmaT * B))
@@ -135,7 +138,8 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    write(*, "('B         =', ES15.7)") B
    write(*, "('u_ext     =', ES15.7)") uext
    write(*, "('nu_ext    =', ES15.7)") nu_ext
-   write(*, "('mu        =', ES15.7)") mu_mag
+   write(*, "('mu        =', ES15.7)") par_mu_mag
+   write(*, "('Gamma     =', ES15.7)") gamma_bulk
 
    build_f: do j=1,numdf
       nu_obs(j) = numin * ( (numax / numin)**(dble(j - 1) / dble(numdf - 1)) )
@@ -197,7 +201,8 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
          else
             ambs(j, i) = 0d0
          end if
-         Inu(j) = opt_depth_blob(ambs(j, i), R) * jmbs(j, i) * 2d0 * R
+         call RadTrans_blob(Inu, R, jmbs(:, i), ambs(:, i))
+         ! Inu(j) = opt_depth_blob(ambs(j, i), R) * jmbs(j, i) * 2d0 * R
       end do
       !$OMP END PARALLEL DO
 
@@ -213,10 +218,13 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
          end if
          jnut(j, i) = jmbs(j, i) + jssc(j, i) + jeic(j, i)
          anut(j, i) = ambs(j, i)
-         Fmbs(j, i) = D**4 * volume * freqs(j) * jmbs(j, i) * opt_depth_blob(ambs(j, i), R) / d_lum**2
-         Fssc(j, i) = 0.25d0 * D**4 * volume * freqs(j) * jssc(j, i) / (pi * d_lum**2)
-         Feic(j, i) = 0.25d0 * D**4 * volume * freqs(j) * jeic(j, i) / (pi * d_lum**2)
+         Fmbs(j, i) = D**4 * volume * freqs(j) * jmbs(j, i) * opt_depth_blob(anut(j, i), R) / d_lum**2
+         Fssc(j, i) = D**4 * volume * freqs(j) * jssc(j, i) * opt_depth_blob(anut(j, i), R) / d_lum**2
+         Feic(j, i) = D**4 * volume * freqs(j) * jeic(j, i) * opt_depth_blob(anut(j, i), R) / d_lum**2
+         ! Fssc(j, i) = 0.25d0 * D**4 * volume * freqs(j) * jssc(j, i) / (pi * d_lum**2)
+         ! Feic(j, i) = 0.25d0 * D**4 * volume * freqs(j) * jeic(j, i) / (pi * d_lum**2)
          Fnut(j, i) = Fmbs(j, i) + Fssc(j, i) + Feic(j, i)
+         ! Fnut(j, i) = D**4 * volume * freqs(j) * jnut(j, i) * opt_depth_blob(anut(j, i), R) / d_lum**2
       end do
       !$OMP END PARALLEL DO
 
@@ -231,7 +239,9 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
 !      end if
 
       if ( with_cool ) then
-         urad = IC_cool(gg, freqs, 4d0 * pi * tlc * jnut(:, i))
+         urad = bolometric_integ(freqs, 4d0 * pi * Inu / cLight)
+         call RadTrans_blob(Inu, R, jssc(:, i) + jeic(:, i), anut(:, i))
+         urad = urad + IC_cool(gg, freqs, 4d0 * pi * Inu / cLight)
       else
          urad = 0d0
       end if
@@ -249,7 +259,7 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
             &             gg, &
             &             nn(:, i - 1), &
             &             nn(:, i), &
-            &             nu0(:, i) * gg**2, &
+            &             nu0(:, i) * (gg**2 - 1d0), &
             &             Ddif(:, i), &
             &             Qinj(:, i), &
             &             tesc)
@@ -300,13 +310,13 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    call h5io_wdble0(group_id, 'L_j', L_j, herror)
    call h5io_wdble0(group_id, 'nu_min', numin, herror)
    call h5io_wdble0(group_id, 'nu_max', numax, herror)
+   call h5io_wdble0(group_id, 'mu_mag', par_mu_mag, herror)
    call h5io_closeg(group_id, herror)
 
    ! ------  Saving data  ------
    call h5io_wdble0(file_id, 't_acc', tacc, herror)
    call h5io_wdble0(file_id, 't_esc', tesc, herror)
    call h5io_wdble0(file_id, 'Bfield', B, herror)
-   call h5io_wdble0(file_id, 'mu', mu_mag, herror)
    call h5io_wdble0(file_id, 'Q_nth', Qnth, herror)
 
    call h5io_wdble1(file_id, 'time', t(1:), herror)
