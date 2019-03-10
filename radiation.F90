@@ -240,6 +240,24 @@ contains
    ! end subroutine RT_line_of_sight
 
 
+   function bolometric_integ(freqs, uu) result(ubol)
+      implicit none
+      real(dp), intent(in), dimension(:) :: freqs, uu
+      integer :: j, Nf
+      real(dp) :: uind, ubol
+      Nf = size(freqs)
+      ubol = 0d0
+      freqloop: do j = 2, Nf
+         if ( uu(j - 1) > 1d-200 .and. uu(j) > 1d-200 ) then
+            uind = -dlog(uu(j) / uu(j - 1)) / dlog(freqs(j) / freqs(j - 1))
+            if ( uind > 8d0 ) uind = 8d0
+            if ( uind < -8d0 ) uind = -8d0
+            ubol = ubol + uu(j - 1) * freqs(j - 1) * Pinteg(freqs(j) / freqs(j - 1), uind, 1d-9)
+         end if
+      end do freqloop
+   end function bolometric_integ
+
+
    !  ###  #####
    !   #  #     #     ####   ####   ####  #      # #    #  ####
    !   #  #          #    # #    # #    # #      # ##   # #    #
