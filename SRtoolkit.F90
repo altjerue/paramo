@@ -89,7 +89,8 @@ contains
          end if
       end do
    end function bofg_v
-   
+
+
    !
    !     ----------{     gamma(beta)     }----------
    !
@@ -105,6 +106,7 @@ contains
       g = 1d0 / dsqrt(1d0 - b**2)
    end function gofb_v
 
+
    !
    !     ----------{     p(gamma)     }----------
    !
@@ -119,6 +121,7 @@ contains
       real(dp), dimension(size(g)) :: p
       p = dsqrt(g**2 - 1d0)
    end function pofg_v
+
 
    !
    !     ----------{     gamma(p)     }----------

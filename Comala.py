@@ -20,8 +20,9 @@ class parameters(object):
         self.R0 = 1e15                  # Distance from central engine
         self.dLum = 4.0793e26           # luminosity distance (default Mrk 421)
         self.z = 0.03                   # redshift (default Mrk 421)
-        self.gamma_bulk = 1e2           # emitting region bulk Lorentz factor
         self.theta_obs = 5.0            # observer viewing angle
+        self.gamma_bulk = 1e2           # emitting region bulk Lorentz factor
+        self.mu_mag = 1.0               # (1 + sigma) Gamma_bulk
         self.sigma = 1.0                # magnetization (sigma)
         self.f_rec = 1.0                # magnetic reconection dissipative efficiency
         self.b_index = 0.0              # magnetic field decay index
@@ -63,8 +64,9 @@ class parameters(object):
             print(fortran_double(self.R0), ' ! Initial radius', file=f)
             print(fortran_double(self.dLum), ' ! luminosity distance', file=f)
             print(fortran_double(self.z), ' ! redshift', file=f)
-            print(fortran_double(self.gamma_bulk), ' ! bulk Lorentz factor', file=f)
             print(fortran_double(self.theta_obs), ' ! viewing angle', file=f)
+            print(fortran_double(self.gamma_bulk), ' ! bulk Lorentz factor', file=f)
+            print(fortran_double(self.mu_mag), ' ! (1 + sigma) Gamma', file=f)
             print(fortran_double(self.sigma), ' ! magnetization', file=f)
             print(fortran_double(self.f_rec), ' ! dissipative efficiency of magnetic reconection', file=f)
             print(fortran_double(self.b_index), ' ! magnetic field decay index', file=f)
@@ -238,7 +240,6 @@ class Runner(object):
             self.wIC = 'F'
         self.flabel = flabel  # a label to identify each output
 
-
     def run_blazMag(self, pream=None, clean=False, cl=False):
         comp = compiler(rules='xBlazMag', **self.comp_kw)
         if clean:
@@ -258,7 +259,6 @@ class Runner(object):
             print("\n--> Running:\n  ", run_cmd, "\n")
             os.system(run_cmd)
             print("\n--> Finished")
-
 
     def run_afterglow(self, pream=None, clean=False, cl=False):
         if clean:
