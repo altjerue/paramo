@@ -326,8 +326,8 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    call h5io_wdble2(file_id, 'Fmbs', Fmbs, herror)
    call h5io_wdble2(file_id, 'Fssc', Fssc, herror)
    call h5io_wdble2(file_id, 'Feic', Feic, herror)
-   call h5io_wdble2(file_id, 'n_e', nn(1:, :), herror)
-   call h5io_wdble2(file_id, 'nu0_tot', nu0(1:, :), herror)
+   call h5io_wdble2(file_id, 'n_e', nn(:, 1:), herror)
+   call h5io_wdble2(file_id, 'nu0_tot', nu0(:, 1:), herror)
 
    ! ------  Closing output file  ------
    call h5io_closef(file_id, herror)
