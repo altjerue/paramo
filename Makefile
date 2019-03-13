@@ -67,6 +67,7 @@ endif
 
 ifeq ($(BROWN),1)
 OPTIMIZATION+=-arch ssse3 -mtune=corei7-avx
+LIBS+=-L/usr/lib64
 endif
 
 endif # DBG
