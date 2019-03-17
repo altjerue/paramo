@@ -30,7 +30,7 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
       tacc, tinj, g1, g2, tstep, Q0, tmax, d_lum, z, n_ext, &
       theta_obs, mu_obs, nu_ext, tesc_e, uext0, volume, eps_e, tlc,&
       eps_B, E0, gamma_bulk0, L_e, nu_ext0, Aadi, tmin, Rd, td, R, dr, &
-      b_index, beta_bulk, volume_p, R_p
+      b_index, beta_bulk, volume_p, R_p, eps_g2
    real(dp), allocatable, dimension(:) :: freqs, t, Ntot, Isyn, gg, sen_lum, &
       dt, nu_obs, t_obs, gamma_bulk, Rbw, D, tcool, urad
    real(dp), allocatable, dimension(:, :) :: nu0, n_e, jnut, jmbs, jssc, jeic, &
@@ -101,17 +101,19 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
    B = dsqrt(32d0 * pi * eps_B * mass_p * n_ext) * cLight * gamma_bulk0
    ! B = dsqrt(32d0 * pi * eps_B * mass_p * n_ext) * cLight * 0.5d0 * gamma_bulk0 * Rd**(1.5d0) *  R0**(-b_index)
    uB = 0.125d0 * B**2 / pi
-   ! g2 = dsqrt(6d0 * pi * eCharge * 1d-8 / (sigmaT * B))
+   eps_g2 = 1d-1
+   g2 = dsqrt(6d0 * pi * eCharge * eps_g2 / (sigmaT * B))
    g1 = eps_e * (gamma_bulk0 - 1d0) * mass_p * (qind - 2d0) / ((qind - 1d0) * mass_e)
-   L_e = eps_e * 4d0 * pi * R0**2 * n_ext * mass_p * cLight**3 * beta_bulk * gamma_bulk0 * (gamma_bulk0 - 1d0)
+   ! L_e = eps_e * 4d0 * pi * R0**2 * n_ext * mass_p * cLight**3 * beta_bulk * gamma_bulk0 * (gamma_bulk0 - 1d0)
+   L_e = eps_e * 2d0 * pi * (1d0 - dcos(1d0 / gamma_bulk0)) * R0**2 * n_ext * mass_p * cLight**3 * beta_bulk * gamma_bulk0 * (gamma_bulk0 - 1d0)
    Q0 = L_e * pwl_norm(mass_e * cLight**2 * volume, qind - 1d0, g1, g2)
    td = (1d0 + z) * Rd / (beta_bulk * cLight * gamma_bulk0**2)
    t(0) = 0d0
    t_obs(0) = 0d0
    tlc = R / cLight
-   tinj = 1d200
-   tesc_e = 1d200 !3d0 * tlc
-   tacc = tesc_e
+   ! tinj = tlc
+   ! tesc_e = 1.5d0 * tlc
+   ! tacc = tesc_e
 
    write(*, "('theta_obs =', ES15.7)") theta_obs
    write(*, "('nu_ext0   =', ES15.7)") nu_ext0
@@ -132,7 +134,7 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
    nu0 = 0d0
    Aadi = 0d0
    Ddif(:, 0) = 1d-200 ! 0.5d0 * gg**2 / tacc !
-   n_e(:, 0) = injection_pwl(0d0, tinj, gg, g1, g2, qind, Q0)
+   n_e(:, 0) = injection_pwl(0d0, 1d200, gg, g1, g2, qind, Q0)
 
    write(*, "('---> Calculating the emission')")
    write(*, *) ''
@@ -174,8 +176,10 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
       B = dsqrt(32d0 * pi * eps_B * mass_p * n_ext) * cLight * gamma_bulk(i)
       ! B = dsqrt(32d0 * pi * eps_B * mass_p * n_ext) * cLight * 0.5d0 * gamma_bulk0 * Rd**(1.5d0) *  Rbw(i)**(-b_index)
       uB = 0.125d0 * B**2 / pi
-      L_e = eps_e * 4d0 * pi * Rbw(i)**2 * n_ext * mass_p * cLight**3 * beta_bulk * gamma_bulk(i) * (gamma_bulk(i) - 1d0)
+      g2 = dsqrt(6d0 * pi * eCharge * eps_g2 / (sigmaT * B))
       g1 = eps_e * (gamma_bulk(i) - 1d0) * mass_p * (qind - 2d0) / ((qind - 1d0) * mass_e)
+      ! L_e = eps_e * 4d0 * pi * Rbw(i)**2 * n_ext * mass_p * cLight**3 * beta_bulk * gamma_bulk(i) * (gamma_bulk(i) - 1d0)
+      L_e = eps_e * 2d0 * pi * (1d0 - dcos(1d0 / gamma_bulk(i))) * Rbw(i)**2 * n_ext * mass_p * cLight**3 * beta_bulk * gamma_bulk(i) * (gamma_bulk(i) - 1d0)
       Q0 = L_e * pwl_norm(mass_e * cLight**2 * volume, qind - 1d0, g1, g2)
       uext = uext0 * gamma_bulk(i)**2 * (1d0 + beta_bulk**2 / 3d0)
       nu_ext = nu_ext0 * gamma_bulk(i)
@@ -222,11 +226,11 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
 
       Aadi = 3d0 * beta_bulk * gamma_bulk(i) * cLight / (2d0 * Rbw(i))
       nu0(:, i) = 4d0 * sigmaT * (uB + urad) / (3d0 * mass_e * cLight)
-      tesc_e = 1d200!1.5d0 * tlc
-      tacc = tesc_e
-      tcool = 1d0 / (nu0(:, i) * pofg(gg) + Aadi)
+      ! tesc_e = 1.5d0 * tlc
+      ! tacc = tesc_e
+      ! tcool = 1d0 / (nu0(:, i) * pofg(gg) + Aadi)
       ! tadiab = 1d0 / (Aadi * gg(ig) * bofg(gg(ig)))
-      Qinj(:, i) = injection_pwl(t(i), tinj, gg, g1, g2, qind, Q0)
+      Qinj(:, i) = injection_pwl(t(i), 1d200, gg, g1, g2, qind, Q0)
       Ddif(:, i) = 1d-200 !0.5d0 * gg**2 / tacc !
       call FP_FinDif_difu(dt(i), &
             &             pofg(gg), &
@@ -235,7 +239,8 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
             &             nu0(:, i) * pofg(gg)**2 + Aadi * pofg(gg), &
             &             Ddif(:, i), &
             &             Qinj(:, i), &
-            &             tesc_e)
+            ! &             tesc_e)
+            &             1d200)
 
       volume_p = volume
       R_p = R
