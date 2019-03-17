@@ -110,13 +110,13 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
    t_obs(0) = 0d0
    tlc = R / cLight
    tinj = 1d200
-   tesc_e = 3d0 * tlc
+   tesc_e = 1d200 !3d0 * tlc
    tacc = tesc_e
 
    write(*, "('theta_obs =', ES15.7)") theta_obs
    write(*, "('nu_ext0   =', ES15.7)") nu_ext0
    write(*, "('Doppler   =', ES15.7)") D(0)
-   write(*, "('tmin      =', ES15.7)") td
+   write(*, "('td        =', ES15.7)") td
    write(*, "('Rd        =', ES15.7)") Rd
    write(*, "('Gamma0    =', ES15.7)") gamma_bulk0
    write(*, "('R         =', ES15.7)") R
@@ -167,7 +167,7 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
       call adiab_blast_wave(Rbw(i), R0, gamma_bulk0, E0, n_ext, gamma_bulk(i))
       beta_bulk = bofg(gamma_bulk(i))
       D(i) = Doppler(gamma_bulk(i), mu_obs)
-      t_obs(i) = t_obs(i - 1) + 0.5d0 * (1d0 + z) * dt(i) * (1d0 / D(i) + 1d0 / D(i - 1) )
+      t_obs(i) = t_obs(i - 1) + 0.5d0 * (1d0 + z) * dt(i) * ( 1d0 / D(i) + 1d0 / D(i - 1) )
       R = Rbw(i) / gamma_bulk(i)
       tlc = R / cLight
       volume = 4d0 * pi * R**3 / 3d0
@@ -178,7 +178,7 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
       g1 = eps_e * (gamma_bulk(i) - 1d0) * mass_p * (qind - 2d0) / ((qind - 1d0) * mass_e)
       Q0 = L_e * pwl_norm(mass_e * cLight**2 * volume, qind - 1d0, g1, g2)
       uext = uext0 * gamma_bulk(i)**2 * (1d0 + beta_bulk**2 / 3d0)
-      nu_ext = nu_com_f(nu_ext0, z, D(i))
+      nu_ext = nu_ext0 * gamma_bulk(i)
 
       !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
       !$OMP& PRIVATE(j)
@@ -212,14 +212,17 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
       !$OMP END PARALLEL DO
 
       if ( with_cool ) then
-         urad = IC_cool(gg, freqs, 4d0 * pi * tlc * jnut(:, i))
+         urad = bolometric_integ(freqs, 4d0 * pi * Isyn / cLight)
+         urad = urad + uext
+         call RadTrans_blob(Isyn, R, jssc(:, i) + jeic(:, i), anut(:, i))
+         urad = urad + IC_cool(gg, freqs, 4d0 * pi * Isyn / cLight)
       else
          urad = 0d0
       end if
 
       Aadi = 3d0 * beta_bulk * gamma_bulk(i) * cLight / (2d0 * Rbw(i))
       nu0(:, i) = 4d0 * sigmaT * (uB + urad) / (3d0 * mass_e * cLight)
-      tesc_e = 10d0 * tlc
+      tesc_e = 1d200!1.5d0 * tlc
       tacc = tesc_e
       tcool = 1d0 / (nu0(:, i) * pofg(gg) + Aadi)
       ! tadiab = 1d0 / (Aadi * gg(ig) * bofg(gg(ig)))
@@ -243,8 +246,6 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
          write(*, on_screen) i, t(i), dt(i), gamma_bulk(i), Ntot(i)
 
    end do time_loop
-
-
 
 
    !  ####    ##   #    # # #    #  ####

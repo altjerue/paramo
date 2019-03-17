@@ -106,7 +106,7 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    else if ( qind > 1d0 .and. qind < 2d0 ) then
       g1 = par_g1
       ! g2 = dsqrt(6d0 * pi * eCharge * 1d-3 / (sigmaT * B))
-      g2 = ((sigma + 1d0) * (mass_p / mass_e) * ((2d0 - qind) / (qind - 1d0)))**(1d0 / (2d0 - qind)) * g1**((1d0 - qind) / (2d0 - qind))
+      g2 = ( (sigma + 1d0) * (mass_p / mass_e) * ((2d0 - qind) / (qind - 1d0)) )**(1d0 / (2d0 - qind)) * g1**((1d0 - qind) / (2d0 - qind))
    else
       g1 = par_g1
       g2 = par_g2
