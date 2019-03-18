@@ -218,11 +218,12 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
          end if
          jnut(j, i) = jmbs(j, i) + jssc(j, i) + jeic(j, i)
          anut(j, i) = ambs(j, i)
+
          Fmbs(j, i) = D**4 * volume * freqs(j) * jmbs(j, i) * opt_depth_blob(anut(j, i), R) / d_lum**2
          Fssc(j, i) = D**4 * volume * freqs(j) * jssc(j, i) * opt_depth_blob(anut(j, i), R) / d_lum**2
          Feic(j, i) = D**4 * volume * freqs(j) * jeic(j, i) * opt_depth_blob(anut(j, i), R) / d_lum**2
-         ! Fssc(j, i) = 0.25d0 * D**4 * volume * freqs(j) * jssc(j, i) / (pi * d_lum**2)
-         ! Feic(j, i) = 0.25d0 * D**4 * volume * freqs(j) * jeic(j, i) / (pi * d_lum**2)
+         ! Fssc(j, i) = D**4 * volume * freqs(j) * jssc(j, i) / (4d0 * pi * d_lum**2)
+         ! Feic(j, i) = D**4 * volume * freqs(j) * jeic(j, i) / (4d0 * pi * d_lum**2)
          Fnut(j, i) = Fmbs(j, i) + Fssc(j, i) + Feic(j, i)
          ! Fnut(j, i) = D**4 * volume * freqs(j) * jnut(j, i) * opt_depth_blob(anut(j, i), R) / d_lum**2
       end do
