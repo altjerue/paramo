@@ -89,7 +89,7 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
    !   ---------->    Initial conditions     <----------
    !
    
-   Omegaj_const = .false.
+   Omegaj_const = .true.
    theta_obs = par_theta_obs * pi / 180d0
    mu_obs = dcos(theta_obs)
    beta_bulk = bofg(gamma_bulk0)
@@ -113,13 +113,13 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
       Omega_j = 1d0 - dcos(1d0 / gamma_bulk0)
    end if
    L_e = eps_e * Omega_j * 2d0 * pi * R0**2 * n_ext * mass_p * cLight**3 * beta_bulk * gamma_bulk0 * (gamma_bulk0 - 1d0)
-   Q0 = L_e * pwl_norm(mass_e * cLight**2 * volume, qind - 1d0, g1, g2)
+   Q0 = L_e * pwl_norm(mass_e * cLight**2, qind - 1d0, g1, g2)
    td = (1d0 + z) * Rd / (beta_bulk * cLight * gamma_bulk0**2)
    t(0) = 0d0
    t_obs(0) = 0d0
    tlc = R / cLight
    ! tinj = tlc
-   ! tesc_e = 1.5d0 * tlc
+   tesc_e = 1.5d0 * tlc
    ! tacc = tesc_e
 
    write(*, "('theta_obs =', ES15.7)") theta_obs
@@ -200,7 +200,7 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
          Omega_j = 1d0 - dcos(1d0 / gamma_bulk(i))
       end if
       L_e = eps_e * Omega_j * 2d0 * pi * Rbw(i)**2 * n_ext * mass_p * cLight**3 * beta_bulk * gamma_bulk(i) * (gamma_bulk(i) - 1d0)
-      Q0 = L_e * pwl_norm(mass_e * cLight**2 * volume, qind - 1d0, g1, g2)
+      Q0 = L_e * pwl_norm(mass_e * cLight**2, qind - 1d0, g1, g2)
       uext = uext0 * gamma_bulk(i)**2 * (1d0 + beta_bulk**2 / 3d0)
       nu_ext = nu_ext0 * gamma_bulk(i)
 
@@ -208,8 +208,8 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
       !$OMP& PRIVATE(j)
       do j = 1, numdf
          freqs(j) = nu_com_f(nu_obs(j), z, D(i))
-         call mbs_emissivity(jmbs(j, i), freqs(j), gg, n_e(:, i - 1), B)
-         call mbs_absorption(ambs(j, i), freqs(j), gg, n_e(:, i - 1), B)
+         call mbs_emissivity(jmbs(j, i), freqs(j), gg, n_e(:, i - 1) / volume_p, B)
+         call mbs_absorption(ambs(j, i), freqs(j), gg, n_e(:, i - 1) / volume_p, B)
          Isyn(j) = opt_depth_blob(ambs(j, i), R) * jmbs(j, i) * 2d0 * R
          ! Isyn(j) = opt_depth_slab(ambs(j, i), 2d0 * R) * jmbs(j, i) * 2d0 * R
       end do
@@ -219,8 +219,8 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
       !$OMP& PRIVATE(j)
       do j = 1, numdf
          if ( with_ic ) then
-            call IC_iso_powlaw(jssc(j, i), freqs(j), freqs, Isyn, n_e(:, i - 1), gg)
-            call IC_iso_monochrom(jeic(j, i), freqs(j), uext, nu_ext, n_e(:, i - 1), gg)
+            call IC_iso_powlaw(jssc(j, i), freqs(j), freqs, Isyn, n_e(:, i - 1) / volume_p, gg)
+            call IC_iso_monochrom(jeic(j, i), freqs(j), uext, nu_ext, n_e(:, i - 1) / volume_p, gg)
          else
             jssc(j, i) = 0d0
             jeic(j, i) = 0d0
@@ -241,15 +241,15 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
       if ( with_cool ) then
          urad = bolometric_integ(freqs, 4d0 * pi * Isyn / cLight)
          urad = urad + uext
-         call RadTrans_blob(Isyn, R, jssc(:, i) + jeic(:, i), anut(:, i))
-         urad = urad + IC_cool(gg, freqs, 4d0 * pi * Isyn / cLight)
+        !  call RadTrans_blob(Isyn, R, jssc(:, i) + jeic(:, i), anut(:, i))
+        !  urad = urad + IC_cool(gg, freqs, 4d0 * pi * Isyn / cLight)
       else
          urad = 0d0
       end if
 
       Aadi = 3d0 * beta_bulk * gamma_bulk(i) * cLight / (2d0 * Rbw(i))
       nu0(:, i) = 4d0 * sigmaT * (uB + urad) / (3d0 * mass_e * cLight)
-      ! tesc_e = 1.5d0 * tlc
+      tesc_e = 1.5d0 * tlc
       ! tacc = tesc_e
       ! tcool = 1d0 / (nu0(:, i) * pofg(gg) + Aadi)
       ! tadiab = 1d0 / (Aadi * gg(ig) * bofg(gg(ig)))
@@ -259,11 +259,11 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
             &             pofg(gg), &
             &             n_e(:, i - 1), &
             &             n_e(:, i), &
-            &             nu0(:, i) * pofg(gg)**2 + Aadi * pofg(gg), &
+            &             nu0(:, i) * pofg(gg)**2 + Aadi * pofg(gg), &!, &!
             &             Ddif(:, i), &
             &             Qinj(:, i), &
-            ! &             tesc_e)
-            &             1d200)
+            &             tesc_e)
+            ! &             1d200)
 
       volume_p = volume
       R_p = R
