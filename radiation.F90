@@ -128,7 +128,7 @@ contains
       real(dp), intent(in) :: absor, r
       real(dp) :: u, tau
       tau = dmax1(1d-100, r * absor)
-      if ( tau <= 1d-100 ) then
+      if ( tau <= 1d-50 ) then
          u = 1d0
       else
          u = (1d0 - dexp(-tau)) / tau
@@ -156,7 +156,7 @@ contains
       tau = opt_depth(anu, s)
       do j = 1, Nf
          if ( jnu(j) > 1d-100 ) then
-            if ( tau(j) > 1d-100 ) then
+            if ( tau(j) > 1d-50 ) then
                Inu(j) = s * jnu(j) * (1d0 - dexp(-tau(j))) / tau(j)
             else
                Inu(j) = s * jnu(j)
@@ -177,7 +177,7 @@ contains
       real(dp) :: tau
       tau = anu * s
       if ( jnu > 1d-100 ) then
-         if ( tau > 1d-100 ) then
+         if ( tau > 1d-50 ) then
             Inu = s * jnu * (1d0 - dexp(-tau)) / tau
          else
             Inu = s * jnu
