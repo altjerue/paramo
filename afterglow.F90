@@ -88,7 +88,6 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
    !
    !   ---------->    Initial conditions     <----------
    !
-   
    Omegaj_const = .false.
    theta_obs = par_theta_obs * pi / 180d0
    mu_obs = dcos(theta_obs)
@@ -104,11 +103,11 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
    volume_p = volume
    B = dsqrt(32d0 * pi * eps_B * mass_p * n_ext) * cLight * gamma_bulk0
    uB = B**2 / (8d0 * pi)
-   eps_g2 = 9d-1
+   eps_g2 = 1d-1
    g2 = dsqrt(6d0 * pi * eCharge * eps_g2 / (sigmaT * B))
    g1 = eps_e * (gamma_bulk0 - 1d0) * mass_p * (qind - 2d0) / ((qind - 1d0) * mass_e)
    if ( Omegaj_const ) then
-      Omega_j = 2d0 !
+      Omega_j = 2d0
    else
       Omega_j = 1d0 - dcos(1d0 / gamma_bulk0)
    end if
@@ -316,6 +315,7 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
    call h5io_wdble0(group_id, 'nu_ext0', nu_ext0, herror)
    call h5io_wdble0(group_id, 'u_ext0', uext0, herror)
    call h5io_wdble0(group_id, 'E0', E0, herror)
+   call h5io_wdble0(group_id, 'R0', R0, herror)
    call h5io_wdble0(group_id, 'n_ext', n_ext, herror)
 
    call h5io_closeg(group_id, herror)
