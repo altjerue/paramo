@@ -30,7 +30,7 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
       tacc, tinj, g1, g2, tstep, Q0, tmax, d_lum, z, n_ext, &
       theta_obs, mu_obs, nu_ext, tesc_e, uext0, volume, eps_e, tlc,&
       eps_B, E0, gamma_bulk0, L_e, nu_ext0, Aadi, tmin, Rd, td, R, dr, &
-      b_index, beta_bulk, volume_p, R_p, eps_g2, Omega_j
+      b_index, beta_bulk, eps_g2, Omega_j
    real(dp), allocatable, dimension(:) :: freqs, t, Ntot, Isyn, gg, sen_lum, &
       dt, nu_obs, t_obs, gamma_bulk, Rbw, D, tcool, urad, gc
    real(dp), allocatable, dimension(:, :) :: nu0, n_e, jnut, jmbs, jssc, jeic, &
@@ -99,9 +99,7 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
    Rd = deceleration_radius(E0, gamma_bulk0, n_ext)
    Rbw(0) = R0
    R = R0 / gamma_bulk0
-   R_p = R
    volume = 4d0 * pi * R**3 / 3d0
-   volume_p = volume
    B = dsqrt(32d0 * pi * eps_B * mass_p * n_ext) * cLight * gamma_bulk0
    uB = B**2 / (8d0 * pi)
    eps_g2 = 1d-1
@@ -114,7 +112,7 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
       Omega_j = 1d0 - dcos(1d0 / gamma_bulk0)
    end if
    L_e = eps_e * Omega_j * 2d0 * pi * R0**2 * n_ext * mass_p * cLight**3 * beta_bulk * gamma_bulk0 * (gamma_bulk0 - 1d0)
-   Q0 = L_e * pwl_norm(mass_e * cLight**2, qind - 1d0, g1, g2)
+   Q0 = L_e * pwl_norm(mass_e * cLight**2 * volume, qind - 1d0, g1, g2)
    td = (1d0 + z) * Rd / (beta_bulk * cLight * gamma_bulk0**2)
    t(0) = 0d0
    t_obs(0) = 0d0
@@ -169,48 +167,21 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
    ! ######   ##    ####  ######  ####    #   #  ####  #    #
    time_loop: do i = 1, numdt
 
-      select case(time_grid)
-      case(1)
-         t(i) = tstep * ( (tmax / tstep)**(dble(i - 1) / dble(numdt - 1)) )
-         dt(i) = t(i) - t(i - 1)
-      case(2)
-         call time_step(dt(i), gg, Ddif(:, i - 1), nu0(:, i - 1) * gg**2 + Aadi * gg, tstep, tlc)
-         t(i) = t(i - 1) + dt(i)
-      case(3)
-         t(i) = tmax * dble(i) / dble(numdt)
-         dt(i) = t(i) - t(i - 1)
-      case default
-         write(*, *) "Wrong time-grid selection"
-      end select
-      dr = dt(i) * beta_bulk * gamma_bulk(i - 1) * cLight
-      Rbw(i) = Rbw(i - 1) + dr
-      call adiab_blast_wave(Rbw(i), R0, gamma_bulk0, E0, n_ext, gamma_bulk(i))
-      beta_bulk = bofg(gamma_bulk(i))
-      D(i) = Doppler(gamma_bulk(i), mu_obs)
-      t_obs(i) = t_obs(i - 1) + 0.5d0 * (1d0 + z) * dt(i) * ( 1d0 / D(i) + 1d0 / D(i - 1) )
-      R = Rbw(i) / gamma_bulk(i)
-      tlc = R / cLight
-      volume = 4d0 * pi * R**3 / 3d0
-      B = dsqrt(32d0 * pi * eps_B * mass_p * n_ext) * cLight * gamma_bulk(i)
-      uB = B**2 / (8d0 * pi)
-      g2 = dsqrt(6d0 * pi * eCharge * eps_g2 / (sigmaT * B))
-      g1 = eps_e * (gamma_bulk(i) - 1d0) * mass_p * (qind - 2d0) / ((qind - 1d0) * mass_e)
-      if ( Omegaj_const ) then
-         Omega_j = 2d0 !
-      else
-         Omega_j = 1d0 - dcos(1d0 / gamma_bulk(i))
-      end if
-      L_e = eps_e * Omega_j * 2d0 * pi * Rbw(i)**2 * n_ext * mass_p * cLight**3 * beta_bulk * gamma_bulk(i) * (gamma_bulk(i) - 1d0)
-      Q0 = L_e * pwl_norm(mass_e * cLight**2, qind - 1d0, g1, g2)
-      uext = uext0 * gamma_bulk(i)**2 * (1d0 + beta_bulk**2 / 3d0)
-      nu_ext = nu_ext0 * gamma_bulk(i)
+      ! ========================================================================
+      !  * First we calculate the radiation from the previous particles
+      !    distribution,
+      !  * Then we compute the cooling coefficient,
+      !  * Then we compute the new time, position, bulk Lorentz factor and other
+      !    properties of the emission region,
+      !  * And then we evolve the particles distribution
+      ! ========================================================================
 
       !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
       !$OMP& PRIVATE(j)
       do j = 1, numdf
          freqs(j) = nu_com_f(nu_obs(j), z, D(i))
-         call mbs_emissivity(jmbs(j, i), freqs(j), gg, n_e(:, i - 1) / volume_p, B)
-         call mbs_absorption(ambs(j, i), freqs(j), gg, n_e(:, i - 1) / volume_p, B)
+         call mbs_emissivity(jmbs(j, i), freqs(j), gg, n_e(:, i - 1), B)
+         call mbs_absorption(ambs(j, i), freqs(j), gg, n_e(:, i - 1), B)
          Isyn(j) = opt_depth_blob(ambs(j, i), R) * jmbs(j, i) * 2d0 * R
          ! Isyn(j) = opt_depth_slab(ambs(j, i), 2d0 * R) * jmbs(j, i) * 2d0 * R
       end do
@@ -220,8 +191,8 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
       !$OMP& PRIVATE(j)
       do j = 1, numdf
          if ( with_ic ) then
-            call IC_iso_powlaw(jssc(j, i), freqs(j), freqs, Isyn, n_e(:, i - 1) / volume_p, gg)
-            call IC_iso_monochrom(jeic(j, i), freqs(j), uext, nu_ext, n_e(:, i - 1) / volume_p, gg)
+            call IC_iso_powlaw(jssc(j, i), freqs(j), freqs, Isyn, n_e(:, i - 1), gg)
+            call IC_iso_monochrom(jeic(j, i), freqs(j), uext, nu_ext, n_e(:, i - 1), gg)
          else
             jssc(j, i) = 0d0
             jeic(j, i) = 0d0
@@ -241,13 +212,54 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
 
       if ( with_cool ) then
          ! urad = bolometric_integ(freqs, 4d0 * pi * Isyn / cLight)
-        !  urad = urad + uext
+         ! urad = urad + uext
          urad = uext + IC_cool(gg, freqs, 4d0 * pi * Isyn / cLight)
-        !  call RadTrans_blob(Isyn, R, jssc(:, i) + jeic(:, i), anut(:, i))
-        !  urad = urad + IC_cool(gg, freqs, 4d0 * pi * Isyn / cLight)
+         ! call RadTrans_blob(Isyn, R, jssc(:, i) + jeic(:, i), anut(:, i))
+         ! urad = urad + IC_cool(gg, freqs, 4d0 * pi * Isyn / cLight)
       else
          urad = 0d0
       end if
+
+      select case(time_grid)
+      case(1)
+         t(i) = tstep * ( (tmax / tstep)**(dble(i - 1) / dble(numdt - 1)) )
+         dt(i) = t(i) - t(i - 1)
+      case(2)
+         call time_step(dt(i), gg, Ddif(:, i - 1), nu0(:, i - 1) * gg**2 + Aadi * gg, tstep, tlc)
+         t(i) = t(i - 1) + dt(i)
+      case(3)
+         t(i) = tmax * dble(i) / dble(numdt)
+         dt(i) = t(i) - t(i - 1)
+      case default
+         write(*, *) "Wrong time-grid selection"
+      end select
+
+      dr = dt(i) * beta_bulk * gamma_bulk(i - 1) * cLight
+      Rbw(i) = Rbw(i - 1) + dr
+      call adiab_blast_wave(Rbw(i), R0, gamma_bulk0, E0, n_ext, gamma_bulk(i))
+      beta_bulk = bofg(gamma_bulk(i))
+      D(i) = Doppler(gamma_bulk(i), mu_obs)
+      t_obs(i) = t_obs(i - 1) + 0.5d0 * (1d0 + z) * dt(i) * ( 1d0 / D(i) + 1d0 / D(i - 1) )
+      R = Rbw(i) / gamma_bulk(i)
+      tlc = R / cLight
+      volume = 4d0 * pi * R**3 / 3d0
+
+      B = dsqrt(32d0 * pi * eps_B * mass_p * n_ext) * cLight * gamma_bulk(i)
+      uB = B**2 / (8d0 * pi)
+      g2 = dsqrt(6d0 * pi * eCharge * eps_g2 / (sigmaT * B))
+
+      g1 = eps_e * (gamma_bulk(i) - 1d0) * mass_p * (qind - 2d0) / ((qind - 1d0) * mass_e)
+
+      if ( Omegaj_const ) then
+         Omega_j = 2d0 !
+      else
+         Omega_j = 1d0 - dcos(1d0 / gamma_bulk(i))
+      end if
+      L_e = eps_e * Omega_j * 2d0 * pi * Rbw(i)**2 * n_ext * mass_p * cLight**3 * beta_bulk * gamma_bulk(i) * (gamma_bulk(i) - 1d0)
+      Q0 = L_e * pwl_norm(mass_e * cLight**2 * volume, qind - 1d0, g1, g2)
+
+      uext = uext0 * gamma_bulk(i)**2 * (1d0 + beta_bulk**2 / 3d0)
+      nu_ext = nu_ext0 * gamma_bulk(i)
 
       gc(i) = 6d0 * gamma_bulk(i) * mass_e * cLight**2 / (5d0 * sigmaT * Rbw(i) * (uB + urad(1)))
       Aadi = 3d0 * beta_bulk * gamma_bulk(i) * cLight / (2d0 * Rbw(i))
@@ -266,10 +278,6 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
             &             Ddif(:, i), &
             &             Qinj(:, i), &
             &             tesc_e)
-            ! &             1d200)
-
-      volume_p = volume
-      R_p = R
 
       Ntot(i) = 0.5d0 * sum((n_e(:numbins - 1, i) + n_e(2:, i)) * (gg(2:) - gg(:numbins - 1)))
 
