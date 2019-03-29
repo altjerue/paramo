@@ -280,7 +280,7 @@ contains
          ubol(k) = 0d0
          freqloop: do j = 2, Nf
             if ( freqs(j) >= nuKN ) exit freqloop
-            if ( uu(j - 1) > 1d-200 .and. uu(j) > 1d-200) then
+            if ( uu(j - 1) > 1d-200 .and. uu(j) > 1d-200 ) then
                uind = -dlog(uu(j) / uu(j - 1)) / dlog(freqs(j) / freqs(j - 1))
                if ( uind > 8d0 ) uind = 8d0
                if ( uind < -8d0 ) uind = -8d0
