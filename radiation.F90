@@ -109,7 +109,7 @@ contains
       real(dp), intent(in) :: absor, r
       real(dp) :: u, tau
       tau = dmax1(1d-100, 2d0 * R * absor)
-      if ( tau <= 1d-100 ) then
+      if ( tau <= 1d-50 ) then
          u = 1d0
       else
          if ( tau > 100d0 ) then
