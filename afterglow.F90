@@ -92,9 +92,9 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
    mu_obs = dcos(theta_obs)
    beta_bulk = bofg(gamma_bulk0)
    gamma_bulk(0) = gamma_bulk0
-   theta_j0 = 0.025d0
-   theta_j = theta_j0 + 1d0 / gamma_bulk0! / dsqrt(3d0)
    Omegaj_const = .false.
+   theta_j0 = 0.0d0
+   theta_j = theta_j0 + 1d0 / gamma_bulk0! / dsqrt(3d0)
    if ( Omegaj_const ) then
       Omega_j = 4d0 * pi
    else
@@ -103,7 +103,7 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
    D(0) = Doppler(gamma_bulk0, mu_obs)
    Rd = deceleration_radius(E0, gamma_bulk0, n_ext)
    Rbw(0) = R0
-   R = R0 * theta_j !/ gamma_bulk0
+   R = R0 * theta_j
    volume = 4d0 * pi * R**3 / 3d0
    B = dsqrt(32d0 * pi * eps_B * mass_p * n_ext) * cLight * gamma_bulk0
    uB = B**2 / (8d0 * pi)
@@ -119,7 +119,7 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
 
    td = (1d0 + z) * Rd / (beta_bulk * cLight * gamma_bulk0**2)
    t(0) = 0d0
-   t_obs(0) = 0d0
+   t_obs(0) = tmin
    tlc = R / cLight
    ! tinj = tlc
    tesc_e = 1.01d0 * tlc
@@ -170,7 +170,6 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
    ! #       #  #  #    # #      #    #   #   # #    # #   ##
    ! ######   ##    ####  ######  ####    #   #  ####  #    #
    time_loop: do i = 1, numdt
-
       ! ========================================================================
       !  * We compute the new time, position, bulk Lorentz factor and other
       !    properties of the emission region,
@@ -178,7 +177,6 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
       !  * We compute the cooling coefficient,
       !  * And then we evolve the particles distribution
       ! ========================================================================
-
       select case(time_grid)
       case(1)
          t(i) = tstep * ( (tmax / tstep)**(dble(i - 1) / dble(numdt - 1)) )
@@ -201,7 +199,6 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
       if ( Omegaj_const ) then
          Omega_j = 4d0 * pi
       else
-         ! Omega_j = (1d0 - dcos(0.1d0 + 1d0 / gamma_bulk(i) / dsqrt(3d0))) * 2d0 * pi
          Omega_j = (1d0 - dcos(theta_j)) * 2d0 * pi
       end if
       D(i) = Doppler(gamma_bulk(i), mu_obs)
@@ -230,8 +227,6 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
          urad = uext
       end if
 
-      uB = 0d0
-      urad(1) = uext
       gc(i) = 6d0 * gamma_bulk(i) * mass_e * cLight**2 / (5d0 * sigmaT * Rbw(i) * (uB + urad(1)))
       Aadi = 3d0 * beta_bulk * gamma_bulk(i) * cLight / (2d0 * Rbw(i))
       nu0(:, i) = 4d0 * sigmaT * (uB + urad) / (3d0 * mass_e * cLight)
@@ -258,7 +253,6 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
          call mbs_emissivity(jmbs(j, i), freqs(j), gg, n_e(:, i) / volume, B)
          call mbs_absorption(ambs(j, i), freqs(j), gg, n_e(:, i) / volume, B)
          Isyn(j) = opt_depth_blob(ambs(j, i), R) * jmbs(j, i) * 2d0 * R
-         ! Isyn(j) = opt_depth_slab(ambs(j, i), 2d0 * R) * jmbs(j, i) * 2d0 * R
       end do
       !$OMP END PARALLEL DO
 
