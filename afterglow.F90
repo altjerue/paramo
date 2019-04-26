@@ -92,7 +92,7 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
    mu_obs = dcos(theta_obs)
    beta_bulk = bofg(gamma_bulk0)
    gamma_bulk(0) = gamma_bulk0
-   Omegaj_const = .false.
+   Omegaj_const = .true.
    theta_j0 = 0.0d0
    theta_j = theta_j0 + 1d0 / gamma_bulk0! / dsqrt(3d0)
    if ( Omegaj_const ) then
@@ -111,8 +111,8 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
    g2 = dsqrt(6d0 * pi * eCharge * eps_g2 / (sigmaT * B))
    g1 = eps_e * (gamma_bulk0 - 1d0) * mass_p * (qind - 2d0) / ((qind - 1d0) * mass_e)
    gc(0) = 6d0 * gamma_bulk0 * mass_e * cLight**2 / (5d0 * sigmaT * R0 * uB)
-   nu_c(0) = nu_obs(nuconst * B * gc(0)**2, z, Doppler(gamma_bulk0, mu_obs))
-   L_e = eps_e * Omega_j * R0**2 * n_ext * mass_p * cLight**3 * beta_bulk * gamma_bulk0 * (gamma_bulk0 - 1d0)
+   nu_c(0) = nu_obs_f(nuconst * B * gc(0)**2, z, Doppler(gamma_bulk0, mu_obs))
+   L_e = eps_e * Omega_j * R**2 * n_ext * mass_p * cLight**3 * beta_bulk * gamma_bulk0 * (gamma_bulk0 - 1d0)
    Q0 = L_e * pwl_norm(mass_e * cLight**2, qind - 1d0, g1, g2)
 
    uext = uext0 * gamma_bulk0**2 * (1d0 + beta_bulk**2 / 3d0)
@@ -204,7 +204,7 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
       end if
       D(i) = Doppler(gamma_bulk(i), mu_obs)
       t_obs(i) = t_obs(i - 1) + 0.5d0 * (1d0 + z) * dt(i) * ( 1d0 / D(i) + 1d0 / D(i - 1) )
-      R = Rbw(i) * theta_j!/ gamma_bulk(i)
+      R = Rbw(i) * theta_j! 1d0 / gamma_bulk(i) !
       tlc = R / cLight
       volume = 4d0 * pi * R**3 / 3d0
 
@@ -212,7 +212,7 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
       uB = B**2 / (8d0 * pi)
       g2 = dsqrt(6d0 * pi * eCharge * eps_g2 / (sigmaT * B))
       g1 = eps_e * (gamma_bulk(i) - 1d0) * mass_p * (qind - 2d0) / ((qind - 1d0) * mass_e)
-      L_e = eps_e * Omega_j * Rbw(i)**2 * n_ext * mass_p * cLight**3 * beta_bulk * gamma_bulk(i) * (gamma_bulk(i) - 1d0)
+      L_e = eps_e * Omega_j * R**2 * n_ext * mass_p * cLight**3 * beta_bulk * gamma_bulk(i) * (gamma_bulk(i) - 1d0)
       Q0 = L_e * pwl_norm(mass_e * cLight**2, qind - 1d0, g1, g2)
 
       uext = uext0 * gamma_bulk(i)**2 * (1d0 + beta_bulk**2 / 3d0)
@@ -229,7 +229,7 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
       end if
 
       gc(i) = 6d0 * gamma_bulk(i) * mass_e * cLight**2 / (5d0 * sigmaT * Rbw(i) * (uB + urad(1)))
-      nu_c(i) = nu_obs(nuconst * B * gc(i)**2, z, Doppler(gamma_bulk(i), mu_obs))
+      nu_c(i) = nu_obs_f(nuconst * B * gc(i)**2, z, Doppler(gamma_bulk(i), mu_obs))
       Aadi = 3d0 * beta_bulk * gamma_bulk(i) * cLight / (2d0 * Rbw(i))
       nu0(:, i) = 4d0 * sigmaT * (uB + urad) / (3d0 * mass_e * cLight)
       tesc_e = 1.01d0 * tlc
@@ -254,9 +254,10 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
          freqs(j) = nu_com_f(nu_obs(j), z, D(i))
          call mbs_emissivity(jmbs(j, i), freqs(j), gg, n_e(:, i) / volume, B)
          call mbs_absorption(ambs(j, i), freqs(j), gg, n_e(:, i) / volume, B)
-         Isyn(j) = opt_depth_blob(ambs(j, i), R) * jmbs(j, i) * 2d0 * R
       end do
       !$OMP END PARALLEL DO
+
+      call RadTrans_blob(Isyn, R, jmbs(:, i), ambs(:, i))
 
       !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
       !$OMP& PRIVATE(j)
@@ -274,10 +275,14 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
          Fmbs(j, i) = D(i)**4 * volume * freqs(j) * jmbs(j, i) * opt_depth_blob(anut(j, i), R) / d_lum**2
          Fssc(j, i) = D(i)**4 * volume * freqs(j) * jssc(j, i) * opt_depth_blob(anut(j, i), R) / d_lum**2
          Feic(j, i) = D(i)**4 * volume * freqs(j) * jeic(j, i) * opt_depth_blob(anut(j, i), R) / d_lum**2
-         ! Fssc(j, i) = D(i - 1)**4 * volume * freqs(j) * jssc(j, i) / (4d0 * pi * d_lum**2)
-         ! Feic(j, i) = D(i - 1)**4 * volume * freqs(j) * jeic(j, i) / (4d0 * pi * d_lum**2)
+         ! Fmbs(j, i) = D(i)**4 * volume * freqs(j) * jmbs(j, i) * opt_depth_blob(anut(j, i), R) / (4d0 * pi * d_lum**2)
+         ! Fssc(j, i) = D(i)**4 * volume * freqs(j) * jssc(j, i) * opt_depth_blob(anut(j, i), R) / (4d0 * pi * d_lum**2)
+         ! Feic(j, i) = D(i)**4 * volume * freqs(j) * jeic(j, i) * opt_depth_blob(anut(j, i), R) / (4d0 * pi * d_lum**2)
+         ! Fmbs(j, i) = D(i)**4 * volume * freqs(j) * jmbs(j, i) / (4d0 * pi * d_lum**2)
+         ! Fssc(j, i) = D(i)**4 * volume * freqs(j) * jssc(j, i) / (4d0 * pi * d_lum**2)
+         ! Feic(j, i) = D(i)**4 * volume * freqs(j) * jeic(j, i) / (4d0 * pi * d_lum**2)
          Fnut(j, i) = Fmbs(j, i) + Fssc(j, i) + Feic(j, i)
-         ! Fnut(j, i) = D(i - 1)**4 * volume * freqs(j) * jnut(j, i) * opt_depth_blob(anut(j, i), R) / d_lum**2
+         ! Fnut(j, i) = D(i)**4 * volume * freqs(j) * jnut(j, i) * opt_depth_blob(anut(j, i), R) / d_lum**2
       end do
       !$OMP END PARALLEL DO
 

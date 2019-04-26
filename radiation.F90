@@ -109,7 +109,7 @@ contains
       real(dp), intent(in) :: absor, r
       real(dp) :: u, tau
       tau = dmax1(1d-100, 2d0 * R * absor)
-      if ( tau <= 1d-100 ) then
+      if ( tau <= 1d-50 ) then
          u = 1d0
       else
          if ( tau > 100d0 ) then
@@ -478,13 +478,13 @@ contains
       Nf = size(nu, dim=1)
       jnu = 0d0
       nu_loop: do j = 1, Nf - 1
-         intens_if: if ( Imbs(j) > 1d-200 .and. Imbs(j + 1) > 2d-100 ) then
+         intens_if: if ( Imbs(j) > 1d-200 .and. Imbs(j + 1) > 1d-200 ) then
             l = -dlog(Imbs(j + 1) / Imbs(j)) / dlog(nu(j + 1) / nu(j))
             if ( l > 8d0 ) l = 8d0
             if ( l < -8d0 ) l = -8d0
             e0 = mass_e * cLight**2 / (hPlanck * nu(j + 1))
-            f1 = 0.25d0 * nuout / nu(j)
-            f2 = 0.25d0 * nuout / nu(j + 1)
+            f1 = nuout / (4d0 * nu(j))
+            f2 = nuout / (4d0 * nu(j + 1))
             g2 = dmin1(g(Ng), e0)
             g1 = dmax1(g(1), dsqrt(f1))
             g1g2_cond: if ( g1 < g2 ) then
@@ -495,8 +495,8 @@ contains
                      q = -dlog(n(k + 1) / n(k)) / dlog(g(k + 1) / g(k))
                      if ( q > 8d0 ) q = 8d0
                      if ( q < -8d0 ) q = -8d0
-                     s1 = 0.5d0 * (q - 1d0)
-                     s2 = 0.5d0 * (2d0 * l - q - 1d0)
+                     s1 = (q - 1d0) / 2d0
+                     s2 = (2d0 * l - q - 1d0) / 2d0
                      if ( s1 > 8d0 ) s1 = 8d0
                      if ( s1 < -8d0 ) s1 = -8d0
                      if ( s2 > 8d0 ) s2 = 8d0
@@ -525,6 +525,9 @@ contains
    end subroutine IC_iso_powlaw
 
 
+   !
+   !  -----  Inverse Compton for isotropic power-law incomming photons  -----
+   !
    subroutine IC_iso_monochrom(jnu, nuout, uext, nuext, n, g)
       implicit none
       real(dp), intent(in) :: uext, nuext, nuout
@@ -535,7 +538,7 @@ contains
       real(dp) :: w, gmx_star, e0, q, q1, q2, emis
       Ng = size(g, dim=1)
       e0 = mass_e * cLight**2 / (hPlanck * nuext)
-      w = 0.25d0 * nuout / nuext
+      w = nuout / (4d0 * nuext)
       jnu = 0d0
       g_loop: do k = 1, Ng - 1
          gmx_star = dmin1(g(k + 1), e0)
