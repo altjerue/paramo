@@ -184,7 +184,7 @@ contains
 
       !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
       !$OMP& PRIVATE(j)
-      do j = 1, numdf
+      do j = 1, numf
          call EIC_pwlEED(jeic, nuj, u_ext, nu_ext, n, g)
       end do
       !$OMP END PARALLEL DO
@@ -326,10 +326,9 @@ contains
 
 
    end subroutine no_diff_CG99
-#endif
 
 
-   subroutine sync_test
+   subroutine syn_test
       implicit none
       integer(HID_T) :: file_id
       integer :: numf, numg, j, herror
@@ -374,7 +373,7 @@ contains
 
       !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
       !$OMP& PRIVATE(j)
-      do j = 1, numdf
+      do j = 1, numf
          call EIC_pwlEED(jeic, nuj, u_ext, nu_ext, n, g)
       end do
       !$OMP END PARALLEL DO
@@ -451,6 +450,7 @@ contains
       write(*, "('--> Radiation processes test')")
 
    end subroutine syn_test
+#endif
 
 
 end program tests
