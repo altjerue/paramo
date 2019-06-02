@@ -36,6 +36,7 @@ module constants
       hPlanck = 6.62607004d-27, &                   ! erg s
       hbar = 1.0545718d-27, &                       ! erg s
       kBoltz = 1.38064852d-16, &                    ! erg / K
+      sigmaSB = 5.670367d-5, &                      ! erg / cm^2 / K^4 / s
       Ggrav = 6.67408d-8, &                         ! c^3 / g / s^2
       eVolt = 1.60218d-12, &                        ! erg
       nuconst = 2.7992491077281560779657886d6, &    ! eCharge / (2 * pi * m_e * cLight)

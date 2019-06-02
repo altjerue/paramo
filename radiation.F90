@@ -17,6 +17,12 @@ module radiation
       module procedure opt_depth_s
       module procedure opt_depth_v
    end interface opt_depth
+   
+   interface BBintensity
+      module procedure BBintensity_s
+      module procedure BBintensity_v
+   end interface BBintensity
+   
 
 contains
    ! #    # #####   ####     ###### #    # #  ####   ####
@@ -104,9 +110,9 @@ contains
       end if
    end function opt_depth_v
 
-   function opt_depth_blob(absor, r) result(u)
+   function opt_depth_blob(absor, R) result(u)
       implicit none
-      real(dp), intent(in) :: absor, r
+      real(dp), intent(in) :: absor, R
       real(dp) :: u, tau
       tau = dmax1(1d-100, 2d0 * R * absor)
       if ( tau <= 1d-50 ) then
@@ -199,7 +205,7 @@ contains
       integer :: j, Nf
       Nf = size(jnu, dim=1)
       do j = 1, Nf
-         Inu(j) = 2d0 * s * jnu(j) * opt_depth_blob(anu(j), s)
+         Inu(j) = s * jnu(j) * opt_depth_blob(anu(j), s)
       end do
    end subroutine RadTrans_blob
 
@@ -238,6 +244,31 @@ contains
    !    end do tobs_loop
    !    !$OMP END PARALLEL DO
    ! end subroutine RT_line_of_sight
+
+
+   function BBintensity_s(nu, T) result(B)
+      implicit none
+      real(dp), intent(in) :: nu, T
+      real(dp) :: B
+      B = 2d0 * hPlanck * nu**3 / (cLight**2 * (dexp(hPlanck * nu / (kBoltz * T)) - 1d0))
+   end function BBintensity_s
+
+
+   function BBintensity_v(nu, T) result(B)
+      implicit none
+      real(dp), intent(in) :: T
+      real(dp), intent(in), dimension(:) :: nu
+      real(dp), dimension(size(nu)) :: B
+      B = 2d0 * hPlanck * nu**3 / (cLight**2 * (dexp(hPlanck * nu / (kBoltz * T)) - 1d0))
+   end function BBintensity_v
+
+
+   function BBenergy_dens(T) result(u)
+      implicit none
+      real(dp), intent(in) :: T
+      real(dp) :: u
+      u = 4d0 * sigmaSB * T**4 / cLight
+   end function BBenergy_dens
 
 
    function bolometric_integ(freqs, uu) result(ubol)

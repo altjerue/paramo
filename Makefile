@@ -90,7 +90,7 @@ AFGLOW_OBJ = params.o misc.o pwl_integ.o h5_inout.o K1.o K2.o SRtoolkit.o \
 	afterglow_main.o
 
 # -----  rules  -----
-all: $(BLAZMAG) $(TESTS) $(AFGLOW)
+all: $(BLAZMAG) $(AFGLOW)
 
 # objects
 constants.o K2.o K1.o pwl_integ.o misc.o h5_inout.o: data_types.o

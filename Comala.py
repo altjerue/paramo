@@ -33,7 +33,7 @@ class parameters(object):
         self.zeta_e = 0.99              # fraction of non-thermal particles
         self.tstep = 1e-2               # time step factor
         self.tmax = 1e5                 # maximum time
-        self.tmin = 1e0                 # minimum time
+        self.tmin = 0e0                 # minimum time
         self.tvar = 2e0                 # variability time scale
         self.L_j = 1e45                 # num. dens. of particles injected per second
         self.E0 = 1e50                  # energy of the blast wave

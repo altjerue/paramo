@@ -26,10 +26,10 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
       tacc, g1, g2, tstep, Qnth, tmax, d_lum, z, tvar, tinj,&
       gamma_bulk, theta_obs, R0, mu_obs, nu_ext, tesc, tlc, &
       volume, sigma, beta_bulk, eps_e, L_B, eps_B, f_rec
-   real(dp), allocatable, dimension(:) :: freqs, t, Ntot, Inu, gg, &
+   real(dp), allocatable, dimension(:) :: freqs, t, Ntot, Inu, Ibb, gg, &
       dt, nu_obs, t_obs, dg, urad
    real(dp), allocatable, dimension(:, :) :: nu0, nn, jnut, jmbs, jssc, jeic, &
-      ambs, anut, Qinj, Ddif, Fmbs, Feic, Fssc, Fnut
+      ambs, anut, Qinj, Ddif, Fmbs, Feic, Fssc, Fnut, Febb, jebb
 
    call read_params(params_file)
    ! R = par_R
@@ -67,13 +67,14 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    !      # #        #   #    # #####
    ! #    # #        #   #    # #
    !  ####  ######   #    ####  #
-   allocate(t(0:numdt), freqs(numdf), Ntot(numdt), Inu(numdf), &
+   allocate(t(0:numdt), freqs(numdf), Ntot(numdt), Inu(numdf), Ibb(numdf), &
       dt(numdt), nu_obs(numdf), t_obs(numdt), dg(numbins), urad(numbins))
    allocate(nn(numbins, 0:numdt), nu0(numbins, 0:numdt), gg(numbins), &
       ambs(numdf, numdt), jmbs(numdf, numdt), jnut(numdf, numdt), &
       jssc(numdf, numdt), anut(numdf, numdt), jeic(numdf, numdt), &
       Qinj(numbins, numdt), Ddif(numbins, numdt), Fnut(numdf, numdt), &
-      Fmbs(numdf, numdt), Fssc(numdf, numdt), Feic(numdf, numdt))
+      Fmbs(numdf, numdt), Fssc(numdf, numdt), Feic(numdf, numdt), &
+      Febb(numdf, numdt), jebb(numdf, numdt))
 
 
    !   # #    # # #####     ####   ####  #    # #####
@@ -89,8 +90,8 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    R = 0.95d0 * D * tvar * cLight / (1d0 + z)
 
    ! ----->    External radiation field
-   nu_ext = par_nu_ext * gamma_bulk !nu_com_f(par_nu_ext, z, D)
-   uext = uext * gamma_bulk**2 * (1d0 + beta_bulk**2 / 3d0) !  Eq. (5.25) Dermer & Menon (2009)
+   nu_ext = par_nu_ext * gamma_bulk
+   uext = uext * gamma_bulk**2 !* (1d0 + beta_bulk + beta_bulk**2 / 3d0) !  Eq. (5.25) Dermer & Menon (2009)
 
    ! ----->    Magnetic field
    L_B = sigma * L_j / (1d0 + sigma)
@@ -144,6 +145,7 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    build_f: do j=1,numdf
       nu_obs(j) = numin * ( (numax / numin)**(dble(j - 1) / dble(numdf - 1)) )
       freqs(j) = nu_com_f(nu_obs(j), z, D)
+      Ibb(j) = BBintensity(freqs(j), 127.158d0 / (gamma_bulk * (1d0 + beta_bulk)))
    end do build_f
 
    build_g: do k = 1, numbins
@@ -201,10 +203,11 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
          else
             ambs(j, i) = 0d0
          end if
-         call RadTrans_blob(Inu, R, jmbs(:, i), ambs(:, i))
          ! Inu(j) = opt_depth_blob(ambs(j, i), R) * jmbs(j, i) * 2d0 * R
       end do
       !$OMP END PARALLEL DO
+
+      call RadTrans_blob(Inu, R, jmbs(:, i), ambs(:, i))
 
       !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
       !$OMP& PRIVATE(j)
@@ -212,6 +215,7 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
          if ( with_ssc ) then
             call IC_iso_powlaw(jssc(j, i), freqs(j), freqs, Inu, nn(:, i - 1), gg)
             call IC_iso_monochrom(jeic(j, i), freqs(j), uext, nu_ext, nn(:, i - 1), gg)
+            call IC_iso_powlaw(jebb(j, i), freqs(j), freqs, Ibb, nn(:, i - 1), gg)
          else
             jeic(j, i) = 0d0
             jssc(j, i) = 0d0
@@ -222,6 +226,7 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
          Fmbs(j, i) = D**4 * volume * freqs(j) * jmbs(j, i) * opt_depth_blob(anut(j, i), R) / d_lum**2
          Fssc(j, i) = D**4 * volume * freqs(j) * jssc(j, i) * opt_depth_blob(anut(j, i), R) / d_lum**2
          Feic(j, i) = D**4 * volume * freqs(j) * jeic(j, i) * opt_depth_blob(anut(j, i), R) / d_lum**2
+         Febb(j, i) = D**4 * volume * freqs(j) * jebb(j, i) * opt_depth_blob(anut(j, i), R) / d_lum**2
          ! Fssc(j, i) = D**4 * volume * freqs(j) * jssc(j, i) / (4d0 * pi * d_lum**2)
          ! Feic(j, i) = D**4 * volume * freqs(j) * jeic(j, i) / (4d0 * pi * d_lum**2)
          Fnut(j, i) = Fmbs(j, i) + Fssc(j, i) + Feic(j, i)
@@ -254,13 +259,13 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
       !  #      #      #    #
       !  ###### ###### #####
       Qinj(:, i) = injection_pwl(t(i), tacc, gg, g1, g2, qind, Qnth)
-      Ddif(:, i) = 1d-200 !0.5d0 * gg**2 / tacc !
+      Ddif(:, i) = 1d-200!4.3d-3 * pofg(gg)**(5d0 / 3d0) * (mass_e * cLight**2)**(-1d0 / 3d0)
       nu0(:, i) = 4d0 * sigmaT * (uB + urad) / (3d0 * mass_e * cLight)
       call FP_FinDif_difu(dt(i), &
-            &             gg, &
+            &             pofg(gg), &
             &             nn(:, i - 1), &
             &             nn(:, i), &
-            &             nu0(:, i) * (gg**2 - 1d0), &
+            &             nu0(:, i) * pofg(gg)**2, &
             &             Ddif(:, i), &
             &             Qinj(:, i), &
             &             tesc)
@@ -337,6 +342,7 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    call h5io_wdble2(file_id, 'Fmbs', Fmbs, herror)
    call h5io_wdble2(file_id, 'Fssc', Fssc, herror)
    call h5io_wdble2(file_id, 'Feic', Feic, herror)
+   call h5io_wdble2(file_id, 'Febb', Febb, herror)
    call h5io_wdble2(file_id, 'n_e', nn(:, 1:), herror)
    call h5io_wdble2(file_id, 'nu0_tot', nu0(:, 1:), herror)
 

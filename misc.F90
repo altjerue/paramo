@@ -288,8 +288,32 @@ contains
    end subroutine tridag_ser
 
 
+   subroutine trapzd(func, a, b, s, n)
+      implicit none
+      real(dp), intent(in) :: a, b
+      real(dp), intent(inout) :: s
+      integer, intent(in) :: n
+      interface
+         function func(x)
+            use data_types
+            real(dp), dimension(:), intent(in) :: x
+            real(dp), dimension(size(x)) :: func
+         end function func
+      end interface
+      real(dp) :: del, fsum
+      integer :: it
+      if (n == 1) then
+         s = 0.5d0 * (b - a) * sum( func((/ a, b /)) )
+      else
+         it = 2**(n - 2)
+         del = (b - a) / it
+         fsum = sum( func(arth(a + 0.5d0 * del, del, it)) )
+         s = 0.5d0 * (s + del * fsum)
+      end if
+   end subroutine trapzd
+
    ! ::::: checking equality of integers :::::
-   function assert_eq(nn,string)
+   function assert_eq(nn, string)
       implicit none
       character(len=*), intent(in) :: string
       integer, intent(in), dimension(:) :: nn

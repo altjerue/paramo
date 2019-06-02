@@ -98,7 +98,7 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
    theta_j0 = 0.0d0
    theta_j = theta_j0 + 1d0 / gamma_bulk0! / dsqrt(3d0)
    if ( Omegaj_const ) then
-      Omega_j = 1d0 * pi
+      Omega_j = 4d0 * pi
    else
       Omega_j = (1d0 - dcos(theta_j)) * 2d0 * pi
    end if
