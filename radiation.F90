@@ -110,9 +110,9 @@ contains
       end if
    end function opt_depth_v
 
-   function opt_depth_blob(absor, r) result(u)
+   function opt_depth_blob(absor, R) result(u)
       implicit none
-      real(dp), intent(in) :: absor, r
+      real(dp), intent(in) :: absor, R
       real(dp) :: u, tau
       tau = dmax1(1d-100, 2d0 * R * absor)
       if ( tau <= 1d-50 ) then
@@ -205,7 +205,7 @@ contains
       integer :: j, Nf
       Nf = size(jnu, dim=1)
       do j = 1, Nf
-         Inu(j) = 2d0 * s * jnu(j) * opt_depth_blob(anu(j), s)
+         Inu(j) = s * jnu(j) * opt_depth_blob(anu(j), s)
       end do
    end subroutine RadTrans_blob
 
