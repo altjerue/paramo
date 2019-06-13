@@ -267,9 +267,9 @@ class Runner(object):
         comp.compile()
         outfile = self.flabel + '.jp.h5'
         if pream is None:
-            run_cmd = '{0}xAglow {1} {2} {3} {4}'.format(comp.compile_dir, self.wCool, self.wIC, self.par.params_file, outfile)
+            run_cmd = '{0}xAglow {1} {2} {3} {4} {5}'.format(comp.compile_dir, self.wAbs, self.wCool, self.wIC, self.par.params_file, outfile)
         else:
-            run_cmd = '{0} {1}xAglow {2} {3} {4} {5}'.format(pream, comp.compile_dir, self.wCool, self.wIC, self.par.params_file, outfile)
+            run_cmd = '{0} {1}xAglow {2} {3} {4} {5} {6}'.format(pream, comp.compile_dir, self.wAbs, self.wCool, self.wIC, self.par.params_file, outfile)
             print("\n--> Parameters:")
         os.system("cat -n " + self.par.params_file)
         if cl:

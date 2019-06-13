@@ -1,4 +1,4 @@
-subroutine afterglow(params_file, output_file, with_cool, with_ic)
+subroutine afterglow(params_file, output_file, with_abs, with_cool, with_ic)
    use data_types
    use constants
    use params
@@ -17,7 +17,7 @@ subroutine afterglow(params_file, output_file, with_cool, with_ic)
    implicit none
 
    character(len=*), intent(in) :: output_file, params_file
-   logical, intent(in) :: with_cool, with_ic
+   logical, intent(in) :: with_cool, with_ic, with_abs
    integer, parameter :: nmod = 50
    character(len=*), parameter :: screan_head = &
       '| Iteration | Obser. time |   BW radius |  gamma_bulk |       N_tot |'&
