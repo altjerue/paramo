@@ -205,7 +205,7 @@ contains
       integer :: j, Nf
       Nf = size(jnu, dim=1)
       do j = 1, Nf
-         Inu(j) = s * jnu(j) * opt_depth_blob(anu(j), s)
+         Inu(j) = 2d0 * s * jnu(j) * opt_depth_blob(anu(j), s)
       end do
    end subroutine RadTrans_blob
 
