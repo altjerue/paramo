@@ -87,7 +87,7 @@ TESTS_OBJ = params.o misc.o pwl_integ.o h5_inout.o K1.o K2.o SRtoolkit.o \
 	anaFormulae.o radiation.o dist_evol.o tests.o
 AFGLOW_OBJ = params.o misc.o pwl_integ.o h5_inout.o K1.o K2.o SRtoolkit.o \
 	anaFormulae.o radiation.o pairs.o dist_evol.o models.o afterglow.o \
-	afterglow_main.o
+	afterglowH.o afterglow_main.o
 
 # -----  rules  -----
 all: $(BLAZMAG) $(AFGLOW)

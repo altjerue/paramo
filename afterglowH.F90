@@ -35,7 +35,6 @@ subroutine afterglowH(params_file, output_file, with_abs, with_cool, with_ic)
       dt, nu_obs, t_obs, gamma_bulk, Rbw, D, tcool, gc, nu_c
    real(dp), allocatable, dimension(:, :) :: nu0, n_e, jnut, jmbs, jssc, jeic, &
       ambs, anut, Qinj, Ddif, Fmbs, Feic, Fssc, Fnut, tau_gg
-   logical :: Omegaj_const
 
    call read_params(params_file)
    eps_e = par_eps_e

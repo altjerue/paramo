@@ -30,12 +30,11 @@ subroutine afterglow(params_file, output_file, with_abs, with_cool, with_ic)
       tacc, tinj, g1, g2, tstep, Q0, tmax, d_lum, z, n_ext, urad, &
       theta_obs, mu_obs, nu_ext, tesc_e, uext0, volume, eps_e, tlc,&
       eps_B, E0, gamma_bulk0, L_e, nu_ext0, Aadi, tmin, Rd, R, dr, &
-      b_index, beta_bulk, eps_g2!, Omega_j, theta_j, theta_j0
+      b_index, beta_bulk, eps_g2
    real(dp), allocatable, dimension(:) :: freqs, t, Ntot, Inu, gg, sen_lum, &
       dt, nu_obs, t_obs, gamma_bulk, Rbw, D, tcool, gc, nu_c
    real(dp), allocatable, dimension(:, :) :: nu0, n_e, jnut, jmbs, jssc, jeic, &
       ambs, anut, Qinj, Ddif, Fmbs, Feic, Fssc, Fnut, tau_gg
-   logical :: Omegaj_const
 
    call read_params(params_file)
    eps_e = par_eps_e
@@ -90,15 +89,6 @@ subroutine afterglow(params_file, output_file, with_abs, with_cool, with_ic)
    !
    theta_obs = par_theta_obs * pi / 180d0!1d0 / gamma_bulk(0)!
    mu_obs = dcos(theta_obs)
-   ! Omegaj_const = .true.
-   ! theta_j0 = 0.9d0
-   ! theta_j = theta_j0 + (5d0 / 8d0) / gamma_bulk0! / dsqrt(3d0)
-   ! if ( Omegaj_const ) then
-   !    Omega_j = 2d0 * pi
-   ! else
-   !    Omega_j = (1d0 - dcos(theta_j0)) * 2d0 * pi
-   ! end if
-   ! E0 = Omega_j * E0
    Rd = deceleration_radius(E0, gamma_bulk0, n_ext)
    Rbw(0) = R0
    call adiab_blast_wave(Rbw(0), R0, gamma_bulk0, E0, n_ext, gamma_bulk(0))
@@ -291,12 +281,6 @@ subroutine afterglow(params_file, output_file, with_abs, with_cool, with_ic)
       D(i) = Doppler(gamma_bulk(i), mu_obs)
       t_obs(i) = t_obs(i - 1) + 0.5d0 * (1d0 + z) * dt(i) * ( 1d0 / D(i) + 1d0 / D(i - 1) )
 
-      ! theta_j = theta_j0 + (5d0 / 8d0) / gamma_bulk(i)! / dsqrt(3d0)
-      ! if ( Omegaj_const ) then
-      !    Omega_j = 2d0 * pi
-      ! else
-      !    Omega_j = (1d0 - dcos(theta_j)) * 2d0 * pi
-      ! end if
       R = Rbw(i) / gamma_bulk(i)!* theta_j!/ 12d0!
       tlc = R / cLight
       volume = 4d0 * pi * R**3 / 3d0
