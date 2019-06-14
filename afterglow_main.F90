@@ -12,7 +12,7 @@ program afterglow_main
 
    integer :: numArgs
    character(len=256) :: program_name, params_file, output_file, wCool, wIC, wAbs
-   logical :: with_cool, with_ic, with_abs
+   logical :: with_cool, with_ic, with_abs, haos
 
    numArgs = command_argument_count()
    call get_command_argument(0, program_name)
@@ -52,6 +52,11 @@ program afterglow_main
    call get_command_argument(4, params_file)
    call get_command_argument(5, output_file)
 
-   call afterglow(trim(params_file), trim(output_file), with_abs, with_cool, with_ic)
+   haos = .true.
 
+   if ( haos ) then
+      call afterglowH(trim(params_file), trim(output_file), with_abs, with_cool, with_ic)
+   else
+      call afterglow(trim(params_file), trim(output_file), with_abs, with_cool, with_ic)
+   end if
 end program afterglow_main
