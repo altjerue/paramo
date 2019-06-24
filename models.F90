@@ -39,11 +39,7 @@ contains
       real(dp), intent(in) :: t,  z, G0, E0, n, Rd
       real(dp), intent(out) :: Rshk, Gshk
       Rshk = (17d0 * t * E0 / (4d0 * pi * mass_p * cLight * n * (1d0 + z)))**(1d0 / 4d0)
-      if ( Rshk <= Rd ) then
-         Gshk = G0
-      else
-         Gshk = dmin1(G0, (17d0 * E0 * (1d0 + z)**3 / (1024d0 * pi * mass_p * cLight**5 * n * t**3))**(1d0 / 8d0))
-      end if
+      Gshk = dmin1(G0, (17d0 * E0 * (1d0 + z)**3 / (1024d0 * pi * mass_p * cLight**5 * n * t**3))**(1d0 / 8d0))
       Gshk = dmax1(1.0001d0, Gshk)
    end subroutine adiab_blast_wave_approx
 

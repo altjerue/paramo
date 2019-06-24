@@ -9,7 +9,6 @@ program afterglow_main
       '  params_file       Parameters file'//new_line('A')//&
       '  output_file       Name of output file'//new_line('A')//&
       '  with cooling      T/F (True/False)'//new_line('A')
-
    integer :: numArgs
    character(len=256) :: program_name, params_file, output_file, wCool, wIC, wAbs
    logical :: with_cool, with_ic, with_abs, haos

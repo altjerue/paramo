@@ -22,7 +22,11 @@ module radiation
       module procedure BBintensity_s
       module procedure BBintensity_v
    end interface BBintensity
-   
+
+   interface IC_emis_full
+      module procedure IC_emis_full_s
+      module procedure IC_emis_full_v
+   end interface IC_emis_full
 
 contains
    ! #    # #####   ####     ###### #    # #  ####   ####
@@ -364,10 +368,30 @@ contains
    !
    !   ----------{   Integral over incomming frequencies   }----------
    !
-   subroutine IC_emis_full(fout, fin, gg, nn, Imbs, emiss)
+   subroutine IC_emis_full_s(fout, fin, gg, nn, Inu, emiss)
+      implicit none
+      real(dp), intent(in) :: fout, fin, Inu
+      real(dp), intent(in), dimension(:) :: gg, nn
+      real(dp), intent(out) :: emiss
+      integer :: j, Ng
+      real(dp) :: g1, g2, gmin, gmax, I0
+      Ng = size(gg)
+      gmin = gg(1)
+      gmax = gg(Ng)
+      g1 = dmax1(dsqrt(0.25d0 * fout / fin), gmin)
+      g2 = dmin1(mass_e * cLight**2 / (hPlanck * fin), gmax)
+      if ( g1 >= g2 ) then
+         I0 = 0d0
+      else
+         I0 = Inu * IC_qromb(fin, fout, g1, g2, gg, nn) / fin**2
+      end if
+      emiss = 0.25d0 * fout * sigmaT * I0
+   end subroutine IC_emis_full_s
+
+   subroutine IC_emis_full_v(fout, fin, gg, nn, Inu, emiss)
       implicit none
       real(dp), intent(in) :: fout
-      real(dp), intent(in), dimension(:) :: gg, nn, fin, Imbs
+      real(dp), intent(in), dimension(:) :: gg, nn, fin, Inu
       real(dp), intent(out) :: emiss
       integer :: j, Nf, Ng
       real(dp) :: g1, g2, jbol0, gmin, gmax
@@ -378,11 +402,11 @@ contains
       gmax = gg(Ng)
       fin_loop: do j = 1, Nf
          g1 = dmax1(dsqrt(0.25d0 * fout / fin(j)), gmin)
-         g2 = dmin1(0.75d0 * mass_e * cLight**2 / (hPlanck * fin(j)), gmax)
+         g2 = dmin1(mass_e * cLight**2 / (hPlanck * fin(j)), gmax)
          if ( g1 >= g2 ) then
             I0(j) = 0d0
          else
-            I0(j) = Imbs(j) * IC_qromb(fin(j), fout, g1, g2, gg, nn) / fin(j)**2
+            I0(j) = Inu(j) * IC_qromb(fin(j), fout, g1, g2, gg, nn) / fin(j)**2
          end if
       end do fin_loop
       !  :::::  improvised trapezoidal rule  :::::
@@ -390,7 +414,7 @@ contains
       jbol0 = 0.5d0 * dlog(fin(Nf) / fin(1)) * &
          (jbol0 + 2d0 * sum(fin(2:Nf - 1) * I0(2:Nf - 1))) / dble(Nf - 1)
       emiss = 0.25d0 * fout * sigmaT * jbol0
-   end subroutine IC_emis_full
+   end subroutine IC_emis_full_v
 
    !
    !   ----------{   Romberg integrator   }----------
@@ -449,16 +473,16 @@ contains
    !
    !   ----------{   Dispersion function   }----------
    !
-   function IC_integrand(fin, fout, gev, gg, nn) result(integrand)
+   function IC_integrand(fin, fout, gev, g, n) result(integrand)
       implicit none
       real(dp), intent(in) :: fin, fout, gev
-      real(dp), intent(in), dimension(:) :: gg, nn
-      integer :: kk, Ng
-      real(dp) :: fIC, nnev, beta, integrand, qq, foutfin, bplus, bminus
-      Ng = size(gg, dim=1)
-      kk = minloc(dabs(gev - gg), dim=1)
+      real(dp), intent(in), dimension(:) :: g, n
+      integer :: k, Ng
+      real(dp) :: fIC, nnev, beta, integrand, q, foutfin, bplus, bminus
+      Ng = size(g)
+      k = minloc(dabs(gev - g), dim=1)
 
-      if ( nn(kk) < 1d-100 ) then
+      if ( n(k) < 1d-100 ) then
          integrand = 0d0
          return
       end if
@@ -470,27 +494,26 @@ contains
 
       if ( bminus / bplus <= foutfin .and. foutfin <= 1d0 ) then
          fIC = bplus * foutfin - bminus
-      else if ( 1d0 <= foutfin .and. foutfin <= bplus / bminus ) then
+      else if ( 1d0 < foutfin .and. foutfin <= bplus / bminus ) then
          fIC = bplus - bminus * foutfin
       else
          integrand = 0d0
          return
       end if
 
-      if ( any(dabs(gev - gg) == 0d0) ) then
-         integrand = ip2ofg(gev) * nn(kk) * fIC
-         return
+      if ( dabs(gev - g(k)) == 0d0 ) then
+         integrand = n(k) * fIC / (beta * gev)**2
       else
-         if ( gev < gg(kk) .or. gev > gg(Ng) ) then
-            qq = dlog(nn(kk) / nn(kk - 1)) / dlog(gg(kk) / gg(kk - 1))
+         if ( gev < g(k) .or. gev > g(Ng) ) then
+            q = dlog(n(k) / n(k - 1)) / dlog(g(k) / g(k - 1))
          else
-            qq = dlog(nn(kk + 1) / nn(kk)) / dlog(gg(kk + 1) / gg(kk))
+            q = dlog(n(k + 1) / n(k)) / dlog(g(k + 1) / g(k))
          end if
-         if ( qq < -8d0 ) qq = -8d0
-         if ( qq >  8d0 ) qq =  8d0
+         if ( q < -8d0 ) q = -8d0
+         if ( q >  8d0 ) q =  8d0
 
-         nnev = nn(kk) * (gev / gg(kk))**qq
-         integrand = ip2ofg(gev) * nnev * fIC
+         nnev = n(k) * (gev / g(k))**q
+         integrand = nnev * fIC / (beta * gev)**2
       end if
    end function IC_integrand
 
@@ -498,10 +521,10 @@ contains
    !
    !  -----  Inverse Compton for isotropic power-law incomming photons  -----
    !
-   subroutine IC_iso_powlaw(jnu, nuout, nu, Imbs, n, g)
+   subroutine IC_iso_powlaw(jnu, nuout, nu, Inu, n, g)
       implicit none
       real(dp), intent(in) :: nuout
-      real(dp), intent(in), dimension(:) :: nu, n, g, Imbs
+      real(dp), intent(in), dimension(:) :: nu, n, g, Inu
       real(dp), intent(out) :: jnu
       integer :: j, k, Ng, Nf
       real(dp) :: w1, w2, gmx_star, e0, l, q, f1, f2, emis, g1, g2, s1, s2
@@ -509,8 +532,8 @@ contains
       Nf = size(nu, dim=1)
       jnu = 0d0
       nu_loop: do j = 1, Nf - 1
-         intens_if: if ( Imbs(j) > 1d-200 .and. Imbs(j + 1) > 1d-200 ) then
-            l = -dlog(Imbs(j + 1) / Imbs(j)) / dlog(nu(j + 1) / nu(j))
+         intens_if: if ( Inu(j) > 1d-200 .and. Inu(j + 1) > 1d-200 ) then
+            l = -dlog(Inu(j + 1) / Inu(j)) / dlog(nu(j + 1) / nu(j))
             if ( l > 8d0 ) l = 8d0
             if ( l < -8d0 ) l = -8d0
             e0 = mass_e * cLight**2 / (hPlanck * nu(j + 1))
@@ -544,9 +567,9 @@ contains
                         else if ( g(k)**2 < f2 .and. f2 <= gmx_star**2 ) then
                            emis = sscG2ISO(1d0 / gmx_star**2, 1d0, w2, w1, s1, s2)
                         else
-                           emis = 0d0
+                           cycle g_loop
                         end if
-                        jnu = jnu + emis * n(k) * g(k)**q * Imbs(j) * sigmaT / f1**l
+                        jnu = jnu + emis * n(k) * g(k)**q * Inu(j) * sigmaT * f1**(-l)
                      end if contrib_if
                   end if e_dist
                end do g_loop
@@ -571,6 +594,7 @@ contains
       e0 = mass_e * cLight**2 / (hPlanck * nuext)
       w = nuout / (4d0 * nuext)
       jnu = 0d0
+      emis = 0d0
       g_loop: do k = 1, Ng - 1
          gmx_star = dmin1(g(k + 1), e0)
          e_dist: if ( n(k) > 1d-200 .and. n(k + 1) > 1d-200 ) then
@@ -590,7 +614,7 @@ contains
             else
                cycle g_loop
             end if contrib_if
-            jnu = jnu + emis * n(k) * g(k)**q / w**q1
+            jnu = jnu + emis * n(k) * g(k)**q * w**(-q1)
          end if e_dist
       end do g_loop
       jnu = jnu * cLight * sigmaT * uext / (4d0 * pi * nuext)

@@ -28,9 +28,9 @@ subroutine afterglow(params_file, output_file, with_abs, with_cool, with_ic)
    integer :: i, j, k, numbins, numdf, numdt, time_grid, herror
    real(dp) :: uB, uext, L_j, gmin, gmax, numin, numax, qind, B, R0, &
       tacc, tinj, g1, g2, tstep, Q0, tmax, d_lum, z, n_ext, urad, &
-      theta_obs, mu_obs, nu_ext, tesc_e, uext0, volume, eps_e, tlc,&
-      eps_B, E0, gamma_bulk0, L_e, nu_ext0, Aadi, tmin, Rd, R, dr, &
-      b_index, beta_bulk, eps_g2
+      theta_obs, mu_obs, nu_ext, tesc_e, uext0, volume, eps_e, tlc, t0,&
+      eps_B, E0, Ejet, gamma_bulk0, L_e, nu_ext0, Aadi, tmin, td, Rd, R, dr, &
+      b_index, beta_bulk, eps_g2, theta_j, theta_j0, x, Rb
    real(dp), allocatable, dimension(:) :: freqs, t, Ntot, Inu, gg, sen_lum, &
       dt, nu_obs, t_obs, gamma_bulk, Rbw, D, tcool, gc, nu_c
    real(dp), allocatable, dimension(:, :) :: nu0, n_e, jnut, jmbs, jssc, jeic, &
@@ -89,15 +89,22 @@ subroutine afterglow(params_file, output_file, with_abs, with_cool, with_ic)
    !
    theta_obs = par_theta_obs * pi / 180d0!1d0 / gamma_bulk(0)!
    mu_obs = dcos(theta_obs)
+   theta_j0 = 0.2d0
+   theta_j = theta_j0 !+ 1d0 / gamma_bulk0
+   E0 = E0 * (1d0 - dcos(theta_j)) * 2d0 * pi / (4d0 * pi)
    Rd = deceleration_radius(E0, gamma_bulk0, n_ext)
+   td = (1d0 + z) * Rd / (bofg(gamma_bulk0) * gamma_bulk0**2 * cLight)
    Rbw(0) = R0
    call adiab_blast_wave(Rbw(0), R0, gamma_bulk0, E0, n_ext, gamma_bulk(0))
    beta_bulk = bofg(gamma_bulk(0))
    D(0) = Doppler(gamma_bulk(0), mu_obs)
 
-   R = Rbw(0) / gamma_bulk(0)!* theta_j0! / 12d0!
-   volume = 4d0 * pi * R**3 / 3d0
-   ! volume = 4d0 * pi * Rbw(0)**2 * R
+   theta_j = theta_j0 !+ 1d0 / gamma_bulk(0) / dsqrt(3d0)
+   R = Rbw(0) * 2d0 * dsin(theta_j * 0.5d0)!/ (gamma_bulk(0) * 12d0)!
+   ! volume = 4d0 * pi * R**3 / 3d0
+   volume = (1d0 - dcos(theta_j)) * 2d0 * pi * Rbw(0)**3 / (12d0 * gamma_bulk(0))
+   ! volume = 4d0 * pi * Rbw(0)**3 / (12d0 * gamma_bulk(0))
+   Rb = Rbw(0) * (4d0 * gamma_bulk(0))**(-1d0 / 3d0)
 
    B = dsqrt(32d0 * pi * eps_B * mass_p * n_ext) * cLight * gamma_bulk(0)
    uB = B**2 / (8d0 * pi)
@@ -110,16 +117,17 @@ subroutine afterglow(params_file, output_file, with_abs, with_cool, with_ic)
    eps_g2 = 0.35
    g2 = dsqrt(6d0 * pi * eCharge * eps_g2 / (sigmaT * B))
    g1 = eps_e * (gamma_bulk(0) - 1d0) * mass_p * (qind - 2d0) / ((qind - 1d0) * mass_e)
-   ! L_e = eps_e * 4d0 * pi * Rbw(0)**2 * n_ext * mass_p * cLight**3 * beta_bulk * gamma_bulk(0) * (gamma_bulk(0) - 1d0)
+   ! L_e = eps_e * Omega_j * Rbw(0)**2 * n_ext * mass_p * cLight**3 * beta_bulk * gamma_bulk(0) * (gamma_bulk(0) - 1d0)
    L_e = eps_e * 2d0 * pi * R**2 * n_ext * mass_p * cLight**3 * beta_bulk * gamma_bulk(0) * (gamma_bulk(0) - 1d0)
    Q0 = L_e * pwl_norm(mass_e * cLight**2, qind - 1d0, g1, g2)
 
    t(0) = 0d0
    t_obs(0) = tmin
-   tlc = R / cLight
+   tlc = Rb / cLight
    ! tinj = tlc
    tesc_e = 1.01d0 * tlc
    ! tacc = tesc_e
+   t0 = 86400d0 * (1.2d0 * ((qind - 2d0) / (qind - 1d0))**2 * (eps_e / 0.1d0)**2 * (eps_B / 0.01d0)**2 * (E0 / 1d54) * n_ext * (1d0 + z))
 
    write(*, "('mu_obs  =', ES15.7)") mu_obs
    write(*, "('Doppler =', ES15.7)") D(0)
@@ -132,8 +140,9 @@ subroutine afterglow(params_file, output_file, with_abs, with_cool, with_ic)
    write(*, "('u_ext   =', ES15.7)") uext
    write(*, "('nu_ext  =', ES15.7)") nu_ext
    write(*, "('Gamma_0 =', ES15.7)") gamma_bulk(0)
-   write(*, "('r0      =', ES15.7)") Rbw(0)
-   write(*, "('r_dec   =', ES15.7)") Rd
+   write(*, "('R_0     =', ES15.7)") Rbw(0)
+   write(*, "('R_dec   =', ES15.7)") Rd
+   write(*, "('t_dec   =', ES15.7)") td
    write(*, "('t_dyn   =', ES15.7)") tlc
    write(*, "('tinj    =', ES15.7)") tinj
    write(*, "('tesc    =', ES15.7)") tesc_e
@@ -206,7 +215,7 @@ subroutine afterglow(params_file, output_file, with_abs, with_cool, with_ic)
       end do
       !$OMP END PARALLEL DO
 
-      call RadTrans_blob(Inu, R, jmbs(:, i), ambs(:, i))
+      call RadTrans_blob(Inu, Rb, jmbs(:, i), ambs(:, i))
       ! call RadTrans(Inu, R, jmbs(:, i), ambs(:, i))
 
       !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
@@ -214,14 +223,13 @@ subroutine afterglow(params_file, output_file, with_abs, with_cool, with_ic)
       do j = 1, numdf
          if ( with_ic ) then
             call IC_iso_powlaw(jssc(j, i), freqs(j), freqs, Inu, n_e(:, i - 1) / volume, gg)
-            ! call IC_emis_full(freqs(j), freqs, gg, n_e(:, i - 1) / volume, Inu, jssc(j, i))
             call IC_iso_monochrom(jeic(j, i), freqs(j), uext, nu_ext, n_e(:, i - 1) / volume, gg)
+            ! call IC_emis_full(freqs(j), freqs, gg, n_e(:, i - 1) / volume, Inu, jssc(j, i))
+            ! call IC_emis_full(freqs(j), nu_ext, gg, n_e(:, i - 1) / volume, uext * cLight / (4d0 * pi), jeic(j, i))
          else
             jssc(j, i) = 0d0
             jeic(j, i) = 0d0
          end if
-
-         jnut(j, i) = jmbs(j, i) + jssc(j, i) + jeic(j, i)
 
          if ( with_abs ) then
 
@@ -249,6 +257,7 @@ subroutine afterglow(params_file, output_file, with_abs, with_cool, with_ic)
 
          end if
 
+         jnut(j, i) = jmbs(j, i) + jssc(j, i) + jeic(j, i)
          Fnut(j, i) = Fmbs(j, i) + Fssc(j, i) + Feic(j, i)
 
       end do
@@ -264,7 +273,7 @@ subroutine afterglow(params_file, output_file, with_abs, with_cool, with_ic)
       Ntot(i) = 0.5d0 * sum((n_e(:numbins - 1, i - 1) + n_e(2:, i - 1)) * (gg(2:) - gg(:numbins - 1)))
 
       if ( mod(i, nmod) == 0 .or. i == 1 ) &
-         write(*, on_screen) i, t_obs(i - 1), Rbw(i - 1), gamma_bulk(i - 1), Ntot(i)
+         write(*, on_screen) i, t_obs(i - 1), Rb, volume, Ntot(i)
 
 
       ! #####  #        ##    ####  #####    #    #   ##   #    # ######
@@ -281,10 +290,13 @@ subroutine afterglow(params_file, output_file, with_abs, with_cool, with_ic)
       D(i) = Doppler(gamma_bulk(i), mu_obs)
       t_obs(i) = t_obs(i - 1) + 0.5d0 * (1d0 + z) * dt(i) * ( 1d0 / D(i) + 1d0 / D(i - 1) )
 
-      R = Rbw(i) / gamma_bulk(i)!* theta_j!/ 12d0!
-      tlc = R / cLight
-      volume = 4d0 * pi * R**3 / 3d0
-      ! volume = 4d0 * pi * Rbw(i)**2 * R
+      theta_j = theta_j0! + 1d0 / gamma_bulk(i) / dsqrt(3d0)
+      R = Rbw(i) * 2d0 * dsin(theta_j * 0.5d0)!/ (gamma_bulk(i) * 12d0)!
+      ! volume = 4d0 * pi * R**3 / 3d0
+      volume = (1d0 - dcos(theta_j)) * 2d0 * pi * Rbw(i)**3 / (12d0 * gamma_bulk(i))
+      ! volume = 4d0 * pi * Rbw(i)**3 / (12d0 * gamma_bulk(i))
+      Rb = Rbw(i) * (4d0 * gamma_bulk(i))**(-1d0 / 3d0)
+      tlc = Rb / cLight
 
       B = dsqrt(32d0 * pi * eps_B * mass_p * n_ext) * cLight * gamma_bulk(i)
       uB = B**2 / (8d0 * pi)
@@ -300,7 +312,7 @@ subroutine afterglow(params_file, output_file, with_abs, with_cool, with_ic)
       !  ###### ###### #####
       g2 = dsqrt(6d0 * pi * eCharge * eps_g2 / (sigmaT * B))
       g1 = eps_e * (gamma_bulk(i) - 1d0) * mass_p * (qind - 2d0) / ((qind - 1d0) * mass_e)
-      ! L_e = eps_e * 4d0 * pi * Rbw(i)**2 * n_ext * mass_p * cLight**3 * beta_bulk * gamma_bulk(i) * (gamma_bulk(i) - 1d0)
+      ! L_e = eps_e * Omega_j * Rbw(i)**2 * n_ext * mass_p * cLight**3 * beta_bulk * gamma_bulk(i) * (gamma_bulk(i) - 1d0)
       L_e = eps_e * 2d0 * pi * R**2 * n_ext * mass_p * cLight**3 * beta_bulk * gamma_bulk(i) * (gamma_bulk(i) - 1d0)
       Q0 = L_e * pwl_norm(mass_e * cLight**2, qind - 1d0, g1, g2)
 
@@ -311,8 +323,9 @@ subroutine afterglow(params_file, output_file, with_abs, with_cool, with_ic)
          !!!! NOTE: SSC dominated
          ! x = dmin1( (eps_e / eps_B)**(1d0 / (4d0 - qind)) * (t_obs(i) / t0)**((2d0 - qind) / (2d0 * (4d0 - qind))), dsqrt(eps_e / eps_B) )
          !!!! NOTE: EIC dominated
-         ! x = dmin1( (eps_e / eps_B) * (t_obs(i) / t0)**(1d0 - qind / 2d0) / (uext / uB)**(3d0 - qind), (eps_e / eps_B) / (uext / uB) )
-         ! 
+         ! x = dmin1( &
+            ! (eps_e / eps_B) * (((1d0 + z) * Rbw(i) / (8d0 * gamma_bulk(i)**2 * cLight)) / t0)**(1d0 - qind / 2d0) / (uext / uB)**(3d0 - qind), &
+            ! (eps_e / eps_B) / (uext / uB) )
          ! urad = uext + x * uB
       end if
 
@@ -334,7 +347,7 @@ subroutine afterglow(params_file, output_file, with_abs, with_cool, with_ic)
             &             (nu0(:, i) * pofg(gg)**2 + Aadi * pofg(gg)) * tlc, &
             &             Ddif(:, i), &
             &             Qinj(:, i) * tlc, &
-            &             1d200)!tesc_e / tlc)!
+            &             tesc_e / tlc)!1d200)!
 
       !!!!!!! WARNING TEMP: THIS IS JUST A TEST
       ! do k = 1, numbins
@@ -392,6 +405,7 @@ subroutine afterglow(params_file, output_file, with_abs, with_cool, with_ic)
 
    ! ------  Saving data  ------
    call h5io_wdble0(file_id, 'Rd', Rd, herror)
+   call h5io_wdble0(file_id, 'td', td, herror)
 
    call h5io_wdble1(file_id, 'time', t(1:), herror)
    call h5io_wdble1(file_id, 't_obs', t_obs(1:), herror)
