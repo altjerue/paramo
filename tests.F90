@@ -12,21 +12,27 @@ program tests
    use K1
    use K2
    implicit none
-   character(*), parameter :: dir = "/Users/jesus/lab/Experiments/blazMag/output/"
+   character(*), parameter :: dir = "/Users/jesus/Documents/lab/Experiments/FPSteadyState/output/"
 
-   ! call steady_state
-   call rad_procs
+   call steady_state
+   ! call rad_procs
 
-   ! write(*,*) '=======  FINISHED  ======='
-   write(*,*) ''
+   ! write(*, *) '=======  FINISHED  ======='
+   write(*, *) ''
    
 contains
    
    subroutine steady_state
+      ! ************************************************************************
+      !
+      !   This subroutine produces the steady state solutions of the kinetic
+      !   equation.
+      !
+      ! ************************************************************************
       implicit none
       integer(HID_T) :: file_id
       integer :: i, k, numg, numt, herror
-      real(dp) :: g1, g2, gmin, gmax, tmax, tstep, qind, tacc, tesc, R
+      real(dp) :: g1, g2, gmin, gmax, tmax, tstep, tlc, qind, tacc, tesc, R, vol
       real(dp), allocatable, dimension(:) :: t, g, Q0, D0, C0, aux0, dt, dg, &
          Ntot1, Ntot2, Ntot3, Ntot4, Ntot5, Ntot6, zero1, zero2
       real(dp), allocatable, dimension(:, :) :: n1, n2, n3, n4, n5, n6
@@ -35,7 +41,7 @@ contains
       numt = 300
       g1 = 1e1
       g2 = 1e6
-      gmin = 1.0001d0
+      gmin = 1.001d0
       gmax = 1.1d0 * g2
       tstep = 1e0
       tmax = 5e7
@@ -57,7 +63,7 @@ contains
       t(0) = 0d0
       zero1 = 1d-200
       zero2 = 0d0
-      C0 = 3.48d-11 ! 4d0 * sigmaT * uB / (3d0 * mass_e * cLight)
+      C0 = 3.48d-11
       tacc = 1d0 / (C0(1) * 10d0**4.5d0) !tesc
       tesc = tacc ! 1d200 ! 1.5d0 * R / cLight !
       D0 = 0.5d0 * pofg(g)**2 / tacc
@@ -79,12 +85,12 @@ contains
          ! call FP_FinDif_cool(dt(i), g, n1(i - 1, :), n1(i, :), C0, zero2, 1d200)
          ! call FP_FinDif_cool(dt(i), g, n2(i - 1, :), n2(i, :), C0, Q0, 1d200)
          ! call FP_FinDif_cool(dt(i), g, n3(i - 1, :), n3(i, :), C0, Q0, tesc)
-         call FP_FinDif_difu(dt(i), pofg(g), n1(i - 1, :), n1(i, :), C0 * pofg(g)**2, zero1, zero2, 1d200)
-         call FP_FinDif_difu(dt(i), pofg(g), n2(i - 1, :), n2(i, :), C0 * pofg(g)**2, zero1, Q0, 1d200)
-         call FP_FinDif_difu(dt(i), pofg(g), n3(i - 1, :), n3(i, :), C0 * pofg(g)**2, zero1, Q0, tesc)
-         call FP_FinDif_difu(dt(i), pofg(g), n4(i - 1, :), n4(i, :), C0 * pofg(g)**2, D0, zero2, 1d200)
-         call FP_FinDif_difu(dt(i), pofg(g), n5(i - 1, :), n5(i, :), C0 * pofg(g)**2, D0, Q0, 1d200)
-         call FP_FinDif_difu(dt(i), pofg(g), n6(i - 1, :), n6(i, :), C0 * pofg(g)**2, D0, Q0, tesc)
+         call FP_FinDif_difu(dt(i), pofg(g), n1(i - 1, :), n1(i, :), C0 * pofg(g)**2, zero1, zero2, 1d200, R)
+         call FP_FinDif_difu(dt(i), pofg(g), n2(i - 1, :), n2(i, :), C0 * pofg(g)**2, zero1, Q0,    1d200, R)
+         call FP_FinDif_difu(dt(i), pofg(g), n3(i - 1, :), n3(i, :), C0 * pofg(g)**2, zero1, Q0,    tesc,  R)
+         call FP_FinDif_difu(dt(i), pofg(g), n4(i - 1, :), n4(i, :), C0 * pofg(g)**2, D0,    zero2, 1d200, R)
+         call FP_FinDif_difu(dt(i), pofg(g), n5(i - 1, :), n5(i, :), C0 * pofg(g)**2, D0,    Q0,    1d200, R)
+         call FP_FinDif_difu(dt(i), pofg(g), n6(i - 1, :), n6(i, :), C0 * pofg(g)**2, D0,    Q0,    tesc,  R)
 
          Ntot1(i) = sum(n1(i, :) * dg)
          Ntot2(i) = sum(n2(i, :) * dg)
@@ -101,6 +107,7 @@ contains
       call h5io_wint0(file_id, 'numbins', numg, herror)
       call h5io_wdble0(file_id, 't_max', tmax, herror)
       call h5io_wdble0(file_id, 'tstep', tstep, herror)
+      call h5io_wdble0(file_id, 'radius', R, herror)
       call h5io_wdble0(file_id, 'gamma_min', gmin, herror)
       call h5io_wdble0(file_id, 'gamma_max', gmax, herror)
       call h5io_wdble0(file_id, 'gamma_1', g1, herror)

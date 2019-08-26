@@ -152,26 +152,27 @@ contains
       real(dp), intent(out), dimension(:) :: nout
       real(dp), parameter :: eps = 1e-3
       integer :: i, Ng, Ng1
-      real(dp) :: dBB
+      real(dp) :: dBB, tlc
       real(dp), dimension(size(g)) :: dx, dxp2, dxm2, CCp2, CCm2, BBp2, BBm2, YYp2, YYm2, WWp2, WWm2, ZZp2, ZZm2, a, b, c, r
 
       Ng = size(g)
       Ng1 = Ng - 1
 
+      tlc = r_size / cLight
       dxp2(:Ng1) = g(2:) - g(:Ng1)
       dxp2(Ng) = dxp2(Ng1)
       dxm2(2:) = dxp2(:Ng1)
       dxm2(1) = dxm2(2)
       dx = dsqrt(dxp2 * dxm2)
 
-      CCp2(:Ng1) = 0.25d0 * (DD(2:) + DD(:Ng1))
+      CCp2(:Ng1) = 0.25d0 * (DD(2:) + DD(:Ng1)) * tlc
       CCm2(2:) = CCp2(:Ng1)
-      CCp2(Ng) = 0.25d0 * DD(Ng)
-      CCm2(1) = 0.25d0 * DD(1)
+      CCp2(Ng) = 0.25d0 * DD(Ng) * tlc
+      CCm2(1) = 0.25d0 * DD(1) * tlc
 
-      BBp2(:Ng1) = -0.5d0 * ((DD(2:) - DD(:Ng1)) / dxp2(:Ng1) - (gdot(2:) + gdot(:Ng1)))
-      BBm2(2:) = -0.5d0 * ((DD(2:) - DD(:Ng1)) / dxm2(2:) - (gdot(2:) + gdot(:Ng1)))
-      BBp2(Ng) = -0.5d0 * ((DD(Ng) - DD(Ng1)) / dxp2(Ng) - (gdot(Ng) + gdot(Ng1)))
+      BBp2(:Ng1) = -0.5d0 * ((DD(2:) - DD(:Ng1)) / dxp2(:Ng1) - (gdot(2:) + gdot(:Ng1))) * tlc
+      BBm2(2:) = -0.5d0 * ((DD(2:) - DD(:Ng1)) / dxm2(2:) - (gdot(2:) + gdot(:Ng1))) * tlc
+      BBp2(Ng) = -0.5d0 * ((DD(Ng) - DD(Ng1)) / dxp2(Ng) - (gdot(Ng) + gdot(Ng1))) * tlc
       call polint(g(2:), BBm2(2:), g(1), BBm2(1), dBB)
 
       WWp2 = dxp2 * BBp2 / CCp2
@@ -209,13 +210,13 @@ contains
          else
             YYm2(i) = dabs(WWm2(i)) / ( dexp(dabs(ZZm2(i))) - dexp(-dabs(ZZm2(i))) )
          end if
-      
+
       end do
 
-      r = nin + dt * QQ
-      c = -dt * CCp2 * YYp2 * dexp(ZZp2)/ (dx * dxp2)
-      a = -dt * CCm2 * YYm2 * dexp(-ZZm2) / (dx * dxm2)
-      b = 1d0 + dt * ( CCp2 * YYp2 * dexp(-ZZp2) / dxp2 + CCm2 * YYm2 * dexp(ZZm2) / dxm2 ) / dx + dt / tesc
+      r = (nin + dt * QQ) * (sigmaT * r_size)
+      c = -(dt / tlc) * CCp2 * YYp2 * dexp(ZZp2) / (dx * dxp2)
+      a = -(dt / tlc) * CCm2 * YYm2 * dexp(-ZZm2) / (dx * dxm2)
+      b = 1d0 + (dt / tlc) * ( CCp2 * YYp2 * dexp(-ZZp2) / dxp2 + CCm2 * YYm2 * dexp(ZZm2) / dxm2 ) / dx + dt / tesc
 
       call tridag_ser(a(2:), b, c(:Ng1), r, nout)
       nout = nout / (sigmaT * r_size)
