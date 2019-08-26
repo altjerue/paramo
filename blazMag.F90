@@ -261,14 +261,14 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
       Qinj(:, i) = injection_pwl(t(i), tacc, gg, g1, g2, qind, Qnth)
       Ddif(:, i) = 1d-200!4.3d-3 * pofg(gg)**(5d0 / 3d0) * (mass_e * cLight**2)**(-1d0 / 3d0)
       nu0(:, i) = 4d0 * sigmaT * (uB + urad) / (3d0 * mass_e * cLight)
-      call FP_FinDif_difu(dt(i), &
+      call FP_FinDif_difu(dt(i) / tlc, &
             &             pofg(gg), &
             &             nn(:, i - 1), &
             &             nn(:, i), &
-            &             nu0(:, i) * pofg(gg)**2, &
-            &             Ddif(:, i), &
-            &             Qinj(:, i), &
-            &             tesc)
+            &             nu0(:, i) * pofg(gg)**2 * tlc, &
+            &             Ddif(:, i), &! * tlc
+            &             Qinj(:, i) * tlc, &
+            &             tesc / tlc, R)
       ! call FP_FinDif_cool(dt(i), gg, nn(i - 1, :), nn(i, :), nu0(i - 1, :), Qinj(i, :), tesc)
 
 

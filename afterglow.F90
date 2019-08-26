@@ -91,7 +91,7 @@ subroutine afterglow(params_file, output_file, with_abs, with_cool, with_ic)
    mu_obs = dcos(theta_obs)
    theta_j0 = 0.2d0
    theta_j = theta_j0 !+ 1d0 / gamma_bulk0
-   E0 = E0 * (1d0 - dcos(theta_j)) * 2d0 * pi / (4d0 * pi)
+   ! E0 = E0 * (1d0 - dcos(theta_j)) * 2d0 * pi / (4d0 * pi)
    Rd = deceleration_radius(E0, gamma_bulk0, n_ext)
    td = (1d0 + z) * Rd / (bofg(gamma_bulk0) * gamma_bulk0**2 * cLight)
    Rbw(0) = R0
@@ -100,13 +100,15 @@ subroutine afterglow(params_file, output_file, with_abs, with_cool, with_ic)
    D(0) = Doppler(gamma_bulk(0), mu_obs)
 
    theta_j = theta_j0 !+ 1d0 / gamma_bulk(0) / dsqrt(3d0)
-   R = Rbw(0) * 2d0 * dsin(theta_j * 0.5d0)!/ (gamma_bulk(0) * 12d0)!
-   ! volume = 4d0 * pi * R**3 / 3d0
-   volume = (1d0 - dcos(theta_j)) * 2d0 * pi * Rbw(0)**3 / (12d0 * gamma_bulk(0))
-   ! volume = 4d0 * pi * Rbw(0)**3 / (12d0 * gamma_bulk(0))
-   Rb = Rbw(0) * (4d0 * gamma_bulk(0))**(-1d0 / 3d0)
+   R = Rbw(0) / gamma_bulk(0)
+   ! R = Rbw(0) / (gamma_bulk(0) * 12d0)!* 2d0 * dsin(theta_j * 0.5d0)!
+   volume = 4d0 * pi * R**3 / 3d0
+   ! volume = (1d0 - dcos(theta_j)) * 2d0 * pi * Rbw(0)**3 / (12d0 * gamma_bulk(0))
+   ! volume = 4d0 * pi * Rbw(0)**2 * R
+   Rb = R!bw(0) * (4d0 * gamma_bulk(0))**(-1d0 / 3d0)
 
-   B = dsqrt(32d0 * pi * eps_B * mass_p * n_ext) * cLight * gamma_bulk(0)
+   ! B = dsqrt(32d0 * pi * eps_B * mass_p * n_ext) * cLight * gamma_bulk(0)
+   B = 1e6 * (R0 / Rbw(0))
    uB = B**2 / (8d0 * pi)
    gc(0) = 6d0 * gamma_bulk(0) * mass_e * cLight**2 / (5d0 * sigmaT * Rbw(0) * uB)
    nu_c(0) = nu_obs_f(nuconst * B * gc(0)**2, z, Doppler(gamma_bulk(0), mu_obs))
@@ -115,10 +117,10 @@ subroutine afterglow(params_file, output_file, with_abs, with_cool, with_ic)
    nu_ext = nu_ext0 * gamma_bulk(0)
 
    eps_g2 = 0.35
-   g2 = dsqrt(6d0 * pi * eCharge * eps_g2 / (sigmaT * B))
-   g1 = eps_e * (gamma_bulk(0) - 1d0) * mass_p * (qind - 2d0) / ((qind - 1d0) * mass_e)
-   ! L_e = eps_e * Omega_j * Rbw(0)**2 * n_ext * mass_p * cLight**3 * beta_bulk * gamma_bulk(0) * (gamma_bulk(0) - 1d0)
-   L_e = eps_e * 2d0 * pi * R**2 * n_ext * mass_p * cLight**3 * beta_bulk * gamma_bulk(0) * (gamma_bulk(0) - 1d0)
+   ! g2 = dsqrt(6d0 * pi * eCharge * eps_g2 / (sigmaT * B))
+   ! g1 = eps_e * (gamma_bulk(0) - 1d0) * mass_p * (qind - 2d0) / ((qind - 1d0) * mass_e)
+   L_e = eps_e * 4d0 * pi * Rbw(0)**2 * n_ext * mass_p * cLight**3 * beta_bulk * gamma_bulk(0) * (gamma_bulk(0) - 1d0)
+   ! L_e = eps_e * 2d0 * pi * R**2 * n_ext * mass_p * cLight**3 * beta_bulk * gamma_bulk(0) * (gamma_bulk(0) - 1d0)
    Q0 = L_e * pwl_norm(mass_e * cLight**2, qind - 1d0, g1, g2)
 
    t(0) = 0d0
@@ -273,7 +275,7 @@ subroutine afterglow(params_file, output_file, with_abs, with_cool, with_ic)
       Ntot(i) = 0.5d0 * sum((n_e(:numbins - 1, i - 1) + n_e(2:, i - 1)) * (gg(2:) - gg(:numbins - 1)))
 
       if ( mod(i, nmod) == 0 .or. i == 1 ) &
-         write(*, on_screen) i, t_obs(i - 1), Rb, volume, Ntot(i)
+         write(*, on_screen) i, t_obs(i - 1), Rbw(i - 1), gamma_bulk(i - 1), Ntot(i)
 
 
       ! #####  #        ##    ####  #####    #    #   ##   #    # ######
@@ -291,14 +293,16 @@ subroutine afterglow(params_file, output_file, with_abs, with_cool, with_ic)
       t_obs(i) = t_obs(i - 1) + 0.5d0 * (1d0 + z) * dt(i) * ( 1d0 / D(i) + 1d0 / D(i - 1) )
 
       theta_j = theta_j0! + 1d0 / gamma_bulk(i) / dsqrt(3d0)
-      R = Rbw(i) * 2d0 * dsin(theta_j * 0.5d0)!/ (gamma_bulk(i) * 12d0)!
-      ! volume = 4d0 * pi * R**3 / 3d0
-      volume = (1d0 - dcos(theta_j)) * 2d0 * pi * Rbw(i)**3 / (12d0 * gamma_bulk(i))
-      ! volume = 4d0 * pi * Rbw(i)**3 / (12d0 * gamma_bulk(i))
-      Rb = Rbw(i) * (4d0 * gamma_bulk(i))**(-1d0 / 3d0)
+      R = Rbw(i) / gamma_bulk(i)
+      ! R = Rbw(i) / (gamma_bulk(i) * 12d0)!* 2d0 * dsin(theta_j * 0.5d0)!
+      volume = 4d0 * pi * R**3 / 3d0
+      ! volume = (1d0 - dcos(theta_j)) * 2d0 * pi * Rbw(i)**3 / (12d0 * gamma_bulk(i))
+      ! volume = 4d0 * pi * Rbw(i)**2 * R
+      Rb = R!bw(i) * (4d0 * gamma_bulk(i))**(-1d0 / 3d0)
       tlc = Rb / cLight
 
-      B = dsqrt(32d0 * pi * eps_B * mass_p * n_ext) * cLight * gamma_bulk(i)
+      B = 1e6 * (R0 / Rbw(i))
+      ! B = dsqrt(32d0 * pi * eps_B * mass_p * n_ext) * cLight * gamma_bulk(i)
       uB = B**2 / (8d0 * pi)
 
       uext = uext0 * gamma_bulk(i)**2! * (1d0 + beta_bulk**2 / 3d0)
@@ -310,10 +314,10 @@ subroutine afterglow(params_file, output_file, with_abs, with_cool, with_ic)
       !  #      #      #    #
       !  #      #      #    #
       !  ###### ###### #####
-      g2 = dsqrt(6d0 * pi * eCharge * eps_g2 / (sigmaT * B))
-      g1 = eps_e * (gamma_bulk(i) - 1d0) * mass_p * (qind - 2d0) / ((qind - 1d0) * mass_e)
-      ! L_e = eps_e * Omega_j * Rbw(i)**2 * n_ext * mass_p * cLight**3 * beta_bulk * gamma_bulk(i) * (gamma_bulk(i) - 1d0)
-      L_e = eps_e * 2d0 * pi * R**2 * n_ext * mass_p * cLight**3 * beta_bulk * gamma_bulk(i) * (gamma_bulk(i) - 1d0)
+      ! g2 = dsqrt(6d0 * pi * eCharge * eps_g2 / (sigmaT * B))
+      ! g1 = eps_e * (gamma_bulk(i) - 1d0) * mass_p * (qind - 2d0) / ((qind - 1d0) * mass_e)
+      L_e = eps_e * 4d0 * pi * Rbw(i)**2 * n_ext * mass_p * cLight**3 * beta_bulk * gamma_bulk(i) * (gamma_bulk(i) - 1d0)
+      ! L_e = eps_e * 2d0 * pi * R**2 * n_ext * mass_p * cLight**3 * beta_bulk * gamma_bulk(i) * (gamma_bulk(i) - 1d0)
       Q0 = L_e * pwl_norm(mass_e * cLight**2, qind - 1d0, g1, g2)
 
       if ( with_cool ) then
@@ -347,7 +351,7 @@ subroutine afterglow(params_file, output_file, with_abs, with_cool, with_ic)
             &             (nu0(:, i) * pofg(gg)**2 + Aadi * pofg(gg)) * tlc, &
             &             Ddif(:, i), &
             &             Qinj(:, i) * tlc, &
-            &             tesc_e / tlc)!1d200)!
+            &             tesc_e / tlc, R)!1d200)!
 
       !!!!!!! WARNING TEMP: THIS IS JUST A TEST
       ! do k = 1, numbins

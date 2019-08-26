@@ -17,7 +17,7 @@ program tests
    ! call steady_state
    call rad_procs
 
-   write(*,*) '=======  FINISHED  ======='
+   ! write(*,*) '=======  FINISHED  ======='
    write(*,*) ''
    
 contains
@@ -142,7 +142,7 @@ contains
       integer(HID_T) :: file_id
       integer :: numf, numg, j, herror
       real(dp) :: numin, numax, u_ext, u_e, u_0, g1, g2, g3, p, q, alpha, &
-         nu1, nu2, nu_ext, B, k0, ke
+         nu1, nu2, nu_ext, B, k0, ke, R
       real(dp), allocatable, dimension(:) :: jmbs, ambs, jeic, jssc, Iin, n, &
          nuj, nua, g
 
@@ -152,18 +152,19 @@ contains
       allocate(jmbs(numf), ambs(numf), jeic(numf), jssc(numf), Iin(numf), &
          n(numg), g(numg), nuj(numf), nua(numf))
 
-      numin = 1d8
-      numax = 1d28
-      B = 1d0
+      numin = 1d5
+      numax = 1d30
+      B = 50d0
+      R = 1e15
       nu_ext = 1d-8 * mass_e * cLight**2 / hPlanck
       u_ext = 1d0
       u_0 = 1d0
-      u_e = 1d0
-      g1 = 1d2
-      g2 = 1d7
-      nu1 = 1d-9 * mass_e * cLight**2 / hPlanck
-      nu2 = 1d-6 * mass_e * cLight**2 / hPlanck
-      p = 2.2d0
+      u_e = 1d4
+      g1 = 5d0
+      g2 = 1d9
+      nu1 = 1d-8 * mass_e * cLight**2 / hPlanck
+      nu2 = 1d0 * mass_e * cLight**2 / hPlanck
+      p = 3.2d0
       alpha = 0.5d0
 
       ke = u_e * pwl_norm(mass_e * cLight**2, p - 1d0, g1, g2)
@@ -177,15 +178,20 @@ contains
       k0 = u_0 * cLight * pwl_norm(1d0, alpha, nu1, nu2)
       do j = 1, numf
          nuj(j) = numin * ( (numax / numin)**(dble(j - 1) / dble(numf - 1)) )
-         Iin(j) = k0 * powlaw_dis(nuj(j), nu1, nu2, alpha)
+         ! Iin(j) = k0 * powlaw_dis(nuj(j), nu1, nu2, alpha)
          call mbs_emissivity(jmbs(j), nuj(j), g, n, B)
+         call mbs_absorption(ambs(j), nuj(j), g, n, B)
+         call RadTrans(Iin(j), R, jmbs(j), ambs(j))
       end do
       !$OMP END PARALLEL DO
 
       !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
       !$OMP& PRIVATE(j)
       do j = 1, numf
-         call EIC_pwlEED(jeic, nuj, u_ext, nu_ext, n, g)
+         call IC_emis_full(nuj(j), nuj, g, n, Iin, jssc(j))
+         call IC_emis_full(nuj(j), nu_ext, g, n, u_ext * cLight / (4d0 * pi), jeic(j))
+         ! call EIC_pwlEED(jeic, nuj, u_ext, nu_ext, n, g)
+         write(*,*) nuj(j), nuj(j) * jmbs(j), nuj(j) * jssc(j), nuj(j) * jeic(j)
       end do
       !$OMP END PARALLEL DO
 
@@ -201,7 +207,7 @@ contains
       call h5io_wdble1(file_id, 'jmbs', jmbs, herror)
       call h5io_wdble1(file_id, 'jssc', jssc, herror)
       call h5io_wdble1(file_id, 'jeic', jeic, herror)
-
+#if 0
       !  ----->   Absorption
       B = 1d3
       numin = 1d8
@@ -254,11 +260,11 @@ contains
 
       call mbs_absorption(ambs, nua, g, n, B)
       call h5io_wdble1(file_id, 'ambs3', ambs, herror)
-
+#endif
       call h5io_closef(file_id, herror)
       call h5close_f(herror)
 
-      write(*, "('--> Radiation processes test')")
+      ! write(*, "('--> Radiation processes test')")
 
    end subroutine rad_procs
 

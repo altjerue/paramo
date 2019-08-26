@@ -145,9 +145,9 @@ contains
    !  #       # #  # # #     # # #
    !  #       # #   ## #     # # #
    !  #       # #    # ######  # #
-   subroutine FP_FinDif_difu(dt, g, nin, nout, gdot, DD, QQ, tesc)
+   subroutine FP_FinDif_difu(dt, g, nin, nout, gdot, DD, QQ, tesc, r_size)
       implicit none
-      real(dp), intent(in) :: dt, tesc
+      real(dp), intent(in) :: dt, tesc, r_size
       real(dp), intent(in), dimension(:) :: g, nin, gdot, DD, QQ
       real(dp), intent(out), dimension(:) :: nout
       real(dp), parameter :: eps = 1e-3
@@ -218,7 +218,7 @@ contains
       b = 1d0 + dt * ( CCp2 * YYp2 * dexp(-ZZp2) / dxp2 + CCm2 * YYm2 * dexp(ZZm2) / dxm2 ) / dx + dt / tesc
 
       call tridag_ser(a(2:), b, c(:Ng1), r, nout)
-
+      nout = nout / (sigmaT * r_size)
    end subroutine FP_FinDif_difu
 
 

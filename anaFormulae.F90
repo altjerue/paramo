@@ -187,6 +187,7 @@ contains
       real(dp), parameter :: c1 = 3.2180900500625734d-4, &
          c2 = 6.50532122717873d-1, c3 = 1.5579904689804556d1
       real(dp), intent(in) :: chi, g
+
       if (chi > 0.75d0 / g) then
          x = 2d0 * chi / (3d0 * g**2)
          if ( x < c1 ) then

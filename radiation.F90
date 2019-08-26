@@ -10,7 +10,7 @@ module radiation
 
    interface RadTrans
       module procedure RadTrans_s
-      module procedure RAdTrans_v
+      module procedure RadTrans_v
    end interface RadTrans
 
    interface opt_depth
@@ -93,7 +93,7 @@ contains
       implicit none
       real(dp), intent(in) :: s
       real(dp), intent(in), dimension(:) :: absor
-      real(dp), dimension(size(absor, dim=1)) :: tau
+      real(dp), dimension(size(absor)) :: tau
       tau = absor * s
    end function opt_depth_s
 
@@ -119,7 +119,7 @@ contains
       real(dp), intent(in) :: absor, R
       real(dp) :: u, tau
       tau = dmax1(1d-100, 2d0 * R * absor)
-      if ( tau <= 1d-50 ) then
+      if ( tau <= 1d-10 ) then
          u = 1d0
       else
          if ( tau > 100d0 ) then
@@ -138,7 +138,7 @@ contains
       real(dp), intent(in) :: absor, r
       real(dp) :: u, tau
       tau = dmax1(1d-100, r * absor)
-      if ( tau <= 1d-50 ) then
+      if ( tau <= 1d-10 ) then
          u = 1d0
       else
          u = (1d0 - dexp(-tau)) / tau
@@ -161,12 +161,12 @@ contains
       real(dp), intent(in), dimension(:) :: jnu, anu
       real(dp), intent(out), dimension(:) :: Inu
       integer :: j, Nf
-      real(dp), dimension(size(jnu, dim=1)) :: tau
-      Nf = size(jnu, dim=1)
+      real(dp), dimension(size(jnu)) :: tau
+      Nf = size(jnu)
       tau = opt_depth(anu, s)
       do j = 1, Nf
          if ( jnu(j) > 1d-100 ) then
-            if ( tau(j) > 1d-50 ) then
+            if ( tau(j) > 1d-10 ) then
                Inu(j) = s * jnu(j) * (1d0 - dexp(-tau(j))) / tau(j)
             else
                Inu(j) = s * jnu(j)
@@ -187,7 +187,7 @@ contains
       real(dp) :: tau
       tau = anu * s
       if ( jnu > 1d-100 ) then
-         if ( tau > 1d-50 ) then
+         if ( tau > 1d-10 ) then
             Inu = s * jnu * (1d0 - dexp(-tau)) / tau
          else
             Inu = s * jnu
@@ -379,7 +379,7 @@ contains
       gmin = gg(1)
       gmax = gg(Ng)
       g1 = dmax1(dsqrt(0.25d0 * fout / fin), gmin)
-      g2 = dmin1(mass_e * cLight**2 / (hPlanck * fin), gmax)
+      g2 = dmin1(3d0 * mass_e * cLight**2 / (4d0 * hPlanck * fin), gmax)
       if ( g1 >= g2 ) then
          I0 = 0d0
       else
@@ -402,7 +402,7 @@ contains
       gmax = gg(Ng)
       fin_loop: do j = 1, Nf
          g1 = dmax1(dsqrt(0.25d0 * fout / fin(j)), gmin)
-         g2 = dmin1(mass_e * cLight**2 / (hPlanck * fin(j)), gmax)
+         g2 = dmin1(3d0 * mass_e * cLight**2 / (4d0 * hPlanck * fin(j)), gmax)
          if ( g1 >= g2 ) then
             I0(j) = 0d0
          else
@@ -423,7 +423,7 @@ contains
       implicit none
       real(dp), intent(in) :: fin, fout, a, b
       real(dp), intent(in), dimension(:) :: nn, gg
-      integer, parameter :: jmax = 25, jmaxp = jmax + 1, kq = 6, km = kq - 1
+      integer, parameter :: jmax = 30, jmaxp = jmax + 1, kq = 6, km = kq - 1
       real(dp), parameter :: eps = 1d-4
       integer :: jq
       real(dp) :: dqromb, qromb
@@ -439,7 +439,7 @@ contains
          h(jq + 1) = 0.25d0 * h(jq)
       end do
       print*, fin, fout, a, b, qromb, dqromb
-      call an_error('ssc_qromb: too many steps')
+      call an_error('IC_qromb: too many steps')
    end function IC_qromb
 
    !
@@ -478,11 +478,11 @@ contains
       real(dp), intent(in) :: fin, fout, gev
       real(dp), intent(in), dimension(:) :: g, n
       integer :: k, Ng
-      real(dp) :: fIC, nnev, beta, integrand, q, foutfin, bplus, bminus
+      real(dp) :: fIC, beta, integrand, q, foutfin, bplus, bminus, x
       Ng = size(g)
       k = minloc(dabs(gev - g), dim=1)
 
-      if ( n(k) < 1d-100 ) then
+      if ( n(k) < 1d-100 .or. k <= 1 ) then
          integrand = 0d0
          return
       end if
@@ -491,29 +491,35 @@ contains
       foutfin = fout / fin
       bplus = 1d0 + beta
       bminus = 1d0 - beta
+      x = 0.25 * foutfin / gev**2
 
-      if ( bminus / bplus <= foutfin .and. foutfin <= 1d0 ) then
-         fIC = bplus * foutfin - bminus
-      else if ( 1d0 < foutfin .and. foutfin <= bplus / bminus ) then
-         fIC = bplus - bminus * foutfin
+      if ( bminus < 1e-5 ) then
+         fIC = 3d0 * (2d0 * x * (dlog(x) - x) + x + 1d0)
       else
-         integrand = 0d0
-         return
+         if ( bminus / bplus <= foutfin .and. foutfin <= 1d0 ) then
+            fIC = bplus * foutfin - bminus
+         else if ( 1d0 < foutfin .and. foutfin <= bplus / bminus ) then
+            fIC = bplus - bminus * foutfin
+         else
+            integrand = 0d0
+            return
+         end if
       end if
 
-      if ( dabs(gev - g(k)) == 0d0 ) then
+      if ( dabs(gev - g(k)) < 1d-15 ) then
          integrand = n(k) * fIC / (beta * gev)**2
       else
          if ( gev < g(k) .or. gev > g(Ng) ) then
             q = dlog(n(k) / n(k - 1)) / dlog(g(k) / g(k - 1))
+            if ( q < -8d0 ) q = -8d0
+            if ( q >  8d0 ) q =  8d0
+            integrand = n(k - 1) * (gev / g(k - 1))**q * fIC / (beta * gev)**2
          else
             q = dlog(n(k + 1) / n(k)) / dlog(g(k + 1) / g(k))
+            if ( q < -8d0 ) q = -8d0
+            if ( q >  8d0 ) q =  8d0
+            integrand = n(k) * (gev / g(k))**q * fIC / (beta * gev)**2
          end if
-         if ( q < -8d0 ) q = -8d0
-         if ( q >  8d0 ) q =  8d0
-
-         nnev = n(k) * (gev / g(k))**q
-         integrand = nnev * fIC / (beta * gev)**2
       end if
    end function IC_integrand
 
