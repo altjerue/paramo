@@ -11,6 +11,7 @@ Paramo stands for: PArticles and RAdiation MOnitor. In a few words: this code so
 - Fortran (either GNU or Intel)
 - HDF5
 - OpenMP (optional)
+- OpenACC (in progress)
 
 ### Python interface
 
