@@ -25,7 +25,7 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    real(dp) :: uB, uext, R, L_j, gmin, gmax, numin, numax, qind, B, D, &
       tacc, g1, g2, tstep, Qnth, tmax, d_lum, z, tvar, tinj,&
       gamma_bulk, theta_obs, R0, mu_obs, nu_ext, tesc, tlc, &
-      volume, sigma, beta_bulk, eps_e, L_B, eps_B, f_rec
+      volume, sigma, beta_bulk, L_B, eps_B, f_rec
    real(dp), allocatable, dimension(:) :: freqs, t, Ntot, Inu, Ibb, gg, &
       dt, nu_obs, t_obs, dg, urad
    real(dp), allocatable, dimension(:, :) :: nu0, nn, jnut, jmbs, jssc, jeic, &
@@ -117,8 +117,8 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    volume = 4d0 * pi * R**3 / 3d0
    tlc = R / cLight
    tesc = 1.5d0 * tlc
-   tacc = 0.5d0 * tlc
-   tinj = tesc
+   tacc = 0.95d0 * tlc
+   tinj = 1d200
 
 
    Qnth = f_rec * L_B * pwl_norm(volume * mass_e * cLight**2, qind - 1d0, g1, g2)
@@ -156,7 +156,7 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    dg(1) = dg(2)
 
    t(0) = 0d0
-   nn(:, 0) = injection_pwl(0d0, 1d200, gg, g1, g2, qind, Qnth)
+   nn(:, 0) = injection_pwl(0d0, tinj, gg, g1, g2, qind, Qnth)
    jnut = 0d0
 
    write(*, "('--> Calculating the emission')")
@@ -213,9 +213,11 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
       !$OMP& PRIVATE(j)
       do j = 1, numdf
          if ( with_ssc ) then
-            call IC_iso_powlaw(jssc(j, i), freqs(j), freqs, Inu, nn(:, i - 1), gg)
-            call IC_iso_monochrom(jeic(j, i), freqs(j), uext, nu_ext, nn(:, i - 1), gg)
-            call IC_iso_powlaw(jebb(j, i), freqs(j), freqs, Ibb, nn(:, i - 1), gg)
+            ! call IC_iso_powlaw(jssc(j, i), freqs(j), freqs, Inu, nn(:, i - 1), gg)
+            ! call IC_iso_monochrom(jeic(j, i), freqs(j), uext, nu_ext, nn(:, i - 1), gg)
+            ! call IC_iso_powlaw(jebb(j, i), freqs(j), freqs, Ibb, nn(:, i - 1), gg)
+            call IC_emis_full(freqs(j), freqs, gg, nn(:, i - 1), Inu, jssc(j, i))
+            call IC_emis_full(freqs(j), nu_ext, gg, nn(:, i - 1), uext * cLight / (4d0 * pi), jeic(j, i))
          else
             jeic(j, i) = 0d0
             jssc(j, i) = 0d0
@@ -226,7 +228,7 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
          Fmbs(j, i) = D**4 * volume * freqs(j) * jmbs(j, i) * opt_depth_blob(anut(j, i), R) / d_lum**2
          Fssc(j, i) = D**4 * volume * freqs(j) * jssc(j, i) * opt_depth_blob(anut(j, i), R) / d_lum**2
          Feic(j, i) = D**4 * volume * freqs(j) * jeic(j, i) * opt_depth_blob(anut(j, i), R) / d_lum**2
-         Febb(j, i) = D**4 * volume * freqs(j) * jebb(j, i) * opt_depth_blob(anut(j, i), R) / d_lum**2
+         ! Febb(j, i) = D**4 * volume * freqs(j) * jebb(j, i) * opt_depth_blob(anut(j, i), R) / d_lum**2
          ! Fssc(j, i) = D**4 * volume * freqs(j) * jssc(j, i) / (4d0 * pi * d_lum**2)
          ! Feic(j, i) = D**4 * volume * freqs(j) * jeic(j, i) / (4d0 * pi * d_lum**2)
          Fnut(j, i) = Fmbs(j, i) + Fssc(j, i) + Feic(j, i)
@@ -261,14 +263,15 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
       Qinj(:, i) = injection_pwl(t(i), tacc, gg, g1, g2, qind, Qnth)
       Ddif(:, i) = 1d-200!4.3d-3 * pofg(gg)**(5d0 / 3d0) * (mass_e * cLight**2)**(-1d0 / 3d0)
       nu0(:, i) = 4d0 * sigmaT * (uB + urad) / (3d0 * mass_e * cLight)
-      call FP_FinDif_difu(dt(i) / tlc, &
+      call FP_FinDif_difu(dt(i), &
             &             pofg(gg), &
             &             nn(:, i - 1), &
             &             nn(:, i), &
-            &             nu0(:, i) * pofg(gg)**2 * tlc, &
-            &             Ddif(:, i), &! * tlc
-            &             Qinj(:, i) * tlc, &
-            &             tesc / tlc, R)
+            &             nu0(:, i) * pofg(gg)**2, &
+            &             Ddif(:, i), &
+            &             Qinj(:, i), &
+            &             tesc, &
+            &             R)
       ! call FP_FinDif_cool(dt(i), gg, nn(i - 1, :), nn(i, :), nu0(i - 1, :), Qinj(i, :), tesc)
 
 

@@ -373,7 +373,7 @@ contains
       real(dp), intent(in) :: fout, fin, Inu
       real(dp), intent(in), dimension(:) :: gg, nn
       real(dp), intent(out) :: emiss
-      integer :: j, Ng
+      integer :: Ng
       real(dp) :: g1, g2, gmin, gmax, I0
       Ng = size(gg)
       gmin = gg(1)
