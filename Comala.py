@@ -26,7 +26,7 @@ class parameters(object):
         self.sigma = 1.0                # magnetization (sigma)
         self.f_rec = 1.0                # magnetic reconection dissipative efficiency
         self.b_index = 0.0              # magnetic field decay index
-        self.Bfield = 1.0              # magnetic field decay index
+        self.Bfield = 1.0               # magnetic field decay index
         self.eps_B = 0.03               # epsilon_B
         self.eps_e = 0.1                # epsilon_e
         self.theta_e = 10.0             # electrons temperature
@@ -35,7 +35,8 @@ class parameters(object):
         self.tmax = 1e5                 # maximum time
         self.tmin = 0e0                 # minimum time
         self.tvar = 2e0                 # variability time scale
-        self.L_j = 1e45                 # num. dens. of particles injected per second
+        self.L_jet = 1e45               # jet luminosity
+        self.eta_jet = 0.3              # L_jet / L_Edd
         self.E0 = 1e50                  # energy of the blast wave
         self.n_ext = 1.0                # number density of the external medium
         self.g1 = 1e2                   # power-law min Lorentz factor
@@ -77,7 +78,8 @@ class parameters(object):
             print(fortran_double(self.tmax), ' ! maximum time', file=f)
             print(fortran_double(self.tmin), ' ! minimum time', file=f)
             print(fortran_double(self.tvar), ' ! variability time scale', file=f)
-            print(fortran_double(self.L_j), ' ! jet luminosity', file=f)
+            print(fortran_double(self.L_jet), ' ! jet luminosity', file=f)
+            print(fortran_double(self.eta_jet), ' ! L_jet / L_Edd', file=f)
             print(fortran_double(self.E0), ' ! energy of the blast wave', file=f)
             print(fortran_double(self.n_ext), ' ! number density of the external medium', file=f)
             print(fortran_double(self.eps_e), ' ! epsilon_e', file=f)

@@ -22,9 +22,9 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
       on_screen = "(' | ', I9, ' | ', ES11.4, ' | ', ES11.4, ' | ', ES11.4, ' | ', ES11.4, ' |')"
    integer(HID_T) :: file_id, group_id
    integer :: i, j, k, numbins, numdf, numdt, time_grid, herror
-   real(dp) :: uB, uext, R, L_j, gmin, gmax, numin, numax, qind, B, D, &
-      tacc, g1, g2, tstep, Qnth, tmax, d_lum, z, tvar, tinj,&
-      gamma_bulk, theta_obs, R0, mu_obs, nu_ext, tesc, tlc, &
+   real(dp) :: uB, uext, R, eta_jet, gmin, gmax, numin, numax, qind, B, D, &
+      tacc, g1, g2, tstep, Qnth, tmax, d_lum, z, tvar, tinj, eta_propto_gamma, &
+      gamma_bulk, theta_obs, R0, mu_obs, nu_ext, tesc, tlc, mu_mag, L_jet, &
       volume, sigma, beta_bulk, L_B, eps_B, f_rec
    real(dp), allocatable, dimension(:) :: freqs, t, Ntot, Inu, Ibb, gg, &
       dt, nu_obs, t_obs, dg, urad
@@ -38,15 +38,14 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    z = par_z
    tstep = par_tstep
    tmax = par_tmax
-   L_j = par_L_j
    eps_B = par_eps_B
    f_rec = par_frec
    sigma = par_sigma
-   if ( par_mu_mag > 1d0 ) then
-      gamma_bulk = par_mu_mag / (1d0 + sigma)
-   else
-      gamma_bulk = par_gamma_bulk
-   end if
+   L_jet = par_L_j
+   eta_jet = par_eta_j
+   eta_propto_gamma = 0.079d0
+   gamma_bulk = (eta_jet / eta_propto_gamma)**3
+   mu_mag = gamma_bulk * (1d0 + sigma)
    gmin = par_gmin
    gmax = par_gmax
    qind = par_qind
@@ -94,7 +93,7 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    uext = uext * gamma_bulk**2 !* (1d0 + beta_bulk + beta_bulk**2 / 3d0) !  Eq. (5.25) Dermer & Menon (2009)
 
    ! ----->    Magnetic field
-   L_B = sigma * L_j / (1d0 + sigma)
+   L_B = sigma * L_jet / (1d0 + sigma)
    uB = L_B / (pi * cLight * beta_bulk * (gamma_bulk * R)**2) ! B**2 / (8d0 * pi)
    B = dsqrt(uB * 8d0 * pi)
    nu0 = 4d0 * sigmaT * uB / (3d0 * mass_e * cLight)
@@ -139,7 +138,7 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    write(*, "('B         =', ES15.7)") B
    write(*, "('u_ext     =', ES15.7)") uext
    write(*, "('nu_ext    =', ES15.7)") nu_ext
-   write(*, "('mu        =', ES15.7)") par_mu_mag
+   write(*, "('mu        =', ES15.7)") mu_mag
    write(*, "('Gamma     =', ES15.7)") gamma_bulk
 
    build_f: do j=1,numdf
@@ -316,10 +315,11 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    call h5io_wdble0(group_id, 'gamma_1', g1, herror)
    call h5io_wdble0(group_id, 'gamma_2', g2, herror)
    call h5io_wdble0(group_id, 'pwl-index', qind, herror)
-   call h5io_wdble0(group_id, 'L_j', L_j, herror)
+   call h5io_wdble0(group_id, 'eta_jet', eta_jet, herror)
+   call h5io_wdble0(group_id, 'L_jet', L_jet, herror)
    call h5io_wdble0(group_id, 'nu_min', numin, herror)
    call h5io_wdble0(group_id, 'nu_max', numax, herror)
-   call h5io_wdble0(group_id, 'mu_mag', par_mu_mag, herror)
+   call h5io_wdble0(group_id, 'mu_mag', mu_mag, herror)
    call h5io_closeg(group_id, herror)
 
    ! ------  Saving data  ------
