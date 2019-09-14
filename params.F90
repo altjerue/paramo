@@ -42,7 +42,6 @@ contains
       read(77, *) par_tmin
       read(77, *) par_tvar
       read(77, *) par_L_j
-      read(77, *) par_eta_j
       read(77, *) par_E0
       read(77, *) par_n_ext
       read(77, *) par_eps_e

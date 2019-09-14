@@ -36,7 +36,6 @@ class parameters(object):
         self.tmin = 0e0                 # minimum time
         self.tvar = 2e0                 # variability time scale
         self.L_jet = 1e45               # jet luminosity
-        self.eta_jet = 0.3              # L_jet / L_Edd
         self.E0 = 1e50                  # energy of the blast wave
         self.n_ext = 1.0                # number density of the external medium
         self.g1 = 1e2                   # power-law min Lorentz factor
@@ -79,7 +78,6 @@ class parameters(object):
             print(fortran_double(self.tmin), ' ! minimum time', file=f)
             print(fortran_double(self.tvar), ' ! variability time scale', file=f)
             print(fortran_double(self.L_jet), ' ! jet luminosity', file=f)
-            print(fortran_double(self.eta_jet), ' ! L_jet / L_Edd', file=f)
             print(fortran_double(self.E0), ' ! energy of the blast wave', file=f)
             print(fortran_double(self.n_ext), ' ! number density of the external medium', file=f)
             print(fortran_double(self.eps_e), ' ! epsilon_e', file=f)
