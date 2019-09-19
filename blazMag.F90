@@ -47,8 +47,9 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    tmax = par_tmax
    eps_B = par_eps_B
    f_rec = par_frec
-   sigma = par_sigma
+   ! sigma = par_sigma
    L_jet = par_L_j
+   gamma_bulk = par_gamma_bulk
    mu_mag = par_mu_mag
    gmin = par_gmin
    gmax = par_gmax
@@ -72,13 +73,17 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
       Fmbs(numdf, numdt), Fssc(numdf, numdt), Feic(numdf, numdt))
 
 
+   !
    !   # #    # # #####     ####   ####  #    # #####
    !   # ##   # #   #      #    # #    # ##   # #    #
    !   # # #  # #   #      #      #    # # #  # #    #
    !   # #  # # #   #      #      #    # #  # # #    #
    !   # #   ## #   #      #    # #    # #   ## #    #
    !   # #    # #   #       ####   ####  #    # #####
-   gamma_bulk = mu_mag / (1d0 + sigma)
+   !
+
+   sigma = (mu_mag / gamma_bulk) - 1d0
+
    beta_bulk = bofg(gamma_bulk)
    theta_obs = par_theta_obs * pi / 180d0! 1d0 / gamma_bulk!
    mu_obs = dcos(theta_obs)
