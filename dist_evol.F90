@@ -217,9 +217,10 @@ contains
       c = -(dt / tlc) * CCp2 * YYp2 * dexp(ZZp2) / (dx * dxp2)
       a = -(dt / tlc) * CCm2 * YYm2 * dexp(-ZZm2) / (dx * dxm2)
       b = 1d0 + (dt / tlc) * ( CCp2 * YYp2 * dexp(-ZZp2) / dxp2 + CCm2 * YYm2 * dexp(ZZm2) / dxm2 ) / dx + dt / tesc
-
       call tridag_ser(a(2:), b, c(:Ng1), r, nout)
+
       nout = nout / (sigmaT * r_size)
+
    end subroutine FP_FinDif_difu
 
 
