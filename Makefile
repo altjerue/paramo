@@ -81,16 +81,16 @@ TESTS=xTests
 AFGLOW=xAglow
 
 # -----  dependencies  -----
-BLAZMAG_OBJ = params.o misc.o pwl_integ.o h5_inout.o K1.o K2.o SRtoolkit.o \
+BLAZMAG_OBJ = misc.o params.o pwl_integ.o h5_inout.o K1.o K2.o SRtoolkit.o \
 	anaFormulae.o radiation.o dist_evol.o blazMag.o blazMag_main.o
-TESTS_OBJ = params.o misc.o pwl_integ.o h5_inout.o K1.o K2.o SRtoolkit.o \
+TESTS_OBJ = misc.o params.o pwl_integ.o h5_inout.o K1.o K2.o SRtoolkit.o \
 	anaFormulae.o radiation.o dist_evol.o tests.o
-AFGLOW_OBJ = params.o misc.o pwl_integ.o h5_inout.o K1.o K2.o SRtoolkit.o \
+AFGLOW_OBJ = misc.o params.o pwl_integ.o h5_inout.o K1.o K2.o SRtoolkit.o \
 	anaFormulae.o radiation.o pairs.o dist_evol.o models.o afterglow.o \
-	afterglowH.o afterglow_main.o
+	afterglow_main.o
 
 # -----  rules  -----
-all: $(BLAZMAG) $(AFGLOW)
+all: $(BLAZMAG) $(TESTS) $(AFGLOW)
 
 # objects
 constants.o K2.o K1.o pwl_integ.o misc.o h5_inout.o: data_types.o
