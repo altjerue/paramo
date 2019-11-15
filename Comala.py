@@ -1,6 +1,6 @@
 import os
 from time import strftime, localtime
-from SAPyto.misc import fortran_double
+from SAPytho.misc import fortran_double
 
 
 #
@@ -239,6 +239,16 @@ class Runner(object):
         else:
             self.wIC = 'F'
         self.flabel = flabel  # a label to identify each output
+
+    def run_test(self, clean=False):
+        if clean:
+            self.comp.cleanup()
+        comp = compiler(rules='xTests', **self.comp_kw)
+        comp.compile()
+        run_cmd = '{0}xTests'.format(comp.compile_dir)
+        print("\n--> Running:\n  ", run_cmd, "\n")
+        os.system(run_cmd)
+        print("\n--> Finished")
 
     def run_blazMag(self, pream=None, clean=False, cl=False):
         comp = compiler(rules='xBlazMag', **self.comp_kw)
