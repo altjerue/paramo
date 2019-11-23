@@ -23,7 +23,7 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    integer(HID_T) :: file_id, group_id
    integer :: i, j, k, numbins, numdf, numdt, time_grid, herror
    real(dp) :: uB, uext, R, gmin, gmax, numin, numax, qind, B, D, g1, g2, &
-      tstep, Qnth, tmax, d_lum, z, tvar, tinj, gamma_bulk, theta_obs, Rdis, &
+      tstep, Qnth, tmax, d_lum, z, tinj, gamma_bulk, theta_obs, Rdis, &
       mu_obs, nu_ext, tesc, tlc, mu_mag, L_jet, volume, sigma, beta_bulk, L_B, &
       eps_B, f_rec
    real(dp), allocatable, dimension(:) :: freqs, t, Ntot, Inu, gg, dt, nu_obs, &
@@ -58,7 +58,6 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    numdt = par_numdt
    numdf = par_numdf
    time_grid = par_time_grid
-   tvar =  par_tvar
 
 
    allocate(t(0:numdt), freqs(numdf), Ntot(numdt), Inu(numdf), &
@@ -86,7 +85,7 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    theta_obs = par_theta_obs * pi / 180d0! 1d0 / gamma_bulk!
    mu_obs = dcos(theta_obs)
    D = Doppler(gamma_bulk, mu_obs)
-   R = par_R !0.95d0 * D * tvar * cLight / (1d0 + z)
+   R = par_R
 
    ! ----->    External radiation field
    nu_ext = par_nu_ext * gamma_bulk
