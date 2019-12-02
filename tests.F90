@@ -203,9 +203,11 @@ contains
    end subroutine steady_state
 
 
+   ! ==========================================================
    !
    !  Testing the model in Sari, Piran & Narayan (1998)
    !
+   ! ==========================================================
    subroutine blastwave_SPN98
       implicit none
       integer :: numg, numt, numf
@@ -256,8 +258,8 @@ contains
 
       zeros2 = 1d-200
       t(0) = 0d0
-      tacc = !1d0 / (C0(1) * 10d0**4.5d0) !tesc
-      tesc = 1.5d0 * R / cLight !2d0 * tacc ! 1d200 !
+      !tacc = !1d0 / (C0(1) * 10d0**4.5d0) !tesc
+      tesc = 1.1d0 * Rb / cLight !2d0 * tacc ! 1d200 !
       n(0, :) = injection_pwl(1d0, tacc, g, g1, g2, qind, 1d0)
 
       ! write(*, "(4ES15.7)") C0(1), tacc, tmax
@@ -292,6 +294,7 @@ contains
          L_e = epse * 4d0 * pi * R**2 * n0 * mass_p * cLight**3 * beta_bulk * gamma_bulk * (gamma_bulk - 1d0)
          Q0 = L_e * pwl_norm(mass_e * cLight**2, pind - 1d0, g1, g2)
          C0 = 4d0 * sigmaT * uB * pofg(gg)**2 / (3d0 * mass_e * cLight)
+         Qinj(:, i) = injection_pwl(t(i), 1d200, g, g1, g2, pind, Q0)
          if ( adiabatic ) &
                C0 = C0 + pofg(gg) * 1.6d0 * cLight * beta_bulk * gamma_bulk / R
 
@@ -303,7 +306,7 @@ contains
                &             zeros2, &
                &             Qinj(:, i) * tlc, &
                &             tesc / tlc, Rb)
-         
+
       end do
 
       ! Synchrotron model from SPN98
