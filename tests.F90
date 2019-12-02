@@ -1,6 +1,7 @@
 program tests
    use data_types
    use constants
+   use params
    use misc
    use pwl_integ
    use hdf5
@@ -13,7 +14,14 @@ program tests
    use K2
    implicit none
    character(*), parameter :: dir = "/Users/jesus/Documents/lab/Experiments/FPSteadyState/output/"
-
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   ! TODO:
+   !   [ ] dir as an input parameter
+   !   [ ] blast wave test: Numerical vs Sari, Piran & Narayan (1998)
+   !   [ ] choise of test as input
+   !       [ ] Modify Comala
+   !   [ ] 
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    call steady_state
    ! call rad_procs
 
@@ -194,6 +202,114 @@ contains
 
    end subroutine steady_state
 
+
+   !
+   !  Testing the model in Sari, Piran & Narayan (1998)
+   !
+   subroutine blastwave_SPN98
+      implicit none
+      integer :: numg, numt, numf
+      real(dp) :: epse, epsB, G0, d_lum, pind, B, R0, n0, E0, tmin, tmax, &
+         gmin, gmax, numin, numax, g1, g2, uB
+      real(dp), dimension(:) :: g, t, nu, D
+      real(dp), dimension(:,:) :: jsyn, asyn, Fnu, n
+      logical :: adiabatic
+
+      call read_params(params_file)
+      epse = par_eps_e
+      epsB = par_eps_B
+      G0 = par_gamma_bulk
+      d_lum = par_d_lum
+      tmin = par_tmin
+      tmax = par_tmax
+      gmin = par_gmin
+      gmax = par_gmax
+      pind = par_qind
+      numin = par_numin
+      numax = par_numax
+      numg = par_numbins
+      numt = par_numdt
+      numf = par_numdf
+      E0 = par_E0
+      n0 = par_n_ext
+      g1 = par_g1
+      g2 = par_g2
+      R0 = par_R0
+
+      allocate(g(numg), Qinj(numg), t(0:numt), dt(numt), dg(numg), &
+         C0(numg), aux0(numg), nu(numf), D(0:numt))
+      allocate(n(0:numt, numg), jsyn(numf, numt), asyn(numf, numt))
+
+      theta_obs = 1d0 / G0
+      mu_obs = dcos(theta_obs)
+      D(0) = Doppler(G0, mu_obs)
+      Rb = R / G0
+      volume = 4d0 * pi * Rb**3 / 3d0
+
+      build_f: do j=1,numf
+         freqs(j) = numin * ( (numax / numin)**(dble(j - 1) / dble(numf - 1)) )
+      end do build_f
+
+      build_g: do k = 1, numg
+         g(k) = gmin * (gmax / gmin)**(dble(k - 1) / dble(numg - 1))
+      end do build_g
+
+      zeros2 = 1d-200
+      t(0) = 0d0
+      tacc = !1d0 / (C0(1) * 10d0**4.5d0) !tesc
+      tesc = 1.5d0 * R / cLight !2d0 * tacc ! 1d200 !
+      n(0, :) = injection_pwl(1d0, tacc, g, g1, g2, qind, 1d0)
+
+      ! write(*, "(4ES15.7)") C0(1), tacc, tmax
+
+      time_loop: do i=1,numt
+
+         t(i) = tstep * ( (tmax / tstep)**(dble(i - 1) / dble(numt - 1)) )
+         dt = t(i) - t(i - 1)
+
+         !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
+         !$OMP& PRIVATE(j)
+         do j = 1, numdf
+            freqs(j) = nu_com_f(nu_obs(j), z, D(i - 1))
+            call mbs_emissivity(jmbs(j, i), freqs(j), gg, n_e(:, i - 1) / volume, B)
+            call mbs_absorption(ambs(j, i), freqs(j), gg, n_e(:, i - 1) / volume, B)
+            flux_num(j, i) = D(i - 1)**4 * volume * freqs(j) * jmbs(j, i) * opt_depth_blob(anut(j, i), R) / (4d0 * pi * d_lum**2)
+         end do
+         !$OMP END PARALLEL DO
+
+         call blast_wave_approx(t(i), G0, E0, n0, R, gamma_bulk, adiabatic)
+
+         D(i) = Doppler(gamma_bulk, mu_obs)
+         t_obs(i) = t_obs(i - 1) + 0.5d0 * (1d0 + z) * dt(i) * ( 1d0 / D(i) + 1d0 / D(i - 1) )
+         beta_bulk = bofg(gamma_bulk)
+         Rb = R / gamma_bulk
+         tlc = Rb / cLight
+
+         B = dsqrt(32d0 * pi * epsB * mass_p * n0) * cLight * gamma_bulk
+         uB = B**2 / (8d0 * pi)
+         g2 = dsqrt(6d0 * pi * eCharge * 1e-3 / (sigmaT * B))
+         g1 = epse * (gamma_bulk - 1d0) * mass_p * (pind - 2d0) / ((pind - 1d0) * mass_e)
+         L_e = epse * 4d0 * pi * R**2 * n0 * mass_p * cLight**3 * beta_bulk * gamma_bulk * (gamma_bulk - 1d0)
+         Q0 = L_e * pwl_norm(mass_e * cLight**2, pind - 1d0, g1, g2)
+         C0 = 4d0 * sigmaT * uB * pofg(gg)**2 / (3d0 * mass_e * cLight)
+         if ( adiabatic ) &
+               C0 = C0 + pofg(gg) * 1.6d0 * cLight * beta_bulk * gamma_bulk / R
+
+         call FP_FinDif_difu(dt / tlc, &
+               &             pofg(gg), &
+               &             n(:, i - 1), &
+               &             n(:, i), &
+               &             C0 * tlc, &
+               &             zeros2, &
+               &             Qinj(:, i) * tlc, &
+               &             tesc / tlc, Rb)
+         
+      end do
+
+      ! Synchrotron model from SPN98
+      call syn_aglow_SPN98(nu, t, E0, epse, epsB, G0, pind, n0, d_lum, adiabatic, flux_SPN98)
+
+   end subroutine GRB_afterglow_SPN98
 
 #if 0
    !  #####    ##   #####     #####  #####   ####  #####
