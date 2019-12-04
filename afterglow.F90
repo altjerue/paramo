@@ -176,7 +176,6 @@ subroutine afterglow(params_file, output_file, with_abs, with_cool, with_ic)
    write(*, *) ''
    write(*, *) screan_head
 
-
    ! ###### #    #  ####  #      #    # ##### #  ####  #    #
    ! #      #    # #    # #      #    #   #   # #    # ##   #
    ! #####  #    # #    # #      #    #   #   # #    # # #  #
@@ -295,15 +294,15 @@ subroutine afterglow(params_file, output_file, with_abs, with_cool, with_ic)
 
       theta_j = theta_j0! + 1d0 / gamma_bulk(i) / dsqrt(3d0)
       R = Rbw(i) / gamma_bulk(i)
-      ! R = Rbw(i) / (gamma_bulk(i) * 12d0)!* 2d0 * 
+      ! R = Rbw(i) / (gamma_bulk(i) * 12d0)!* 2d0 * dsin(theta_j * 0.5d0)!
+      volume = 4d0 * pi * R**3 / 3d0
+      ! volume = (1d0 - dcos(theta_j)) * 2d0 * pi * Rbw(i)**3 / (12d0 * gamma_bulk(i))
       ! volume = 4d0 * pi * Rbw(i)**2 * R
       Rb = R!bw(i) * (4d0 * gamma_bulk(i))**(-1d0 / 3d0)
       tlc = Rb / cLight
 
-      B = 1d6 * (R0 / Rbw(i))
-  dsin(theta_j * 0.5d0)!
-      volume = 4d0 * pi * R**3 / 3d0
-      ! volume = (1d0 - dcos(theta_j)) * 2d0 * pi * Rbw(i)**3 / (12d0 * gamma_bulk(i))    ! B = dsqrt(32d0 * pi * eps_B * mass_p * n_ext) * cLight * gamma_bulk(i)
+      B = 1e6 * (R0 / Rbw(i))
+      ! B = dsqrt(32d0 * pi * eps_B * mass_p * n_ext) * cLight * gamma_bulk(i)
       uB = B**2 / (8d0 * pi)
 
       uext = uext0 * gamma_bulk(i)**2! * (1d0 + beta_bulk**2 / 3d0)

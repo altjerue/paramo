@@ -42,7 +42,7 @@ class parameters(object):
         self.g2 = 1e4                   # power-law max Lorentz factor
         self.gmin = 1.01                # EED minimum Lorentz factor
         self.gmax = 2e4                 # EED maximum Lorentz factor
-        self.qind = 2.5                 # EED power-law index
+        self.pind = 2.5                 # EED power-law index
         self.nu_ext = 1e14              # external radiation field freq.
         self.u_ext = 1e-4               # external radiation field ener. dens.
         self.numin = 1e7                # minimum frequency
@@ -86,7 +86,7 @@ class parameters(object):
             print(fortran_double(self.g2), ' ! power-law max Lorentz factor', file=f)
             print(fortran_double(self.gmin), ' ! EED min Lorentz factor', file=f)
             print(fortran_double(self.gmax), ' ! EED max Lorentz factor', file=f)
-            print(fortran_double(self.qind), ' ! EED power-law index', file=f)
+            print(fortran_double(self.pind), ' ! EED power-law index', file=f)
             print(fortran_double(self.nu_ext), ' ! external rad. field frequency', file=f)
             print(fortran_double(self.u_ext), ' ! external rad. field ener. density', file=f)
             print(fortran_double(self.numin), ' ! min frequency', file=f)
@@ -241,9 +241,9 @@ class Runner(object):
         self.flabel = flabel  # a label to identify each output
 
     def run_test(self, clean=False):
-        if clean:
-            self.comp.cleanup()
         comp = compiler(rules='xTests', **self.comp_kw)
+        if clean:
+            comp.cleanup()
         comp.compile()
         run_cmd = '{0}xTests'.format(comp.compile_dir)
         print("\n--> Running:\n  ", run_cmd, "\n")

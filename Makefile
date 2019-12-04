@@ -1,8 +1,8 @@
 ifeq ($(MPI),1)
 FC=h5pfc
-else  # MPI
+else  #####  MPI
 FC=h5fc
-endif # MPI
+endif #####  MPI
 
 
 # definitions
@@ -19,43 +19,43 @@ ifeq ($(DBG),1)
 ifeq ($(IFORT),1)
 OPTIMIZATION=-g -debug all -check all -check nostack -warn all -fp-stack-check -heap-arrays \
 	-ftrapuv -free
-else  # IFORT
+else  #####  IFORT
 OPTIMIZATION=-g -Wall -ffree-form -ffree-line-length-none \
 	-ffpe-trap=invalid,zero -fbacktrace -fcheck=all \
 	-fbounds-check -fno-unsafe-math-optimizations -frounding-math \
 	-fsignaling-nans
-endif # IFORT
+endif #####  IFORT
 
-else # DBG
+else ######  DBG
 
 ifeq ($(IFORT),1)
 
 ifeq ($(IFAST),1)
 FASTI=-fast
-else  # IFAST
-FASTI=-O5
-endif # IFAST
+else  ##### IFAST
+FASTI=-O3
+endif #####  IFAST
 
 ifeq ($(IPAR),1)
 PARI=-parallel
-endif #IPAR
+endif #####  IPAR
 
 ifeq ($(OPENMP),1)
 OMP=-qopenmp
-endif #OPENMP
+endif #####  OPENMP
 
 OPTIMIZATION=-free $(FASTI) $(PARI) $(OMP)
 
-else # IFORT
+else #####  IFORT
 
 ifeq ($(OPENMP),1)
 OMP=-fopenmp
-endif # OPENMP
+endif #####  OPENMP
 
-OPTIMIZATION=-O5 -ftree-vectorize -funroll-all-loops -ffree-form \
+OPTIMIZATION=-O3 -ftree-vectorize -funroll-all-loops -ffree-form \
 	-ffree-line-length-none -fbacktrace $(OMP)
 
-endif # IFORT
+endif #####  IFORT
 
 ifeq ($(COREI7),1)
 OPTIMIZATION+=-march=corei7 -mtune=corei7
@@ -70,7 +70,7 @@ OPTIMIZATION+=-arch ssse3 -mtune=corei7-avx
 LIBS+=-L/usr/lib64
 endif
 
-endif # DBG
+endif #####  DBG
 
 COPT=-c $(OPTIMIZATION) $(DEFS) $(INCL)
 LOPT=$(OPTIMIZATION) $(DEFS) $(LIBS)
@@ -84,7 +84,7 @@ AFGLOW=xAglow
 BLAZMAG_OBJ = misc.o params.o pwl_integ.o h5_inout.o K1.o K2.o SRtoolkit.o \
 	anaFormulae.o radiation.o dist_evol.o blazMag.o blazMag_main.o
 TESTS_OBJ = misc.o params.o pwl_integ.o h5_inout.o K1.o K2.o SRtoolkit.o \
-	anaFormulae.o radiation.o dist_evol.o tests.o
+	anaFormulae.o models.o radiation.o dist_evol.o tests.o
 AFGLOW_OBJ = misc.o params.o pwl_integ.o h5_inout.o K1.o K2.o SRtoolkit.o \
 	anaFormulae.o radiation.o pairs.o dist_evol.o models.o afterglow.o \
 	afterglow_main.o
@@ -107,7 +107,7 @@ radiation.o: data_types.o constants.o misc.o pwl_integ.o SRtoolkit.o \
 	anaFormulae.o
 dist_evol.o: data_types.o constants.o misc.o pwl_integ.o SRtoolkit.o K2.o
 tests.o: data_types.o constants.o misc.o pwl_integ.o h5_inout.o SRtoolkit.o \
-	anaFormulae.o radiation.o dist_evol.o K1.o K2.o
+	anaFormulae.o models.o radiation.o dist_evol.o K1.o K2.o
 afterglow.o afterglowH.o: data_types.o constants.o misc.o pwl_integ.o \
 	h5_inout.o models.o SRtoolkit.o anaFormulae.o radiation.o dist_evol.o \
 	K1.o K2.o

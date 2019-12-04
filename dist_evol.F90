@@ -145,41 +145,52 @@ contains
    !  #       # #  # # #     # # #
    !  #       # #   ## #     # # #
    !  #       # #    # ######  # #
-   subroutine FP_FinDif_difu(dt, g, nin, nout, gdot, DD, QQ, tesc, r_size)
+   subroutine FP_FinDif_difu(dt_in, g, nin, nout, gdot_in, Din, Qin, tesc_in, r_size)
       implicit none
-      real(dp), intent(in) :: dt, tesc, r_size
-      real(dp), intent(in), dimension(:) :: g, nin, gdot, DD, QQ
+      real(dp), intent(in) :: dt_in, tesc_in, r_size
+      real(dp), intent(in), dimension(:) :: g, nin, gdot_in, Din, Qin
       real(dp), intent(out), dimension(:) :: nout
       real(dp), parameter :: eps = 1e-3
       integer :: i, Ng, Ng1
-      real(dp) :: dBB, tlc
-      real(dp), dimension(size(g)) :: dx, dxp2, dxm2, CCp2, CCm2, BBp2, BBm2, YYp2, YYm2, WWp2, WWm2, ZZp2, ZZm2, a, b, c, r
+      real(dp) :: dBB, tlc, dt, tesc
+      real(dp), dimension(size(g)) :: dx, dxp2, dxm2, CCp2, CCm2, BBp2, BBm2, &
+         YYp2, YYm2, WWp2, WWm2, ZZp2, ZZm2, a, b, c, r, DD, QQ, gdot
 
       Ng = size(g)
       Ng1 = Ng - 1
 
       tlc = r_size / cLight
+      dt = dt_in / tlc
+      if ( tesc_in < 1d100 .and. tesc_in > 1d-100 ) then
+         tesc = tesc_in / tlc
+      else
+         tesc = tesc_in
+      end if
+      gdot = gdot_in * tlc
+      DD = Din * tlc
+      QQ = Qin * tlc
+
       dxp2(:Ng1) = g(2:) - g(:Ng1)
       dxp2(Ng) = dxp2(Ng1)
       dxm2(2:) = dxp2(:Ng1)
       dxm2(1) = dxm2(2)
       dx = dsqrt(dxp2 * dxm2)
 
-      CCp2(:Ng1) = 0.25d0 * (DD(2:) + DD(:Ng1)) * tlc
+      CCp2(:Ng1) = 0.25d0 * (DD(2:) + DD(:Ng1))
       CCm2(2:) = CCp2(:Ng1)
-      CCp2(Ng) = 0.25d0 * DD(Ng) * tlc
-      CCm2(1) = 0.25d0 * DD(1) * tlc
+      CCp2(Ng) = 0.25d0 * DD(Ng)
+      CCm2(1) = 0.25d0 * DD(1)
 
-      BBp2(:Ng1) = -0.5d0 * ((DD(2:) - DD(:Ng1)) / dxp2(:Ng1) - (gdot(2:) + gdot(:Ng1))) * tlc
-      BBm2(2:) = -0.5d0 * ((DD(2:) - DD(:Ng1)) / dxm2(2:) - (gdot(2:) + gdot(:Ng1))) * tlc
-      BBp2(Ng) = -0.5d0 * ((DD(Ng) - DD(Ng1)) / dxp2(Ng) - (gdot(Ng) + gdot(Ng1))) * tlc
+      BBp2(:Ng1) = -0.5d0 * ((DD(2:) - DD(:Ng1)) / dxp2(:Ng1) - (gdot(2:) + gdot(:Ng1)))
+      BBm2(2:) = -0.5d0 * ((DD(2:) - DD(:Ng1)) / dxm2(2:) - (gdot(2:) + gdot(:Ng1)))
+      BBp2(Ng) = -0.5d0 * ((DD(Ng) - DD(Ng1)) / dxp2(Ng) - (gdot(Ng) + gdot(Ng1)))
       call polint(g(2:), BBm2(2:), g(1), BBm2(1), dBB)
 
       WWp2 = dxp2 * BBp2 / CCp2
       WWm2 = dxm2 * BBm2 / CCm2
 
       do i = 1, Ng
-      
+
          if ( 0.5d0 * WWp2(i) > 200d0 ) then
             ZZp2(i) = 200d0
          else if ( 0.5d0 * WWp2(i) < -200d0 ) then
@@ -187,7 +198,7 @@ contains
          else
             ZZp2(i) = 0.5d0 * WWp2(i)
          end if
-      
+
          if ( 0.5d0 * WWm2(i) > 200d0 ) then
             ZZm2(i) = 200d0
          else if ( 0.5d0 * WWm2(i) < -200d0 ) then
@@ -214,9 +225,9 @@ contains
       end do
 
       r = (nin + dt * QQ) * (sigmaT * r_size)
-      c = -(dt / tlc) * CCp2 * YYp2 * dexp(ZZp2) / (dx * dxp2)
-      a = -(dt / tlc) * CCm2 * YYm2 * dexp(-ZZm2) / (dx * dxm2)
-      b = 1d0 + (dt / tlc) * ( CCp2 * YYp2 * dexp(-ZZp2) / dxp2 + CCm2 * YYm2 * dexp(ZZm2) / dxm2 ) / dx + dt / tesc
+      c = -dt * CCp2 * YYp2 * dexp(ZZp2) / (dx * dxp2)
+      a = -dt * CCm2 * YYm2 * dexp(-ZZm2) / (dx * dxm2)
+      b = 1d0 + dt * ( CCp2 * YYp2 * dexp(-ZZp2) / dxp2 + CCm2 * YYm2 * dexp(ZZm2) / dxm2 ) / dx + dt / tesc
       call tridag_ser(a(2:), b, c(:Ng1), r, nout)
 
       nout = nout / (sigmaT * r_size)

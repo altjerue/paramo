@@ -7,13 +7,13 @@ program tests
    use hdf5
    use h5_inout
    use SRtoolkit
+   use models
    use anaFormulae
    use dist_evol
    use radiation
    use K1
    use K2
    implicit none
-   character(*), parameter :: dir = "/Users/jesus/Documents/lab/Experiments/FPSteadyState/output/"
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! TODO:
    !   [ ] dir as an input parameter
@@ -22,14 +22,15 @@ program tests
    !       [ ] Modify Comala
    !   [ ] 
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   call steady_state
+   ! call steady_state
+   call blastwave_SPN98
    ! call rad_procs
 
    ! write(*, *) '=======  FINISHED  ======='
    write(*, *) ''
    
 contains
-   
+
    subroutine steady_state
       ! ************************************************************************
       !
@@ -40,7 +41,7 @@ contains
       implicit none
       integer(HID_T) :: file_id
       integer :: i, k, numg, numt, herror, numf, j
-      real(dp) :: g1, g2, gmin, gmax, tmax, tstep, tlc, qind, tacc, tesc, R, vol, B, numax, numin, uB
+      real(dp) :: g1, g2, gmin, gmax, tmax, tstep, qind, tacc, tesc, R, B, numax, numin, uB
       real(dp), allocatable, dimension(:) :: t, g, Q0, D0, C0, aux0, dt, dg, &
          Ntot1, Ntot2, Ntot3, Ntot4, Ntot5, Ntot6, zero1, zero2, freqs, &
          Inu1, Inu4, Inu5, Inu6
@@ -58,7 +59,7 @@ contains
       numax = 1d27
       tstep = 1e0
       tmax = 1e7
-      qind = 2.3d0
+      qind = 0d0
       R = 1e16
       B = 1d0
       uB = B**2 / (8d0 * pi)
@@ -87,9 +88,9 @@ contains
       t(0) = 0d0
       zero1 = 1d-200
       zero2 = 0d0
-      C0 = 4d0 * sigmaT * uB / (3d0 * mass_e * cLight)!3.48d-7
+      C0 = 3.48d-11 ! 4d0 * sigmaT * uB / (3d0 * mass_e * cLight)
       tacc = 1d0 / (C0(1) * 10d0**4.5d0) !tesc
-      tesc = 2d0 * tacc !1.5d0 * R / cLight ! 1d200 !
+      tesc = tacc ! 1d200 ! 1.5d0 * R / cLight !
       D0 = 0.5d0 * pofg(g)**2 / tacc
       n1(0, :) = injection_pwl(1d0, tacc, g, g1, g2, qind, 1d0)
       n2(0, :) = n1(0, :)
@@ -123,6 +124,7 @@ contains
          Ntot5(i) = sum(n5(i, :) * dg)
          Ntot6(i) = sum(n6(i, :) * dg)
 
+#if 0
          !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
          !$OMP& PRIVATE(j)
          do j = 1, numf
@@ -151,11 +153,11 @@ contains
             call IC_iso_powlaw(jssc6(j, i), freqs(j), freqs, Inu6, n6(i, :), g)
          end do
          !$OMP END PARALLEL DO
-
+#endif
       end do time_loop
 
       call h5open_f(herror)
-      call h5io_createf(dir//"SSsol.h5", file_id, herror)
+      call h5io_createf("SSsol_dbg.h5", file_id, herror)
       call h5io_wint0(file_id, 'numdt', numt, herror)
       call h5io_wint0(file_id, 'numbins', numg, herror)
       call h5io_wdble0(file_id, 't_max', tmax, herror)
@@ -203,21 +205,24 @@ contains
    end subroutine steady_state
 
 
-   ! ==========================================================
+   ! ===========================================================================
    !
-   !  Testing the model in Sari, Piran & Narayan (1998)
+   !   Testing the model in Sari, Piran & Narayan (1998)
    !
-   ! ==========================================================
+   ! ===========================================================================
    subroutine blastwave_SPN98
       implicit none
-      integer :: numg, numt, numf
+      integer(HID_T) :: file_id, group_id
+      integer :: numg, numt, numf, i, j, k, herror
       real(dp) :: epse, epsB, G0, d_lum, pind, B, R0, n0, E0, tmin, tmax, &
-         gmin, gmax, numin, numax, g1, g2, uB
-      real(dp), dimension(:) :: g, t, nu, D
-      real(dp), dimension(:,:) :: jsyn, asyn, Fnu, n
+         gmin, gmax, numin, numax, g1, g2, uB, beta_bulk, dt, gamma_bulk, L_e, &
+         mu_obs, Q0, R, Rb, tesc, theta_obs, tlc, volume, eps_g2
+      real(dp), allocatable, dimension(:) :: g, t, nu, D, Qinj, C0, t_obs, &
+         zeros2, nu_obs
+      real(dp), allocatable, dimension(:,:) :: jsyn, asyn, flux1, flux2, n
       logical :: adiabatic
 
-      call read_params(params_file)
+      call read_params('SPN98.par')
       epse = par_eps_e
       epsB = par_eps_B
       G0 = par_gamma_bulk
@@ -238,81 +243,138 @@ contains
       g2 = par_g2
       R0 = par_R0
 
-      allocate(g(numg), Qinj(numg), t(0:numt), dt(numt), dg(numg), &
-         C0(numg), aux0(numg), nu(numf), D(0:numt))
-      allocate(n(0:numt, numg), jsyn(numf, numt), asyn(numf, numt))
+      allocate(g(numg), Qinj(numg), t(0:numt), C0(numg), nu(numf), D(0:numt), &
+         t_obs(0:numt), nu_obs(numf), zeros2(numg))
+      allocate(n(numg, 0:numt), jsyn(numf, numt), asyn(numf, numt), &
+         flux1(numf, numt), flux2(numf, numt))
 
-      theta_obs = 1d0 / G0
+      adiabatic = .false.
+
+      theta_obs = 0d0 / G0
       mu_obs = dcos(theta_obs)
+      beta_bulk = bofg(G0)
       D(0) = Doppler(G0, mu_obs)
+      R = R0
       Rb = R / G0
-      volume = 4d0 * pi * Rb**3 / 3d0
+      volume = 4d0 * pi * R**3 / 3d0 
 
       build_f: do j=1,numf
-         freqs(j) = numin * ( (numax / numin)**(dble(j - 1) / dble(numf - 1)) )
+         nu_obs(j) = numin * ( (numax / numin)**(dble(j - 1) / dble(numf - 1)) )
       end do build_f
 
       build_g: do k = 1, numg
          g(k) = gmin * (gmax / gmin)**(dble(k - 1) / dble(numg - 1))
       end do build_g
-
       zeros2 = 1d-200
+
+      B = dsqrt(32d0 * pi * epsB * mass_p * n0) * cLight * G0
+      uB = B**2 / (8d0 * pi)
+      eps_g2 = 0.01d0
+      g2 = dsqrt(6d0 * pi * eCharge * eps_g2 / (sigmaT * B))
+      g1 = epse * (G0 - 1d0) * mass_p * (pind - 2d0) / ((pind - 1d0) * mass_e)
+      L_e = epse * 4d0 * pi * R**2 * n0 * mass_p * cLight**3 * beta_bulk * G0 * (G0 - 1d0)
+      Q0 = L_e * pwl_norm(volume * mass_e * cLight**2, pind - 1d0, g1, g2)
+
       t(0) = 0d0
-      !tacc = !1d0 / (C0(1) * 10d0**4.5d0) !tesc
+      t_obs(0) = 0d0
       tesc = 1.1d0 * Rb / cLight !2d0 * tacc ! 1d200 !
-      n(0, :) = injection_pwl(1d0, tacc, g, g1, g2, qind, 1d0)
+      n(:, 0) = injection_pwl(0d0, 1d200, g, g1, g2, pind, Q0)
 
       ! write(*, "(4ES15.7)") C0(1), tacc, tmax
 
-      time_loop: do i=1,numt
+      time_loop: do i=1, numt
 
-         t(i) = tstep * ( (tmax / tstep)**(dble(i - 1) / dble(numt - 1)) )
-         dt = t(i) - t(i - 1)
+         t_obs(i) = tmin * ( (tmax / tmin)**(dble(i - 1) / dble(numt - 1)) )
 
-         !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
-         !$OMP& PRIVATE(j)
-         do j = 1, numdf
-            freqs(j) = nu_com_f(nu_obs(j), z, D(i - 1))
-            call mbs_emissivity(jmbs(j, i), freqs(j), gg, n_e(:, i - 1) / volume, B)
-            call mbs_absorption(ambs(j, i), freqs(j), gg, n_e(:, i - 1) / volume, B)
-            flux_num(j, i) = D(i - 1)**4 * volume * freqs(j) * jmbs(j, i) * opt_depth_blob(anut(j, i), R) / (4d0 * pi * d_lum**2)
-         end do
-         !$OMP END PARALLEL DO
-
-         call blast_wave_approx(t(i), G0, E0, n0, R, gamma_bulk, adiabatic)
+         call blastwave_approx(t_obs(i), G0, E0, n0, R, gamma_bulk, adiabatic)
 
          D(i) = Doppler(gamma_bulk, mu_obs)
-         t_obs(i) = t_obs(i - 1) + 0.5d0 * (1d0 + z) * dt(i) * ( 1d0 / D(i) + 1d0 / D(i - 1) )
          beta_bulk = bofg(gamma_bulk)
          Rb = R / gamma_bulk
+         volume = 4d0 * pi * R**3 / 3d0
          tlc = Rb / cLight
+         tesc = tlc
+         t(i) = t(i - 1) + 0.5d0 * (t_obs(i) - t_obs(i - 1)) * (D(i) + D(i - 1))
+         dt = t(i) - t(i - 1)
 
          B = dsqrt(32d0 * pi * epsB * mass_p * n0) * cLight * gamma_bulk
          uB = B**2 / (8d0 * pi)
-         g2 = dsqrt(6d0 * pi * eCharge * 1e-3 / (sigmaT * B))
+         g2 = dsqrt(6d0 * pi * eCharge * eps_g2 / (sigmaT * B))
          g1 = epse * (gamma_bulk - 1d0) * mass_p * (pind - 2d0) / ((pind - 1d0) * mass_e)
          L_e = epse * 4d0 * pi * R**2 * n0 * mass_p * cLight**3 * beta_bulk * gamma_bulk * (gamma_bulk - 1d0)
-         Q0 = L_e * pwl_norm(mass_e * cLight**2, pind - 1d0, g1, g2)
-         C0 = 4d0 * sigmaT * uB * pofg(gg)**2 / (3d0 * mass_e * cLight)
-         Qinj(:, i) = injection_pwl(t(i), 1d200, g, g1, g2, pind, Q0)
-         if ( adiabatic ) &
-               C0 = C0 + pofg(gg) * 1.6d0 * cLight * beta_bulk * gamma_bulk / R
+         Q0 = L_e * pwl_norm(volume * mass_e * cLight**2, pind - 1d0, g1, g2)
+         Qinj = injection_pwl(t(i), 1d200, g, g1, g2, pind, Q0)
+         C0 = (g * 1.5d0 * cLight * beta_bulk * gamma_bulk / R) + (4d0 * sigmaT * uB * pofg(g)**2 / (3d0 * mass_e * cLight))
 
-         call FP_FinDif_difu(dt / tlc, &
-               &             pofg(gg), &
+         call FP_FinDif_difu(dt, &
+               &             pofg(g), &
                &             n(:, i - 1), &
                &             n(:, i), &
-               &             C0 * tlc, &
+               &             C0, &
                &             zeros2, &
-               &             Qinj(:, i) * tlc, &
-               &             tesc / tlc, Rb)
+               &             Qinj, &
+               &             1d200, Rb)
 
-      end do
+         do k = 1, numg
+            if ( g(k) < g1 ) n(k, i) = 0d0
+         end do
+
+         !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
+         !$OMP& PRIVATE(j)
+         do j = 1, numf
+            nu(j) = nu_com_f(nu_obs(j), 0d0, D(i))
+            call mbs_emissivity(jsyn(j, i), nu(j), g, n(:, i), B)
+            ! flux1(j, i) = D(i)**4 * volume * nu(j) * jsyn(j, i) / (4d0 * pi * d_lum**2)
+            call mbs_absorption(asyn(j, i), nu(j), g, n(:, i), B)
+            flux1(j, i) = D(i)**3 * volume * jsyn(j, i) * opt_depth_blob(asyn(j, i), Rb) / (4d0 * pi * d_lum**2)
+         end do
+         !$OMP END PARALLEL DO
+
+      end do time_loop
 
       ! Synchrotron model from SPN98
-      call syn_aglow_SPN98(nu, t, E0, epse, epsB, G0, pind, n0, d_lum, adiabatic, flux_SPN98)
+      call syn_aglow_SPN98(nu_obs, t_obs(1:), E0, epse, epsB, G0, pind, n0, d_lum, adiabatic, flux2)
 
-   end subroutine GRB_afterglow_SPN98
+      call h5open_f(herror)
+      call h5io_createf("SPN98.h5", file_id, herror)
+      call h5io_createg(file_id, "Parameters", group_id, herror)
+      call h5io_wint0(group_id, 'numt', numt, herror)
+      call h5io_wint0(group_id, 'numf', numf, herror)
+      call h5io_wint0(group_id, 'numg', numg, herror)
+      call h5io_wdble0(group_id, 't_max', tmax, herror)
+      call h5io_wdble0(group_id, 't_min', tmin, herror)
+      call h5io_wdble0(group_id, 'gamma_min', gmin, herror)
+      call h5io_wdble0(group_id, 'gamma_max', gmax, herror)
+      call h5io_wdble0(group_id, 'gamma_1', g1, herror)
+      call h5io_wdble0(group_id, 'gamma_2', g2, herror)
+      call h5io_wdble0(group_id, 'pwl-index', pind, herror)
+      call h5io_wdble0(group_id, 'd_lum', d_lum, herror)
+      call h5io_wdble0(group_id, 'view-angle', par_theta_obs, herror)
+      call h5io_wdble0(group_id, 'epsilon_e', epse, herror)
+      call h5io_wdble0(group_id, 'epsilon_B', epsB, herror)
+      call h5io_wdble0(group_id, 'nu_min', numin, herror)
+      call h5io_wdble0(group_id, 'nu_max', numax, herror)
+      call h5io_wdble0(group_id, 'G0', G0, herror)
+      call h5io_wdble0(group_id, 'E0', E0, herror)
+      call h5io_wdble0(group_id, 'R0', R0, herror)
+      call h5io_wdble0(group_id, 'n_ext', n0, herror)
+      call h5io_closeg(group_id, herror)
+      call h5io_wdble0(file_id, 't_esc', tesc, herror)
+      call h5io_wdble1(file_id, 'time', t(1:), herror)
+      call h5io_wdble1(file_id, 't_obs', t_obs(1:), herror)
+      call h5io_wdble1(file_id, 'nu_obs', nu_obs, herror)
+      call h5io_wdble1(file_id, 'gamma', g, herror)
+      call h5io_wdble1(file_id, 'freqs', nu, herror)
+      call h5io_wdble2(file_id, 'EED', n(1:, :), herror)
+      call h5io_wdble2(file_id, 'jsyn', jsyn, herror)
+      call h5io_wdble2(file_id, 'asyn', asyn, herror)
+      call h5io_wdble2(file_id, 'flux1', flux1, herror)
+      call h5io_wdble2(file_id, 'flux2', flux2, herror)
+      call h5io_closef(file_id, herror)
+      call h5close_f(herror)
+
+
+   end subroutine blastwave_SPN98
 
 #if 0
    !  #####    ##   #####     #####  #####   ####  #####

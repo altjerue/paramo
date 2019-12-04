@@ -28,7 +28,7 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
       eps_B, f_rec
    real(dp), allocatable, dimension(:) :: freqs, t, Ntot, Inu, gg, dt, nu_obs, &
       t_obs, dg, urad
-   real(dp), allocatable, dimension(:, :) :: nu0, nn, jnut, jmbs, jssc, jeic, &
+   real(dp), allocatable, dimension(:,:) :: nu0, nn, jnut, jmbs, jssc, jeic, &
       ambs, anut, Qinj, Ddif, Fmbs, Feic, Fssc, Fnut
 
 

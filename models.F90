@@ -29,7 +29,7 @@ contains
       Gshk = (l * (x**3 - 1d0) + G0) / dsqrt( 1d0 + 2d0 * G0 * l * (x**3 - 1d0) + (l * (x**3 - 1d0))**2 )
    end subroutine adiab_blast_wave
 
-   subroutine blast_wave_approx(t, G0, E0, n, Rshk, Gshk, adiabatic)
+   subroutine blastwave_approx(t, G0, E0, n, Rshk, Gshk, adiabatic)
       ! ************************************************************************
       !  Description:
       !     This is the setup for the model in Sari, Piran & Narayan, 1998,
@@ -37,18 +37,18 @@ contains
       ! ************************************************************************
       implicit none
       real(dp), intent(in) :: t, G0, E0, n
-      real(dp), intent(out) :: Rshk, Gshk
       logical, intent(in) :: adiabatic
+      real(dp), intent(out) :: Rshk, Gshk
       real(dp) :: M, L
       M = E0 / (G0 * cLight**2)
       L = (17d0 * M / (16d0 * pi * mass_p * n))**(1d0 / 3d0)
       if ( adiabatic ) then
          Rshk = (17d0 * E0 * t / (4d0 * pi * mass_p * n * cLight))**(0.25d0)
-         Gbulk = (17d0 * E0 / (1024d0 * pi * mass_p * n * cLight**5 * t**3))**(0.125d0)
+         Gshk = (17d0 * E0 / (1024d0 * pi * mass_p * n * cLight**5 * t**3))**(0.125d0)
       else
-         R = (4d0 * cLight * t / L)**(1d0 / 7d0) * L
-         Gbulk = (4d0 * cLight * t / L)**(-3d0 / 7d0)
+         Rshk = (4d0 * cLight * t / L)**(1d0 / 7d0) * L
+         Gshk = (4d0 * cLight * t / L)**(-3d0 / 7d0)
       end if
-   end subroutine blast_wave_approx
+   end subroutine blastwave_approx
 
 end module models
