@@ -82,7 +82,7 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    mu_mag = gamma_bulk * (sigma + 1d0)
 
    beta_bulk = bofg(gamma_bulk)
-   theta_obs = par_theta_obs * pi / 180d0! 1d0 / gamma_bulk!
+   theta_obs = 1d0 / gamma_bulk!par_theta_obs * pi / 180d0!
    mu_obs = dcos(theta_obs)
    D = Doppler(gamma_bulk, mu_obs)
    R = par_R
@@ -103,9 +103,9 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
       ! g2 = par_g2
       g2 = dsqrt(6d0 * pi * eCharge * 1d-6 / (sigmaT * B))
    else if ( qind > 1d0 .and. qind < 2d0 ) then
-      g1 = 1e3
+      g1 = par_g1
       ! g2 = dsqrt(6d0 * pi * eCharge * 1d-3 / (sigmaT * B))
-      g2 = ( f_rec * (sigma + 1d0) * (mass_p / mass_e) * ((2d0 - qind) / (qind - 1d0)) )**(1d0 / (2d0 - qind)) * g1**((1d0 - qind) / (2d0 - qind))
+      g2 = ( f_rec * (sigma + 1d0) * (mass_p / mass_e) * ((2d0 - qind) / (qind - 1d0)) * g1**(1d0 - qind) )**(1d0 / (2d0 - qind))
    else
       g1 = par_g1
       g2 = par_g2
@@ -121,7 +121,6 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    ! Qnth = eps_e * (L_j - L_B) * pwl_norm(volume * mass_e * cLight**2, qind - 1d0, g1, g2)
 
    write(*, "('--> Simulation setup')")
-   ! write(*, *) ''
    write(*, "('theta_obs =', ES15.7)") theta_obs
    write(*, "('Doppler   =', ES15.7)") D
    write(*, "('gamma_1   =', ES15.7)") g1
