@@ -13,3 +13,5 @@ x*
 *.log
 __pycache__
 *__genmod*
+*.xcodeproj
+*.xcworkspace

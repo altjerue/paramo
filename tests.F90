@@ -124,7 +124,6 @@ contains
          Ntot5(i) = sum(n5(i, :) * dg)
          Ntot6(i) = sum(n6(i, :) * dg)
 
-#if 0
          !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
          !$OMP& PRIVATE(j)
          do j = 1, numf
@@ -153,7 +152,7 @@ contains
             call IC_iso_powlaw(jssc6(j, i), freqs(j), freqs, Inu6, n6(i, :), g)
          end do
          !$OMP END PARALLEL DO
-#endif
+
       end do time_loop
 
       call h5open_f(herror)
@@ -267,16 +266,17 @@ contains
       Bbulk(0) = bofg(G0)
       D(0) = Doppler(G0, mu_obs)
       R(0) = par_R
-      Rb = R(0) / G0
-      ! volume = 4d0 * pi * R(0)**2 * Bbulk(0) * G0 * cLight
-      volume = 4d0 * pi * Rb**3 / 3d0
+      Rb = dr!R(0) / G0
+      ! volume = 4d0 * pi * R(0)**2 * () !Bbulk(0) * G0 * cLight
+      volume = 4d0 * pi * R(0)**3 / (12d0 * G0)
+      ! volume = 4d0 * pi * Rb**3 / 3d0
 
       B = dsqrt(32d0 * pi * epsB * mass_p * n0) * cLight * G0
       uB = B**2 / (8d0 * pi)
       eps_g2 = 0.35d0
       g2 = dsqrt(6d0 * pi * eCharge * eps_g2 / (sigmaT * B))
       g1 = epse * (G0 - 1d0) * mass_p * (pind - 2d0) / ((pind - 1d0) * mass_e)
-      L_e = epse * 2d0 * pi * Rb**2 * n0 * mass_p * cLight**3 * Bbulk(0) * G0 * (G0 - 1d0)
+      L_e = epse * 4d0 * pi * R(0)**2 * n0 * mass_p * cLight**3 * Bbulk(0) * G0 * (G0 - 1d0)
       Q0 = L_e * pwl_norm(volume * mass_e * cLight**2, pind - 1d0, g1, g2)
 
       t(0) = 0d0
@@ -299,9 +299,10 @@ contains
          D(i) = Doppler(Gbulk(i), mu_obs)
          Bbulk(i) = bofg(Gbulk(i))
          t_obs(i) = t_obs(i - 1) + 0.5d0 * dt * (1d0 / D(i) + 1d0 / D(i - 1))
-         Rb = R(i) / Gbulk(i)
+         Rb = dr!R(i) / Gbulk(i)
          ! volume = 4d0 * pi * R(i)**2 * dr
-         volume = 4d0 * pi * Rb**3 / 3d0
+         volume = 4d0 * pi * R(i)**3 / (12d0 * Gbulk(i))
+         ! volume = 4d0 * pi * Rb**3 / 3d0
          tlc = Rb / cLight
          tesc = tlc
 
@@ -309,10 +310,10 @@ contains
          uB = B**2 / (8d0 * pi)
          g2 = dsqrt(6d0 * pi * eCharge * eps_g2 / (sigmaT * B))
          g1 = epse * (Gbulk(i) - 1d0) * mass_p * (pind - 2d0) / ((pind - 1d0) * mass_e)
-         L_e = epse * 2d0 * pi * Rb**2 * n0 * mass_p * cLight**3 * Bbulk(i) * Gbulk(i) * (Gbulk(i) - 1d0)
+         L_e = epse * 4d0 * pi * R(i)**2 * n0 * mass_p * cLight**3 * Bbulk(i) * Gbulk(i) * (Gbulk(i) - 1d0)
          Q0 = L_e * pwl_norm(volume * mass_e * cLight**2, pind - 1d0, g1, g2)
          Qinj = injection_pwl(t(i), 1d200, g, g1, g2, pind, Q0)
-         C0 = (4d0 * sigmaT * uB * pofg(g)**2 / (3d0 * mass_e * cLight)) + (g * 1.5d0 * cLight * Bbulk(i) * Gbulk(i) / R(i))
+         C0 = (4d0 * sigmaT * uB * pofg(g)**2 / (3d0 * mass_e * cLight)) + (pofg(g) * 8d0 * cLight * Bbulk(i) * Gbulk(i) / (5d0 * R(i)))
 
          call FP_FinDif_difu(dt, &
                &             pofg(g), &
@@ -321,7 +322,7 @@ contains
                &             C0, &
                &             zeros2, &
                &             Qinj, &
-               &             1d200, Rb)
+               &             tesc, Rb)
 
          ! do k = 1, numg
          !    if ( g(k) < g1 ) n(k, i) = 0d0
