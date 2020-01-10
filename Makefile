@@ -84,9 +84,9 @@ AFGLOW=xAglow
 BLAZMAG_OBJ = misc.o params.o pwl_integ.o h5_inout.o K1.o K2.o SRtoolkit.o \
 	anaFormulae.o radiation.o dist_evol.o blazMag.o blazMag_main.o
 TESTS_OBJ = misc.o params.o pwl_integ.o h5_inout.o K1.o K2.o SRtoolkit.o \
-	anaFormulae.o models.o radiation.o dist_evol.o tests.o
+	anaFormulae.o Aglow_models.o radiation.o dist_evol.o tests.o
 AFGLOW_OBJ = misc.o params.o pwl_integ.o h5_inout.o K1.o K2.o SRtoolkit.o \
-	anaFormulae.o radiation.o pairs.o dist_evol.o models.o afterglow.o \
+	anaFormulae.o radiation.o pairs.o dist_evol.o Aglow_models.o afterglow.o \
 	afterglow_main.o
 
 # -----  rules  -----
@@ -101,14 +101,14 @@ models.o: data_types.o constants.o SRtoolkit.o
 blazMag.o: data_types.o constants.o misc.o pwl_integ.o h5_inout.o SRtoolkit.o \
 	anaFormulae.o radiation.o dist_evol.o K1.o K2.o
 blazMag_main.o: data_types.o misc.o blazMag.o
-afterglow_main.o: data_types.o misc.o afterglow.o afterglowH.o
+afterglow_main.o: data_types.o misc.o afterglow.o
 anaFormulae.o: data_types.o constants.o misc.o pwl_integ.o
 radiation.o: data_types.o constants.o misc.o pwl_integ.o SRtoolkit.o \
 	anaFormulae.o
 dist_evol.o: data_types.o constants.o misc.o pwl_integ.o SRtoolkit.o K2.o
 tests.o: data_types.o constants.o misc.o pwl_integ.o h5_inout.o SRtoolkit.o \
 	anaFormulae.o models.o radiation.o dist_evol.o K1.o K2.o
-afterglow.o afterglowH.o: data_types.o constants.o misc.o pwl_integ.o \
+afterglow.o: data_types.o constants.o misc.o pwl_integ.o \
 	h5_inout.o models.o SRtoolkit.o anaFormulae.o radiation.o dist_evol.o \
 	K1.o K2.o
 

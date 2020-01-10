@@ -2,6 +2,7 @@ import os
 from time import strftime, localtime
 from SAPytho.misc import fortran_double
 
+# TODO: get rid of b_index
 
 #
 #  #####    ##   #####    ##   #    #  ####
@@ -14,10 +15,10 @@ class parameters(object):
     '''This is the parameters class
     '''
 
+    # -----  PARAMETERS  -----
     def rParams(self):
-        # -----  PARAMETERS  -----
-        self.R = 1e16                   # radius of emitting region (assuming spherical)
-        self.R0 = 1e15                  # Distance from central engine
+        self.R = 1e15                   # radius of emitting region (assuming spherical)
+        self.R0 = 1e14                  # distance from central engine
         self.dLum = 4.0793e26           # luminosity distance (default Mrk 421)
         self.z = 0.03                   # redshift (default Mrk 421)
         self.theta_obs = 5.0            # observer viewing angle
@@ -51,7 +52,6 @@ class parameters(object):
         self.numdt = 300                # number of time steps
         self.numdf = 256                # number of frequencies
         self.time_grid = 1              # kind of cooling
-
         self.params_file = 'input.par'  # name of the parameters file
 
     def __init__(self, **kwargs):

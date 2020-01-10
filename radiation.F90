@@ -17,7 +17,7 @@ module radiation
       module procedure opt_depth_s
       module procedure opt_depth_v
    end interface opt_depth
-   
+
    interface BBintensity
       module procedure BBintensity_s
       module procedure BBintensity_v
@@ -56,63 +56,6 @@ contains
       end do calc_jnu
       if ( jnu < 1d-200 ) jnu = 0d0
    end subroutine mbs_emissivity
-
-
-   subroutine syn_aglow_SPN98(nu, t, E0, epse, epsB, G0, pind, n, d_lum, adiab, flux)
-      ! ************************************************************************
-      !   Description:
-      !     Theoretical model of synchrotron spectra and light curves developed
-      !     in Sari, Piran & Narayan, 1998, ApJ, 497, L17.
-      ! ************************************************************************
-      implicit none
-      real(dp), intent(in) :: E0, epsB, epse, G0, n, d_lum, pind
-      real(dp), intent(in), dimension(:) :: nu, t
-      logical :: adiab
-      real(dp), intent(out), dimension(:,:) :: flux
-      integer :: i, j
-      real(dp) :: E52, d28, G2, Fmax, nu_c, nu_m, t0, tdy
-      E52 = E0 / 1d52
-      d28 = d_lum / 1d28
-      G2 = G0 / 100d0
-      if ( adiab ) then
-         t0 = 210d0 * (epsB * epse)**2 * E52 * n
-      else
-         t0 = 4.6d0 * (epsB * epse)**1.4d0 * (E52 / G2)**0.8d0 * n**0.6d0
-      end if
-      do i=1, size(t)
-         tdy = t(i) / 86400d0
-         if ( adiab ) then
-            nu_c = 2.7d12 * epsB**(-1.5d0) * (E52 * tdy)**(-0.5d0) / n
-            nu_m = 5.7d14 * epse**2 * dsqrt(epsB * E52) * tdy**(-1.5d0)
-            Fmax = 1.1d5 * E52 * dsqrt(epsB * n) / d28**2
-         else
-            nu_c = 1.3d13 * (G2 / E52)**(4d0 / 7d0) * epsB**(-1.5d0) * tdy**(-2d0 / 7d0) * n**(-13d0 / 14d0)
-            nu_m = 1.2d14 * epse**2 * dsqrt(epsB) * (E52 / G2)**(4d0 / 7d0) * n**(-1d0 / 14d0) * tdy**(-12d0 / 7d0)
-            Fmax = 4.5d3 * dsqrt(epsB) * (E52 / G2)**(8d0 / 7d0) * n**(5d0 / 14d0) * tdy**(-3d0 / 7d0) / d28**2
-         end if
-         do j = 1, size(nu)
-            if ( tdy < t0 ) then
-               ! ========  Fast cooling  =======
-               if ( nu_c > nu(j) ) then
-                  flux(j, i) = (nu(j) / nu_c)**(1d0 / 3d0) * Fmax
-               else if ( nu_m >= nu(j) .and. nu(j) >= nu_c ) then
-                  flux(j, i) = Fmax / dsqrt(nu(j) / nu_c)
-               else
-                  flux(j, i) = Fmax * (nu(j) / nu_m)**(-0.5d0 * pind) / dsqrt(nu_m / nu_c)
-               end if
-            else
-               ! ========  Slow cooling  =======
-               if ( nu_m > nu(j) ) then
-                  flux(j, i) = (nu(j) / nu_m)**(1d0 / 3d0) * Fmax
-               else if ( nu_c >= nu(j) .and. nu(j) >= nu_m ) then
-                  flux(j, i) = Fmax * (nu(j) / nu_m)**(-0.5d0 * (pind - 1d0))
-               else
-                  flux(j, i) = Fmax * (nu(j) / nu_c)**(-0.5d0 * pind) * (nu_c / nu_m)**(-0.5d0 * (pind - 1d0))
-               end if
-            end if
-         end do
-      end do
-   end subroutine syn_aglow_SPN98
 
 
    !
@@ -284,7 +227,7 @@ contains
    !    ! --> Edge of the blob: 2 R mu_com
    !    ! --> Position at which we will measure the radiation:
    !    i_edge = minloc(R - s, dim = 1, mask = R - s >= 0d0)
-   ! 
+   !
    !    !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED)&
    !    !$OMP& PRIVATE(s_min, s_max, abu, i, ii, i_start)
    !    tobs_loop: do i = 1, numdt

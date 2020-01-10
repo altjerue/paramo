@@ -6,13 +6,13 @@ module params
    integer :: par_numbins, par_numdt, par_numdf, par_time_grid
    real(dp) :: par_R, par_R0, par_d_lum, par_z, par_gamma_bulk, par_theta_obs, &
       par_sigma, par_b_index, par_theta_e, par_zetae, par_L_j, par_eps_e, &
-      par_tstep, par_tmax, par_tmin, par_eps_B, par_tvar, par_frec, par_qind, &
+      par_tstep, par_tmax, par_tmin, par_eps_B, par_tvar, par_frec, par_pind, &
       par_g1, par_g2, par_gmin, par_gmax, par_nu_ext, par_uext, par_numin, &
       par_numax, par_E0, par_n_ext, par_B, par_mu_mag, par_eta_j
    public :: par_numbins, par_numdt, par_numdf, par_time_grid
    public :: par_R, par_R0, par_d_lum, par_z, par_gamma_bulk, par_theta_obs, &
       par_sigma, par_b_index, par_theta_e, par_zetae, par_L_j, par_eps_e, &
-      par_tstep, par_tmax, par_tmin, par_eps_B, par_tvar, par_frec, par_qind, &
+      par_tstep, par_tmax, par_tmin, par_eps_B, par_tvar, par_frec, par_pind, &
       par_g1, par_g2, par_gmin, par_gmax, par_nu_ext, par_uext, par_numin, &
       par_numax, par_E0, par_B, par_mu_mag, par_eta_j
 
@@ -50,7 +50,7 @@ contains
       read(77, *) par_g2
       read(77, *) par_gmin
       read(77, *) par_gmax
-      read(77, *) par_qind
+      read(77, *) par_pind
       read(77, *) par_nu_ext
       read(77, *) par_uext
       read(77, *) par_numin

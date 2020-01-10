@@ -7,7 +7,7 @@ program tests
    use hdf5
    use h5_inout
    use SRtoolkit
-   use models
+   use Aglow_models
    use anaFormulae
    use dist_evol
    use radiation
@@ -20,7 +20,7 @@ program tests
    !   [ ] blast wave test: Numerical vs Sari, Piran & Narayan (1998)
    !   [ ] choise of test as input
    !       [ ] Modify Comala
-   !   [ ] 
+   !   [ ]
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! call steady_state
    call blastwave_SPN98
@@ -28,7 +28,7 @@ program tests
 
    ! write(*, *) '=======  FINISHED  ======='
    write(*, *) ''
-   
+
 contains
 
    subroutine steady_state
@@ -204,187 +204,7 @@ contains
    end subroutine steady_state
 
 
-   ! ===========================================================================
-   !
-   !   Testing the model in Sari, Piran & Narayan (1998)
-   !
-   ! ===========================================================================
-   subroutine blastwave_SPN98
-      implicit none
-      integer(HID_T) :: file_id, group_id
-      integer :: numg, numt, numf, i, j, k, herror
-      real(dp) :: epse, epsB, G0, d_lum, pind, B, R0, n0, E0, tmin, tmax, &
-         gmin, gmax, numin, numax, g1, g2, uB, dt, L_e, dr, &
-         mu_obs, Q0, Rb, tesc, theta_obs, tlc, volume, eps_g2
-      real(dp), allocatable, dimension(:) :: g, t, nu, D, Qinj, C0, t_obs, &
-         zeros2, nu_obs, Gbulk, Bbulk, R
-      real(dp), allocatable, dimension(:,:) :: jsyn, asyn, flux1, flux2, n
-      logical :: adiabatic
 
-      call read_params('SPN98.par')
-      epse = par_eps_e
-      epsB = par_eps_B
-      G0 = par_gamma_bulk
-      d_lum = par_d_lum
-      tmin = par_tmin
-      tmax = par_tmax
-      gmin = par_gmin
-      gmax = par_gmax
-      pind = par_qind
-      numin = par_numin
-      numax = par_numax
-      numg = par_numbins
-      numt = par_numdt
-      numf = par_numdf
-      E0 = par_E0
-      n0 = par_n_ext
-      g1 = par_g1
-      g2 = par_g2
-      R0 = par_R0
-      
-
-      allocate(g(numg), Qinj(numg), t(0:numt), C0(numg), nu(numf), D(0:numt), &
-         t_obs(0:numt), nu_obs(numf), zeros2(numg), Gbulk(0:numt), &
-         Bbulk(0:numt), R(0:numt))
-      allocate(n(numg, 0:numt), jsyn(numf, numt), asyn(numf, numt), &
-         flux1(numf, numt), flux2(numf, numt))
-
-      adiabatic = .true.
-
-      build_f: do j=1,numf
-         nu_obs(j) = numin * ( (numax / numin)**(dble(j - 1) / dble(numf - 1)) )
-      end do build_f
-
-      build_g: do k = 1, numg
-         g(k) = gmin * (gmax / gmin)**(dble(k - 1) / dble(numg - 1))
-      end do build_g
-      zeros2 = 1d-200
-
-      theta_obs = 0d0 / G0
-      mu_obs = dcos(theta_obs)
-      Gbulk(0) = G0
-      Bbulk(0) = bofg(G0)
-      D(0) = Doppler(G0, mu_obs)
-      R(0) = par_R
-      Rb = dr!R(0) / G0
-      ! volume = 4d0 * pi * R(0)**2 * () !Bbulk(0) * G0 * cLight
-      volume = 4d0 * pi * R(0)**3 / (12d0 * G0)
-      ! volume = 4d0 * pi * Rb**3 / 3d0
-
-      B = dsqrt(32d0 * pi * epsB * mass_p * n0) * cLight * G0
-      uB = B**2 / (8d0 * pi)
-      eps_g2 = 0.35d0
-      g2 = dsqrt(6d0 * pi * eCharge * eps_g2 / (sigmaT * B))
-      g1 = epse * (G0 - 1d0) * mass_p * (pind - 2d0) / ((pind - 1d0) * mass_e)
-      L_e = epse * 4d0 * pi * R(0)**2 * n0 * mass_p * cLight**3 * Bbulk(0) * G0 * (G0 - 1d0)
-      Q0 = L_e * pwl_norm(volume * mass_e * cLight**2, pind - 1d0, g1, g2)
-
-      t(0) = 0d0
-      t_obs(0) = 0d0
-      tesc = 1.1d0 * Rb / cLight !2d0 * tacc ! 1d200 !
-      n(:, 0) = injection_pwl(0d0, 1d200, g, g1, g2, pind, Q0)
-
-      ! write(*, "(4ES15.7)") C0(1), tacc, tmax
-
-      time_loop: do i=1,numt
-
-         t(i) = tmin * ( (tmax / tmin)**(dble(i - 1) / dble(numt - 1)) )
-         dt = t(i) - t(i - 1)
-
-         dr = dt * Bbulk(i - 1) * Gbulk(i - 1) * cLight
-         R(i) = R(i - 1) + dr
-         call adiab_blast_wave(R(i), R0, G0, E0, n0, Gbulk(i))
-         ! t_obs(i) = tmin * ( (tmax / tmin)**(dble(i - 1) / dble(numt - 1)) )
-         ! call blastwave_approx(t_obs(i), G0, E0, n0, R(i), Gbulk(i), adiabatic)
-         D(i) = Doppler(Gbulk(i), mu_obs)
-         Bbulk(i) = bofg(Gbulk(i))
-         t_obs(i) = t_obs(i - 1) + 0.5d0 * dt * (1d0 / D(i) + 1d0 / D(i - 1))
-         Rb = dr!R(i) / Gbulk(i)
-         ! volume = 4d0 * pi * R(i)**2 * dr
-         volume = 4d0 * pi * R(i)**3 / (12d0 * Gbulk(i))
-         ! volume = 4d0 * pi * Rb**3 / 3d0
-         tlc = Rb / cLight
-         tesc = tlc
-
-         B = dsqrt(32d0 * pi * epsB * mass_p * n0) * cLight * Gbulk(i)
-         uB = B**2 / (8d0 * pi)
-         g2 = dsqrt(6d0 * pi * eCharge * eps_g2 / (sigmaT * B))
-         g1 = epse * (Gbulk(i) - 1d0) * mass_p * (pind - 2d0) / ((pind - 1d0) * mass_e)
-         L_e = epse * 4d0 * pi * R(i)**2 * n0 * mass_p * cLight**3 * Bbulk(i) * Gbulk(i) * (Gbulk(i) - 1d0)
-         Q0 = L_e * pwl_norm(volume * mass_e * cLight**2, pind - 1d0, g1, g2)
-         Qinj = injection_pwl(t(i), 1d200, g, g1, g2, pind, Q0)
-         C0 = (4d0 * sigmaT * uB * pofg(g)**2 / (3d0 * mass_e * cLight)) + (pofg(g) * 8d0 * cLight * Bbulk(i) * Gbulk(i) / (5d0 * R(i)))
-
-         call FP_FinDif_difu(dt, &
-               &             pofg(g), &
-               &             n(:, i - 1), &
-               &             n(:, i), &
-               &             C0, &
-               &             zeros2, &
-               &             Qinj, &
-               &             tesc, Rb)
-
-         ! do k = 1, numg
-         !    if ( g(k) < g1 ) n(k, i) = 0d0
-         ! end do
-
-         !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
-         !$OMP& PRIVATE(j)
-         do j = 1, numf
-            nu(j) = nu_com_f(nu_obs(j), 0d0, D(i))
-            call mbs_emissivity(jsyn(j, i), nu(j), g, n(:, i), B)
-            ! flux1(j, i) = D(i)**4 * volume * nu(j) * jsyn(j, i) / (4d0 * pi * d_lum**2)
-            call mbs_absorption(asyn(j, i), nu(j), g, n(:, i), B)
-            flux1(j, i) = D(i)**3 * volume * jsyn(j, i) * opt_depth_blob(asyn(j, i), Rb) / (4d0 * pi * d_lum**2)
-         end do
-         !$OMP END PARALLEL DO
-
-      end do time_loop
-
-      ! Synchrotron model from SPN98
-      call syn_aglow_SPN98(nu_obs, t_obs(1:), E0, epse, epsB, G0, pind, n0, d_lum, adiabatic, flux2)
-
-      call h5open_f(herror)
-      call h5io_createf("SPN98.h5", file_id, herror)
-      call h5io_createg(file_id, "Parameters", group_id, herror)
-      call h5io_wint0(group_id, 'numt', numt, herror)
-      call h5io_wint0(group_id, 'numf', numf, herror)
-      call h5io_wint0(group_id, 'numg', numg, herror)
-      call h5io_wdble0(group_id, 't_max', tmax, herror)
-      call h5io_wdble0(group_id, 't_min', tmin, herror)
-      call h5io_wdble0(group_id, 'gamma_min', gmin, herror)
-      call h5io_wdble0(group_id, 'gamma_max', gmax, herror)
-      call h5io_wdble0(group_id, 'gamma_1', g1, herror)
-      call h5io_wdble0(group_id, 'gamma_2', g2, herror)
-      call h5io_wdble0(group_id, 'pwl-index', pind, herror)
-      call h5io_wdble0(group_id, 'd_lum', d_lum, herror)
-      call h5io_wdble0(group_id, 'view-angle', par_theta_obs, herror)
-      call h5io_wdble0(group_id, 'epsilon_e', epse, herror)
-      call h5io_wdble0(group_id, 'epsilon_B', epsB, herror)
-      call h5io_wdble0(group_id, 'nu_min', numin, herror)
-      call h5io_wdble0(group_id, 'nu_max', numax, herror)
-      call h5io_wdble0(group_id, 'G0', G0, herror)
-      call h5io_wdble0(group_id, 'E0', E0, herror)
-      call h5io_wdble0(group_id, 'R0', R0, herror)
-      call h5io_wdble0(group_id, 'n_ext', n0, herror)
-      call h5io_closeg(group_id, herror)
-      call h5io_wdble0(file_id, 't_esc', tesc, herror)
-      call h5io_wdble1(file_id, 'time', t(1:), herror)
-      call h5io_wdble1(file_id, 'gamma_bulk', Gbulk(1:), herror)
-      call h5io_wdble1(file_id, 'radius', R(1:), herror)
-      call h5io_wdble1(file_id, 't_obs', t_obs(1:), herror)
-      call h5io_wdble1(file_id, 'nu_obs', nu_obs, herror)
-      call h5io_wdble1(file_id, 'gamma', g, herror)
-      call h5io_wdble1(file_id, 'freqs', nu, herror)
-      call h5io_wdble2(file_id, 'EED', n(1:, :), herror)
-      call h5io_wdble2(file_id, 'jsyn', jsyn, herror)
-      call h5io_wdble2(file_id, 'asyn', asyn, herror)
-      call h5io_wdble2(file_id, 'flux1', flux1, herror)
-      call h5io_wdble2(file_id, 'flux2', flux2, herror)
-      call h5io_closef(file_id, herror)
-      call h5close_f(herror)
-
-   end subroutine blastwave_SPN98
 
 
 #if 0
@@ -531,7 +351,7 @@ contains
 
       call K1_init
       call K2_init
-      
+
       !   # #    # # #####     ####   ####  #    # #####
       !   # ##   # #   #      #    # #    # ##   # #    #
       !   # # #  # #   #      #      #    # # #  # #    #
@@ -558,7 +378,7 @@ contains
          Qth = 0d0
          Qnth = 0d0 !eps_e * (L_j - L_B) * pwl_norm(volume * mass_e * cLight**2, qind, g1, g2)
       end if
-      
+
       ! ----->>   Viewing angle
       mu_obs = dcos(theta_obs * pi / 180d0)
       mu_com = mu_com_f(gamma_bulk, mu_obs)

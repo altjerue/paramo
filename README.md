@@ -23,7 +23,7 @@ Paramo stands for: PArticles and RAdiation MOnitor. In a few words: this code so
 
 Name | Default Value | Concept
 -----|---------------|--------
-`R` | 1E16 (cm) | Radius of the emitting region 
+`R` | 1E16 (cm) | Radius of the emitting region
 `R0` | 1E15 (cm)  | Distance from explosion
 `dLum` | 4.0793E26 (cm)  | luminosity distance (Mrk 421)
 `z` | 0.03 | redshift (Mrk 421)
@@ -33,7 +33,7 @@ Name | Default Value | Concept
 `sigma` | 1.0 | magnetization
 `f_rec` | 1.0 | magnetic reconectiondissipative efficiency
 `b_index` | 0.0 | magnetic field decay index
-`Bfield` | 1.0 (G) | Magnetic field strength 
+`Bfield` | 1.0 (G) | Magnetic field strength
 `eps_B` | 0.03 | $epsilon_B$
 `eps_e` | 0.1 | $epsilon_e$
 `theta_e` | 10.0 | electrons temperature (k T / m_e c^2)
@@ -88,3 +88,16 @@ $ make xAglow
 ### Run it in a server (e.g., Brown)
 
 ## How to red output
+
+# References
+
+These are the most referenced works on which I based all the modeling
+
+## Blazars module
+
+## GRB afterglow module
+- [PVP14] Pannanen, Vurm, Poutanen, 2014, A&A, 564, A77
+- [PM04]  Petropoulou, Mastichiadis, 2009, A&A, 507, 599
+- [RM92]  Rees & Meszaros, 1992, MNRAS, 258, 41P
+- [DM09]  Dermer & Menon, 2009, "High Energy Radiation from Black Holes: Gamma Rays, Cosmic Rays, and Neutrinos", Princeton Series in Astrophysics
+- [SPN98] Sari, Piran, Narayan, 1998, ApJ, 497, L17
