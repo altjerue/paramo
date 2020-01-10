@@ -22,7 +22,7 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
       on_screen = "(' | ', I9, ' | ', ES11.4, ' | ', ES11.4, ' | ', ES11.4, ' | ', ES11.4, ' |')"
    integer(HID_T) :: file_id, group_id
    integer :: i, j, k, numbins, numdf, numdt, time_grid, herror
-   real(dp) :: uB, uext, R, gmin, gmax, numin, numax, qind, B, D, g1, g2, &
+   real(dp) :: uB, uext, R, gmin, gmax, numin, numax, pind, B, D, g1, g2, &
       tstep, Qnth, tmax, d_lum, z, tinj, gamma_bulk, theta_obs, Rdis, &
       mu_obs, nu_ext, tesc, tlc, mu_mag, L_jet, volume, sigma, beta_bulk, L_B, &
       eps_B, f_rec
@@ -51,7 +51,7 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    ! mu_mag = par_mu_mag
    gmin = par_gmin
    gmax = par_gmax
-   qind = par_qind
+   pind = par_pind
    numin = par_numin
    numax = par_numax
    numbins = par_numbins
@@ -98,14 +98,14 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    nu0 = 4d0 * sigmaT * uB / (3d0 * mass_e * cLight)
 
    ! ----->   Injection of particles
-   if ( qind > 2d0 ) then
-      g1 = (qind - 2d0) * f_rec * sigma * mass_p / ((qind - 1d0) * mass_e)
+   if ( pind > 2d0 ) then
+      g1 = (pind - 2d0) * f_rec * sigma * mass_p / ((pind - 1d0) * mass_e)
       ! g2 = par_g2
       g2 = dsqrt(6d0 * pi * eCharge * 1d-6 / (sigmaT * B))
-   else if ( qind > 1d0 .and. qind < 2d0 ) then
+   else if ( pind > 1d0 .and. pind < 2d0 ) then
       g1 = par_g1
       ! g2 = dsqrt(6d0 * pi * eCharge * 1d-3 / (sigmaT * B))
-      g2 = ( f_rec * (sigma + 1d0) * (mass_p / mass_e) * ((2d0 - qind) / (qind - 1d0)) * g1**(1d0 - qind) )**(1d0 / (2d0 - qind))
+      g2 = ( f_rec * (sigma + 1d0) * (mass_p / mass_e) * ((2d0 - pind) / (pind - 1d0)) * g1**(1d0 - pind) )**(1d0 / (2d0 - pind))
    else
       g1 = par_g1
       g2 = par_g2
@@ -117,8 +117,8 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    tesc = tlc
    tinj = 2d0 * tlc
 
-   Qnth = f_rec * L_B * pwl_norm(volume * mass_e * cLight**2, qind - 1d0, g1, g2)
-   ! Qnth = eps_e * (L_j - L_B) * pwl_norm(volume * mass_e * cLight**2, qind - 1d0, g1, g2)
+   Qnth = f_rec * L_B * pwl_norm(volume * mass_e * cLight**2, pind - 1d0, g1, g2)
+   ! Qnth = eps_e * (L_j - L_B) * pwl_norm(volume * mass_e * cLight**2, pind - 1d0, g1, g2)
 
    write(*, "('--> Simulation setup')")
    write(*, "('theta_obs =', ES15.7)") theta_obs
@@ -152,7 +152,7 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    dg(1) = dg(2)
 
    t(0) = 0d0
-   nn(:, 0) = injection_pwl(0d0, tinj, gg, g1, g2, qind, Qnth)
+   nn(:, 0) = injection_pwl(0d0, tinj, gg, g1, g2, pind, Qnth)
    jnut = 0d0
 
    write(*, "('--> Calculating the emission')")
@@ -243,12 +243,14 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
 !      end if
 
       if ( with_cool ) then
-         urad = bolometric_integ(freqs, 4d0 * pi * Inu / cLight)
-         call RadTrans_blob(Inu, R, jssc(:, i) + jeic(:, i), anut(:, i))
-         urad = urad + IC_cool(gg, freqs, 4d0 * pi * Inu / cLight)
+         ! call bolometric_integ(freqs, 4d0 * pi * Inu / cLight, urad)
+         ! call RadTrans_blob(Inu, R, jssc(:, i) + jeic(:, i), anut(:, i))
+         call RadTrans_blob(Inu, R, jmbs(:, i), ambs(:, i))
+         call rad_cool(gg, freqs, 4d0 * pi * Inu / cLight, urad)
       else
          urad = 0d0
       end if
+      urad = urad + uB
 
       !  ###### ###### #####
       !  #      #      #    #
@@ -256,7 +258,7 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
       !  #      #      #    #
       !  #      #      #    #
       !  ###### ###### #####
-      Qinj(:, i) = injection_pwl(t(i), tinj, gg, g1, g2, qind, Qnth)
+      Qinj(:, i) = injection_pwl(t(i), tinj, gg, g1, g2, pind, Qnth)
       Ddif(:, i) = 1d-200!4.3d-3 * pofg(gg)**(5d0 / 3d0) * (mass_e * cLight**2)**(-1d0 / 3d0)
       nu0(:, i) = 4d0 * sigmaT * (uB + urad) / (3d0 * mass_e * cLight)
       call FP_FinDif_difu(dt(i), &
@@ -311,7 +313,7 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    call h5io_wdble0(group_id, 'gamma_max', gmax, herror)
    call h5io_wdble0(group_id, 'gamma_1', g1, herror)
    call h5io_wdble0(group_id, 'gamma_2', g2, herror)
-   call h5io_wdble0(group_id, 'pwl-index', qind, herror)
+   call h5io_wdble0(group_id, 'pwl-index', pind, herror)
    call h5io_wdble0(group_id, 'L_jet', L_jet, herror)
    call h5io_wdble0(group_id, 'nu_min', numin, herror)
    call h5io_wdble0(group_id, 'nu_max', numax, herror)

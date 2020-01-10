@@ -22,8 +22,7 @@ program tests
    !       [ ] Modify Comala
    !   [ ]
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   ! call steady_state
-   call blastwave_SPN98
+   call steady_state
    ! call rad_procs
 
    ! write(*, *) '=======  FINISHED  ======='

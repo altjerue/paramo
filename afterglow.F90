@@ -1,4 +1,4 @@
-subroutine afterglow(params_file, output_file, with_abs, with_cool, with_ic)
+subroutine afterglow(params_file, output_file, with_ic)
    use data_types
    use constants
    use params
@@ -17,26 +17,26 @@ subroutine afterglow(params_file, output_file, with_abs, with_cool, with_ic)
    implicit none
 
    character(len=*), intent(in) :: output_file, params_file
-   logical, intent(in) :: with_cool, with_ic, with_abs
+   logical, intent(in) :: with_ic
    integer, parameter :: nmod = 50
    character(len=*), parameter :: screan_head = &
-      '| Iteration | Obser. time |   BW radius |  gamma_bulk |       N_tot |'&
+      '| Iteration | Obser. time |   BW radius |  gamma_bulk |        nu_c |'&
       //new_line('A')//&
       ' ---------------------------------------------------------------------', &
       on_screen = "(' | ', I9, ' | ', ES11.4, ' | ', ES11.4, ' | ', ES11.4, ' | ', ES11.4, ' |')"
    integer(HID_T) :: file_id, group_id
    integer :: i, j, k, numbins, numdf, numdt, time_grid, herror, beam_kind
    real(dp) :: uB, uext, L_j, gmin, gmax, numin, numax, pind, B, R0, &
-      tinj, g1, g2, tstep, Q0, tmax, d_lum, z, n_ext, urad, &
-      theta_obs, mu_obs, nu_ext, tesc_e, uext0, volume, eps_e, tlc, &
+      tinj, g1, g2, tstep, Q0, tmax, d_lum, z, n_ext, urad_const, &
+      theta_obs, mu_obs, nu_ext, tesc_e, uext0, eps_e, tlc, gindex, &
       eps_B, E0, gamma_bulk0, L_e, nu_ext0, tmin, td, Rd, dr, &
-      b_const, beta_bulk, eps_g2, theta_j0, Rb, cs_area, volume_p, &
+      b_const, beta_bulk, eps_g2, theta_j0, cs_area, &
       g2_const, g1_const, energy_e, energy_p, Rd2, Omega_j, dt
-   real(dp), allocatable, dimension(:) :: freqs, t, Ntot, Inu, gg, &
-      nu_obs, t_obs, gamma_bulk, R, D, tcool, gc, nu_c, Ddiff
+   real(dp), allocatable, dimension(:) :: freqs, t, Inu, gg, urad, &
+      nu_obs, t_obs, gamma_bulk, R, D, tcool, gc, nu_c, Ddiff, Rb, volume
    real(dp), allocatable, dimension(:, :) :: dotg, n_e, jnut, jmbs, jssc, jeic, &
       ambs, anut, Qinj, Fmbs, Feic, Fssc, Fnut, tau_gg
-   logical :: blob, adiab_coef
+   logical :: blob, full_rad_cool
 
    !!!!!!!! TODO:
    !!  [ ] Cases for each model to compare:
@@ -98,10 +98,10 @@ subroutine afterglow(params_file, output_file, with_abs, with_cool, with_ic)
    !  ####  ######   #    ####  #
    write(*, "('--> Simulation setup')")
 
-   allocate(t(0:numdt), freqs(numdf), Ntot(numdt), Inu(numdf), gg(numbins), &
-      nu_obs(numdf), t_obs(0:numdt), R(0:numdt), tcool(numbins), &
+   allocate(t(0:numdt), freqs(numdf), Inu(numdf), gg(numbins), &
+      nu_obs(numdf), t_obs(0:numdt), R(0:numdt), tcool(numbins), Rb(0:numdt), &
       gamma_bulk(0:numdt), D(0:numdt), gc(0:numdt), nu_c(0:numdt), &
-      Ddiff(numbins))
+      Ddiff(numbins), volume(0:numdt))
    allocate(n_e(numbins, 0:numdt), dotg(numbins, 0:numdt), &
       ambs(numdf, numdt), jmbs(numdf, numdt), jnut(numdf, numdt), &
       jssc(numdf, numdt), anut(numdf, numdt), jeic(numdf, numdt), &
@@ -119,25 +119,25 @@ subroutine afterglow(params_file, output_file, with_abs, with_cool, with_ic)
 
    !-----> Initializing blast wave
    theta_j0 = 0.2d0
-   beam_kind = -1
+   beam_kind = 1
    blob = .false.
-   adiab_coef = .false.
+   full_rad_cool = .false.
    beta_bulk = bofg(gamma_bulk0)
-   call bw_crossec_area(gamma_bulk0, R0, gamma_bulk0, theta_j0, beam_kind, blob, Rb, volume, cs_area, Omega_j)
-
-   !-----> True outflow energy and decceleration radius
-   !!!!!NOTE: multiply by 2d0 if a doulbe-sided jet is considered
-   E0 = E0 * Omega_j / (4d0 * pi)
    Rd = deceleration_radius(E0, gamma_bulk0, n_ext) ! eq. (1) in RM92
    td = (1d0 + z) * Rd / (beta_bulk * gamma_bulk0**2 * cLight) ! eq. (11.4) of DM09
    Rd2 = Rd * 2d0**(-2d0 / 3d0) ! see R_B in PVP14, p. 3
+   call bw_crossec_area(gamma_bulk0, R0, gamma_bulk0, theta_j0, beam_kind, blob, Rb(0), volume(0), cs_area, Omega_j)
+
+   !-----> True outflow energy and decceleration radius
+   !!!!!NOTE: multiply by 2d0 if a doulbe-sided jet is considered
+   E0 = par_E0 * 2d0 * Omega_j / (4d0 * pi)
 
    !-----> Locating the emission region
    R(0) = par_R
    gamma_bulk(0) = adiab_blast_wave(R(0), R0, gamma_bulk0, E0, n_ext)
    beta_bulk = bofg(gamma_bulk(0))
    D(0) = Doppler(gamma_bulk(0), mu_obs)
-   call bw_crossec_area(gamma_bulk0, R(0), gamma_bulk(0), theta_j0, beam_kind, blob, Rb, volume, cs_area, Omega_j)
+   call bw_crossec_area(gamma_bulk0, R(0), gamma_bulk(0), theta_j0, beam_kind, blob, Rb(0), volume(0), cs_area, Omega_j)
 
    !-----> External medioum
    !!!!!!COMBAK: implement radius dependent external medium
@@ -150,6 +150,9 @@ subroutine afterglow(params_file, output_file, with_abs, with_cool, with_ic)
    !-----> Transforming monochromatic ext. rad. field to comoving frame
    uext = uext0 * gamma_bulk(0)**2 * (1d0 + beta_bulk**2 / 3d0) ! eq. (5.25) in DM09
    nu_ext = nu_ext0 * gamma_bulk(0)
+
+   urad = uB + uext
+   urad_const = 4d0 * sigmaT / (3d0 * mass_e * cLight)
 
    !-----> Characteristic Lorentz factor (comoving) and frequency (observer)
    gc(0) = 6d0 * gamma_bulk(0) * energy_e / (5d0 * sigmaT * R(0) * uB)
@@ -164,7 +167,7 @@ subroutine afterglow(params_file, output_file, with_abs, with_cool, with_ic)
 
    !-----> Fraction of accreted kinetic energy injected into non-thermal electrons
    L_e = eps_e * cs_area * n_ext * energy_p * cLight * beta_bulk * gamma_bulk(0) * (gamma_bulk(0) - 1d0)
-   Q0 = L_e * pwl_norm(volume * energy_e, pind - 1d0, g1, g2)
+   Q0 = L_e * pwl_norm(volume(0) * energy_e, pind - 1d0, g1, g2)
 
    write(*, "('mu_obs  =', ES15.7)") mu_obs
    write(*, "('Doppler =', ES15.7)") D(0)
@@ -178,11 +181,6 @@ subroutine afterglow(params_file, output_file, with_abs, with_cool, with_ic)
    write(*, "('nu_ext  =', ES15.7)") nu_ext
    write(*, "('Gamma_0 =', ES15.7)") gamma_bulk(0)
    write(*, "('R_0     =', ES15.7)") R(0)
-   write(*, "('R_dec   =', ES15.7)") Rd
-   write(*, "('t_dec   =', ES15.7)") td
-   write(*, "('t_dyn   =', ES15.7)") tlc
-   write(*, "('tinj    =', ES15.7)") tinj
-   write(*, "('tesc    =', ES15.7)") tesc_e
 
    build_f: do j = 1, numdf
       nu_obs(j) = numin * ( (numax / numin)**(dble(j - 1) / dble(numdf - 1)) )
@@ -192,15 +190,10 @@ subroutine afterglow(params_file, output_file, with_abs, with_cool, with_ic)
       gg(k) = (gmin - 1d0) * ((gmax - 1d0) / (gmin - 1d0))**(dble(k - 1) / dble(numbins - 1)) + 1d0
    end do build_g
 
-   dotg(:, 0) = 4d0 * sigmaT * uB * pofg(gg)**2 / (3d0 * mass_e * cLight)
+   dotg(:, 0) = urad_const * uB * pofg(gg)**2
    Inu = 0d0
    Ddiff = 1d-200!0.5d0 * gg**2 / tacc !
    n_e(:, 0) = injection_pwl(0d0, 1d200, gg, g1, g2, pind, Q0)
-   if ( with_cool ) then
-      urad = uext
-   else
-      urad = 0d0
-   end if
 
    write(*, "('---> Calculating the emission')")
    write(*, *) ''
@@ -221,13 +214,13 @@ subroutine afterglow(params_file, output_file, with_abs, with_cool, with_ic)
       dt = t(i) - t(i - 1)
 
       !-----> Locating the emission region
-      dr = dt * beta_bulk * gamma_bulk(i - 1) * cLight
+      dr = dt * bofg(gamma_bulk(i - 1)) * gamma_bulk(i - 1) * cLight
       R(i) = R(i - 1) + dr
       gamma_bulk(i) = adiab_blast_wave(R(i), R0, gamma_bulk0, E0, n_ext)
       D(i) = Doppler(gamma_bulk(i), mu_obs)
       beta_bulk = bofg(gamma_bulk(i))
       t_obs(i) = t_obs(i - 1) + 0.5d0 * dt * (1d0 / D(i) + 1d0 / D(i - 1))
-      call bw_crossec_area(gamma_bulk0, R(i), gamma_bulk(i), theta_j0, beam_kind, blob, Rb, volume, cs_area, Omega_j)
+      call bw_crossec_area(gamma_bulk0, R(i), gamma_bulk(i), theta_j0, beam_kind, blob, Rb(i), volume(i), cs_area, Omega_j)
 
       !-----> External medioum
       !!!!!COMBAK
@@ -239,20 +232,22 @@ subroutine afterglow(params_file, output_file, with_abs, with_cool, with_ic)
       uext = uext0 * gamma_bulk(i)**2 * (1d0 + beta_bulk**2 / 3d0) ! eq. (5.25) in DM09
       nu_ext = nu_ext0 * gamma_bulk(i)
 
+      urad = uB + uext
+
       !-----> Minimum and maximum Lorentz factors of the particles distribution
       g2 = g2_const / dsqrt(B)
       g1 = g1_const * (gamma_bulk(i) - 1d0)
 
       !-----> Time-scales
-      tlc = Rb / cLight
+      tlc = Rb(i) / cLight
       tesc_e = 1d200!1.01d0 * tlc!
       tinj = 1d200
       ! tcool = 1d0 / (nu0(:, i) * pofg(gg) + Aadi)
       ! tadiab = 1d0 / (Aadi * gg(ig) * bofg(gg(ig)))
 
       !-----> Fraction of accreted kinetic energy injected into non-thermal electrons
-      L_e = eps_e * cs_area * n_ext * energy_p * cLight * beta_bulk * gamma_bulk(0) * (gamma_bulk(0) - 1d0)
-      Q0 = L_e * pwl_norm(volume * energy_e, pind - 1d0, g1, g2)
+      L_e = eps_e * cs_area * n_ext * energy_p * cLight * beta_bulk * gamma_bulk(i) * (gamma_bulk(i) - 1d0)
+      Q0 = L_e * pwl_norm(volume(i) * energy_e, pind - 1d0, g1, g2)
       Qinj(:, i) = injection_pwl(t(i), tinj, gg, g1, g2, pind, Q0)
 
       !  ###### ###### #####
@@ -269,7 +264,7 @@ subroutine afterglow(params_file, output_file, with_abs, with_cool, with_ic)
             &             dotg(:, i - 1), &
             &             Ddiff, &
             &             Qinj(:, i), &
-            &             tesc_e, Rb)
+            &             tesc_e, Rb(i))
 
       !!!!!TEMP: this is just to test deleting low energy particles
       ! do k = 1, numbins
@@ -289,25 +284,24 @@ subroutine afterglow(params_file, output_file, with_abs, with_cool, with_ic)
       do j = 1, numdf
          freqs(j) = nu_com_f(nu_obs(j), z, D(i))
          call mbs_emissivity(jmbs(j, i), freqs(j), gg, n_e(:, i), B)
-         ambs(j, i) = 0d0
-         if ( with_abs ) call mbs_absorption(ambs(j, i), freqs(j), gg, n_e(:, i), B)
+         call mbs_absorption(ambs(j, i), freqs(j), gg, n_e(:, i), B)
       end do
       !$OMP END PARALLEL DO
 
       if ( blob ) then
-         call RadTrans_blob(Inu, Rb, jmbs(:, i), ambs(:, i))
+         call RadTrans_blob(Inu, Rb(i), jmbs(:, i), ambs(:, i))
       else
-         call RadTrans(Inu, Rb, jmbs(:, i), ambs(:, i))
+         call RadTrans(Inu, Rb(i), jmbs(:, i), ambs(:, i))
       end if
 
       !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
       !$OMP& PRIVATE(j)
       do j = 1, numdf
          if ( with_ic ) then
-            call IC_iso_powlaw(jssc(j, i), freqs(j), freqs, Inu, n_e(:, i - 1) / volume, gg)
-            call IC_iso_monochrom(jeic(j, i), freqs(j), uext, nu_ext, n_e(:, i - 1) / volume, gg)
-            ! call IC_emis_full(freqs(j), freqs, gg, n_e(:, i - 1) / volume, Inu, jssc(j, i))
-            ! call IC_emis_full(freqs(j), nu_ext, gg, n_e(:, i - 1) / volume, uext * cLight / (4d0 * pi), jeic(j, i))
+            call IC_iso_powlaw(jssc(j, i), freqs(j), freqs, Inu, n_e(:, i), gg)
+            call IC_iso_monochrom(jeic(j, i), freqs(j), uext, nu_ext, n_e(:, i), gg)
+            ! call IC_emis_full(freqs(j), freqs, gg, n_e(:, i), Inu, jssc(j, i))
+            ! call IC_emis_full(freqs(j), nu_ext, gg, n_e(:, i), uext * cLight / (4d0 * pi), jeic(j, i))
          else
             jssc(j, i) = 0d0
             jeic(j, i) = 0d0
@@ -320,20 +314,20 @@ subroutine afterglow(params_file, output_file, with_abs, with_cool, with_ic)
          ! tau_gg(j, i) = 0d0
          ! end if
 
-         anut(j, i) = ambs(j, i)! + tau_gg(j, i) / (2d0 * Rb)
+         anut(j, i) = ambs(j, i)! + tau_gg(j, i) / (2d0 * Rb(i))
 
          if ( blob ) then
-            Fmbs(j, i) = D(i)**4 * volume * freqs(j) * jmbs(j, i) * opt_depth_blob(anut(j, i), Rb) / (4d0 * pi * d_lum**2)
-            Fssc(j, i) = D(i)**4 * volume * freqs(j) * jssc(j, i) * opt_depth_blob(anut(j, i), Rb) / (4d0 * pi * d_lum**2)
-            Feic(j, i) = D(i)**4 * volume * freqs(j) * jeic(j, i) * opt_depth_blob(anut(j, i), Rb) / (4d0 * pi * d_lum**2)
+            Fmbs(j, i) = D(i)**4 * volume(i) * freqs(j) * jmbs(j, i) * opt_depth_blob(anut(j, i), Rb(i)) / (4d0 * pi * d_lum**2)
+            Fssc(j, i) = D(i)**4 * volume(i) * freqs(j) * jssc(j, i) * opt_depth_blob(anut(j, i), Rb(i)) / (4d0 * pi * d_lum**2)
+            Feic(j, i) = D(i)**4 * volume(i) * freqs(j) * jeic(j, i) * opt_depth_blob(anut(j, i), Rb(i)) / (4d0 * pi * d_lum**2)
          else
 
-            ! Fmbs(j, i) = D(i)**4 * volume * freqs(j) * jmbs(j, i) / (4d0 * pi * d_lum**2)
-            ! Fssc(j, i) = D(i)**4 * volume * freqs(j) * jssc(j, i) / (4d0 * pi * d_lum**2)
-            ! Feic(j, i) = D(i)**4 * volume * freqs(j) * jeic(j, i) / (4d0 * pi * d_lum**2)
-            Fmbs(j, i) = D(i)**4 * volume * freqs(j) * jmbs(j, i) * opt_depth_slab(anut(j, i), Rb) / d_lum**2
-            Fssc(j, i) = D(i)**4 * volume * freqs(j) * jssc(j, i) * opt_depth_slab(anut(j, i), Rb) / d_lum**2
-            Feic(j, i) = D(i)**4 * volume * freqs(j) * jeic(j, i) * opt_depth_slab(anut(j, i), Rb) /d_lum**2
+            ! Fmbs(j, i) = D(i)**4 * volume(i) * freqs(j) * jmbs(j, i) / (4d0 * pi * d_lum**2)
+            ! Fssc(j, i) = D(i)**4 * volume(i) * freqs(j) * jssc(j, i) / (4d0 * pi * d_lum**2)
+            ! Feic(j, i) = D(i)**4 * volume(i) * freqs(j) * jeic(j, i) / (4d0 * pi * d_lum**2)
+            Fmbs(j, i) = D(i)**4 * volume(i) * freqs(j) * jmbs(j, i) * opt_depth_slab(anut(j, i), Rb(i)) / d_lum**2
+            Fssc(j, i) = D(i)**4 * volume(i) * freqs(j) * jssc(j, i) * opt_depth_slab(anut(j, i), Rb(i)) / d_lum**2
+            Feic(j, i) = D(i)**4 * volume(i) * freqs(j) * jeic(j, i) * opt_depth_slab(anut(j, i), Rb(i)) /d_lum**2
 
          end if
 
@@ -349,29 +343,40 @@ subroutine afterglow(params_file, output_file, with_abs, with_cool, with_ic)
       !  #      #    # #    # #      # #  # # #  ###
       !  #    # #    # #    # #      # #   ## #    #
       !   ####   ####   ####  ###### # #    #  ####
-      dotg(:, i) = 4d0 * sigmaT * uB * pofg(gg)**2 / (3d0 * mass_e * cLight)
       !!!!!COMBAK: setup radiative and adiabatic cooling
       !-----> Radiative cooling
+      if ( blob ) then
+         call RadTrans_blob(Inu, Rb(i), jnut(:, i), anut(:, i))
+      else
+         call RadTrans(Inu, Rb(i), jnut(:, i), anut(:, i))
+      end if
+      if ( full_rad_cool ) then
+         ! call bolometric_integ(freqs, 4d0 * pi * Inu / cLight, urad)
+         ! call RadTrans_blob(Inu, R, jssc(:, i) + jeic(:, i), anut(:, i))
+         call RadTrans_blob(Inu, Rb(i), jmbs(:, i), ambs(:, i))
+         call rad_cool(gg, freqs, 4d0 * pi * Inu / cLight, urad)
+      else
+         urad = 0d0
+      end if
+      urad = urad + uB
       !-----> Adiabatic cooling
-      ! if ( i == 1 .or. adiab_coef_an ) then
-      !    if ( R(i) < Rd2 ) then
-      !       gindex = 1d0
-      !    else
-      !       gindex = 2.5d0
-      !    end if
-      !    nu0(:, i) = (4d0 * sigmaT * uB * pofg(gg)**2 / (3d0 * mass_e * cLight)) + (pofg(gg) * bofg(gg) * ((2d0 / gindex) + 1d0) / (3d0 * t(i)))
+      !!!!!NOTE: Numeric using finite differences
+      dotg(:, i) = urad_const * urad * pofg(gg)**2 + pofg(gg) * adiab_cool_num(volume(i - 1), volume(i), dr)
+      !!!!!NOTE:
+      ! dotg(:, i) = urad_const * uB * pofg(gg)**2 + pofg(gg) *
+      ! if ( R(i) < Rd2 ) then
+      !    gindex = 1d0
       ! else
-      !    nu0(:, i) = (4d0 * sigmaT * uB * pofg(g)**2 / (3d0 * mass_e * cLight)) + pofg(gg) * (dlog(volume) - dlog(volume_p)) / (3d0 * dt)
+      !    gindex = 2.5d0
       ! end if
+      ! dotg(:, i) = urad_const * uB * pofg(gg)**2 + gg * bofg(gg)**2 * ((2d0 / gindex) + 1d0) / (3d0 * t(i))
       ! Aadi = (8d0 / 5d0) * cLight * beta_bulk * gamma_bulk(i) / R(i)
       ! nu0(:, i) = 4d0 * sigmaT * (uB + urad) / (3d0 * mass_e * cLight)
 
       !-----> Characteristic Lorentz factor (comoving) and frequency (observer)
-      gc(i) = 6d0 * gamma_bulk(i) * energy_e / (5d0 * sigmaT * R(i) * uB)
+      ! gc(i) = 6d0 * gamma_bulk(i) * energy_e / (5d0 * sigmaT * R(i) * uB)
+      gc(i) = gofp(adiab_cool_num(volume(i - 1), volume(i), dt) / (urad_const * urad))
       nu_c(i) = nu_obs_f(nuconst * B * gc(i)**2, z, D(i))
-
-      !-----> Saving volume of this time-step
-      volume_p = volume
 
       !   ####  #    #     ####   ####  #####  ###### ###### #    #
       !  #    # ##   #    #      #    # #    # #      #      ##   #
@@ -379,10 +384,8 @@ subroutine afterglow(params_file, output_file, with_abs, with_cool, with_ic)
       !  #    # #  # #         # #      #####  #      #      #  # #
       !  #    # #   ##    #    # #    # #   #  #      #      #   ##
       !   ####  #    #     ####   ####  #    # ###### ###### #    #
-      Ntot(i) = 0.5d0 * sum((n_e(:numbins - 1, i - 1) + n_e(2:, i - 1)) * (gg(2:) - gg(:numbins - 1)))
-
-      if ( mod(i, nmod) == 0 .or. i == 1 ) &
-         write(*, on_screen) i, t_obs(i - 1), R(i - 1), gamma_bulk(i - 1), Ntot(i)
+      if ( mod(i, nmod) == 0 ) &
+         write(*, on_screen) i, t_obs(i), R(i), gamma_bulk(i), nu_c(i)
 
    end do time_loop
 
@@ -426,7 +429,7 @@ subroutine afterglow(params_file, output_file, with_abs, with_cool, with_ic)
    call h5io_wdble0(group_id, 'nu_max', numax, herror)
    call h5io_wdble0(group_id, 'nu_ext0', nu_ext0, herror)
    call h5io_wdble0(group_id, 'u_ext0', uext0, herror)
-   call h5io_wdble0(group_id, 'E0', E0, herror)
+   call h5io_wdble0(group_id, 'E0', par_E0, herror)
    call h5io_wdble0(group_id, 'R0', R0, herror)
    call h5io_wdble0(group_id, 'n_ext', n_ext, herror)
 
@@ -438,8 +441,9 @@ subroutine afterglow(params_file, output_file, with_abs, with_cool, with_ic)
 
    call h5io_wdble1(file_id, 'time', t(1:), herror)
    call h5io_wdble1(file_id, 't_obs', t_obs(1:), herror)
-   call h5io_wdble1(file_id, 'Ntot', Ntot, herror)
+   call h5io_wdble1(file_id, 'Rb', Rb(1:), herror)
    call h5io_wdble1(file_id, 'Rbw', R(1:), herror)
+   call h5io_wdble1(file_id, 'volume', volume(1:), herror)
    call h5io_wdble1(file_id, 'Gamma_bulk', gamma_bulk(1:), herror)
    call h5io_wdble1(file_id, 'nu', freqs, herror)
    call h5io_wdble1(file_id, 'nu_obs', nu_obs, herror)

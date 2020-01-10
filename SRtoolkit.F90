@@ -5,7 +5,7 @@
 !  - bofg  : function
 !  - gofb  : function
 !  - gbofg : function
-!  
+!
 ! ************************************************************************
 module SRtoolkit
    use data_types
@@ -47,7 +47,6 @@ module SRtoolkit
       module procedure nu_com_v
    end interface nu_com_f
 
-
    interface t_obs_f
       module procedure t_obs_s
       module procedure t_obs_v
@@ -76,7 +75,7 @@ contains
          b = dsqrt(1d0 - 1d0 / g**2)
       end if
    end function bofg_s
-   
+
    function bofg_v(g) result(b)
       real(dp), intent(in), dimension(:) :: g
       integer :: i
@@ -223,11 +222,11 @@ contains
    !
    !     ::::::  Frequency in the comoving frame  ::::::
    !
-   function nu_com_s(nu, z, dopp) result(nucom)
+   function nu_com_s(nuobs, z, dopp) result(nucom)
       implicit none
-      real(dp), intent(in) :: nu, z, dopp
+      real(dp), intent(in) :: nuobs, z, dopp
       real(dp) :: nucom
-      nucom = nu * (1d0 + z) / dopp
+      nucom = nuobs * (1d0 + z) / dopp
    end function nu_com_s
 
     function nu_com_v(nu, z, dopp) result(nucom)

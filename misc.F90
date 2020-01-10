@@ -51,13 +51,13 @@ contains
       integer :: m, n, ns
       integer, dimension(1) :: iminloc
       real(dp), dimension(size(xa)) :: c, d, den, ho
-      
+
       if ( size(xa) == size(ya) ) then
          n = size(xa)
       else
          stop 'polint: xa and ya have different size'
       end if
-      
+
       c = ya
       d = ya
       ho = xa - x
@@ -65,7 +65,7 @@ contains
       ns = iminloc(1)
       y = ya(ns)
       ns = ns - 1
-      
+
       do m = 1, n - 1
          den(1:n - m) = ho(1:n - m) - ho(1 + m:n)
          if ( any( dabs(den(1:n - m)) == 0d0 ) ) then !&
@@ -119,18 +119,18 @@ contains
       write (*, "('ERROR ', A)") string
       stop 'program terminated by an_error'
    end subroutine an_error
-   
-   
+
+
    !       This produces a warning message
    subroutine a_warning(string)
       implicit none
       character(len=*), intent(in) :: string
       write(*,*) 'warging message: '//trim(string)
    end subroutine a_warning
-   
-   
+
+
    !      This creates an arithmetic progression array
-   function arth(first,increment,n)
+   function arth(first, increment, n)
       implicit none
       integer, parameter :: NPAR_ARTH=16,NPAR2_ARTH=8
       real(dp), intent(in) :: first,increment
@@ -158,7 +158,7 @@ contains
          end do
       end if
    end function arth
-   
+
    !
    !     Find closest element in an array to a value
    !
@@ -215,30 +215,30 @@ contains
             return
          end if
       end if
-      
+
    end function locate
-   
+
    ! ::::: Chebychev evaluation :::::
    function chebev(x,coef,num_coefs,xmin,xmax) result(res)
       implicit none
-      
+
       integer, intent(in) :: num_coefs
       real(dp), intent(in) :: x,xmin,xmax
       real(dp), intent(in), dimension(:) :: coef
       integer :: j
       real(dp) :: d,dd,y,y2,sv,res
-      
+
       if ((x-xmin)*(x-xmax) > 0d0) then
          print*,x,xmin,xmax
          write(*,*)'x is not in rage in chebev'
          stop
       end if
-      
+
       d = 0d0
       dd = 0d0
       y = (2d0 * x - xmin - xmax) / (xmax - xmin)
       y2 = 2d0 * y
-      
+
       do j=num_coefs,2,-1
          sv = dd
          dd = d
@@ -246,7 +246,7 @@ contains
       end do
       res = y * d - dd + 0.5d0 * coef(1)
    end function chebev
-   
+
    !
    ! ##### #####  # #####  #   ##    ####   ####  #    #   ##   #
    !   #   #    # # #    # #  #  #  #    # #    # ##   #  #  #  #
@@ -263,7 +263,7 @@ contains
       implicit none
       real(dp), dimension(:), intent(in) :: a, b, c, r
       real(dp), dimension(:), intent(out) :: u
-      real(dp), dimension(size(b)) :: gam 
+      real(dp), dimension(size(b)) :: gam
       integer :: n, j
       real(dp) :: bet
 
@@ -325,8 +325,8 @@ contains
          stop 'program terminated by assert_eq'
       end if
    end function assert_eq
-   
-   
+
+
    !                              #####
    !  ####  #    #   ##   #####  #     # # #    # #####
    ! #    # #    #  #  #  #    #       # # ##   #   #
@@ -344,7 +344,7 @@ contains
       read (c,'(i5)') i
       return
    end function char2int
-   
+
    function char2double(c) result(d)
       character(len=*), intent(in) :: c
       real(dp) :: d

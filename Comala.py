@@ -4,6 +4,7 @@ from SAPytho.misc import fortran_double
 
 # TODO: get rid of b_index
 
+
 #
 #  #####    ##   #####    ##   #    #  ####
 #  #    #  #  #  #    #  #  #  ##  ## #
@@ -182,7 +183,7 @@ def PBSfile(jname, qname, xcmd, depen=None, nodes=None, cores=None, mail=None, h
     else:
         n = nodes
 
-    if cores is None or qname is 'debug':
+    if (cores is None) or (qname == 'debug'):
         c = 24
     else:
         c = cores
@@ -203,7 +204,7 @@ def PBSfile(jname, qname, xcmd, depen=None, nodes=None, cores=None, mail=None, h
             print("#PBS -m bae", file=f)
         print("Working at: {0}".format(os.getcwd()))
         print("\ncd {0}".format(os.getcwd()), file=f)
-        if (c > 1) or not (qname is 'debug'):
+        if (c > 1) or not (qname == 'debug'):
             print("export OMP_NUM_THREADS={0}".format(c), file=f)
         print("\n# RUN", file=f)
         print(xcmd, file=f)
@@ -245,6 +246,7 @@ class Runner(object):
         if clean:
             comp.cleanup()
         comp.compile()
+        os.system("sleep 5")
         run_cmd = '{0}xTests'.format(comp.compile_dir)
         print("\n--> Running:\n  ", run_cmd, "\n")
         os.system(run_cmd)
@@ -255,6 +257,7 @@ class Runner(object):
         if clean:
             comp.cleanup()
         comp.compile()
+        os.system("sleep 5")
         outfile = self.flabel + '.jp.h5'
         if pream is None:
             run_cmd = '{0}xBlazMag {1} {2} {3} {4} {5}'.format(comp.compile_dir, self.par.params_file, self.wAbs, self.wIC, self.wCool, outfile)
@@ -270,19 +273,21 @@ class Runner(object):
             os.system(run_cmd)
             print("\n--> Finished")
 
-    def run_afterglow(self, pream=None, clean=False, cl=False):
-        if clean:
-            self.comp.cleanup()
+    def run_Aglow(self, pream=None, clean=False, cl=False):
         comp = compiler(rules='xAglow', **self.comp_kw)
+        if clean:
+            comp.cleanup()
         comp.compile()
+        os.system("sleep 5")
         outfile = self.flabel + '.jp.h5'
         if pream is None:
             run_cmd = '{0}xAglow {1} {2} {3} {4} {5}'.format(comp.compile_dir, self.wAbs, self.wCool, self.wIC, self.par.params_file, outfile)
         else:
             run_cmd = '{0} {1}xAglow {2} {3} {4} {5} {6}'.format(pream, comp.compile_dir, self.wAbs, self.wCool, self.wIC, self.par.params_file, outfile)
-            print("\n--> Parameters:")
+        print("\n--> Parameters:")
         os.system("cat -n " + self.par.params_file)
         if cl:
+            print("\n--> Running:\n  ", run_cmd, "\n")
             return run_cmd
         else:
             print("\n--> Running:\n  ", run_cmd, "\n")

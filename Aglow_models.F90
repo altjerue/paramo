@@ -186,11 +186,11 @@ contains
          if ( blob ) then
             Rb = Rbw * theta_j
             volume = 4d0 * pi * Rb**3 / 3d0
-            if ( beam_kind == 0 ) then
-               csa = 2d0 * pi * Rb**2
-            else
-               csa = Oj * Rbw**2
-            end if
+            ! if ( beam_kind == 0 ) then
+            csa = 2d0 * pi * Rb**2
+            ! else
+            !    csa = Oj * Rbw**2
+            ! end if
          else ! -----[ slab ]-----
             Rb = Rbw / (Gbulk * 12d0)
             csa = Oj * Rbw**2
@@ -223,12 +223,11 @@ contains
    !
    !     Numerical form of the adiabatic term
    !
-   function adiab_cool_num(vol1, vol2, dt, g) result(dotg_ad)
+   function adiab_cool_num(vol1, vol2, dt) result(dotg_ad)
       implicit none
       real(dp), intent(in) :: vol1, vol2, dt
-      real(dp), intent(in), dimension(:) :: g
-      real(dp), dimension(size(g, dim=1)) :: dotg_ad
-      dotg_ad = pofg(g) * (dlog(vol2) - dlog(vol1)) / (3d0 * dt)
+      real(dp) :: dotg_ad
+      dotg_ad = (dlog(vol2) - dlog(vol1)) / (3d0 * dt)
    end function adiab_cool_num
 
 
@@ -243,5 +242,16 @@ contains
    !   Here are some ways to include an external medium
    !############################################################################
 
+   !
+   !     Analytic solution for the adiabatic blast wave as in eq. (3) of PK00
+   !
+   function wind_blast_wave(Rshk, Aw, G0, E0, s) result(Gshk)
+      implicit none
+      real(dp), intent(in) :: Aw, Rshk, G0, E0, s
+      real(dp) :: x, Gshk, R0
+      R0 = ((3d0 - s) * E0 / (4d0 * pi * mass_p * cLight**2 * Aw * G0**2))**(1d0 / (3d0 - s))
+      x = Rshk / R0
+      Gshk = 0.5d0 * x**(s - 3d0) * G0 * ( dsqrt( 4d0 * x**(3d0 - s) + 1d0 + (2d0 * x**(3d0 - s) / G0)**2 ) - 1d0 )
+   end function wind_blast_wave
 
 end module Aglow_models

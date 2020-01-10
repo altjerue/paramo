@@ -3,6 +3,7 @@ program afterglow_main
    use misc
    implicit none
 
+   !!!!!FIXME: create new arguments for new afterglow setup
    character(len=*), parameter :: args_error = "Usage:"//new_line('A')//&
       '  xAglow with-cooling params_file output_file'//new_line('A')//&
       'Options:'//new_line('A')//&
@@ -51,6 +52,7 @@ program afterglow_main
    call get_command_argument(4, params_file)
    call get_command_argument(5, output_file)
 
-   call afterglow(trim(params_file), trim(output_file), with_abs, with_cool, with_ic)
+   !!!!!CHANGED: arguments subroutine afterglow
+   call afterglow(trim(params_file), trim(output_file), with_ic)
 
 end program afterglow_main

@@ -97,7 +97,7 @@ constants.o K2.o K1.o pwl_integ.o misc.o h5_inout.o: data_types.o
 SRtoolkit.o: data_types.o constants.o
 pairs.o: data_types.o constants.o misc.o
 params.o: data_types.o misc.o
-models.o: data_types.o constants.o SRtoolkit.o
+Aglow_models.o: data_types.o constants.o SRtoolkit.o
 blazMag.o: data_types.o constants.o misc.o pwl_integ.o h5_inout.o SRtoolkit.o \
 	anaFormulae.o radiation.o dist_evol.o K1.o K2.o
 blazMag_main.o: data_types.o misc.o blazMag.o
@@ -107,9 +107,9 @@ radiation.o: data_types.o constants.o misc.o pwl_integ.o SRtoolkit.o \
 	anaFormulae.o
 dist_evol.o: data_types.o constants.o misc.o pwl_integ.o SRtoolkit.o K2.o
 tests.o: data_types.o constants.o misc.o pwl_integ.o h5_inout.o SRtoolkit.o \
-	anaFormulae.o models.o radiation.o dist_evol.o K1.o K2.o
+	anaFormulae.o Aglow_models.o radiation.o dist_evol.o K1.o K2.o
 afterglow.o: data_types.o constants.o misc.o pwl_integ.o \
-	h5_inout.o models.o SRtoolkit.o anaFormulae.o radiation.o dist_evol.o \
+	h5_inout.o Aglow_models.o SRtoolkit.o anaFormulae.o radiation.o dist_evol.o \
 	K1.o K2.o
 
 # executables

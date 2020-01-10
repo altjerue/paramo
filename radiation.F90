@@ -279,11 +279,12 @@ contains
    end function BBenergy_dens
 
 
-   function bolometric_integ(freqs, uu) result(ubol)
+   subroutine bolometric_integ(freqs, uu, ubol)
       implicit none
       real(dp), intent(in), dimension(:) :: freqs, uu
+      real(dp), intent(out) :: ubol
       integer :: j, Nf
-      real(dp) :: uind, ubol
+      real(dp) :: uind
       Nf = size(freqs)
       ubol = 0d0
       freqloop: do j = 2, Nf
@@ -294,24 +295,18 @@ contains
             ubol = ubol + uu(j - 1) * freqs(j - 1) * Pinteg(freqs(j) / freqs(j - 1), uind, 1d-9)
          end if
       end do freqloop
-   end function bolometric_integ
+   end subroutine bolometric_integ
 
 
-   !  ###  #####
-   !   #  #     #     ####   ####   ####  #      # #    #  ####
-   !   #  #          #    # #    # #    # #      # ##   # #    #
-   !   #  #          #      #    # #    # #      # # #  # #
-   !   #  #          #      #    # #    # #      # #  # # #  ###
-   !   #  #     #    #    # #    # #    # #      # #   ## #    #
-   !  ###  #####      ####   ####   ####  ###### # #    #  ####
-   function IC_cool(gg, freqs, uu) result(ubol)
+   subroutine rad_cool(gg, freqs, uu, ubol)
       implicit none
       real(dp), intent(in), dimension(:) :: freqs, gg, uu
+      real(dp), intent(out), dimension(:) :: ubol
       integer :: j, k, Ng, Nf
       real(dp) :: nuKN, uind
-      real(dp), dimension(size(gg)) :: ubol
-      Ng = size(gg)
-      Nf = size(freqs)
+      Ng = size(gg, dim=1)
+      Nf = size(freqs, dim=1)
+      if ( size(ubol, dim=1) /= Ng ) call an_error("rad_cool: ubol and gg have different size")
       !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
       !$OMP& PRIVATE(k, j, uind, nuKN)
       do k = 1, Ng
@@ -328,7 +323,7 @@ contains
          end do freqloop
       end do
       !$OMP END PARALLEL DO
-   end function IC_cool
+   end subroutine rad_cool
 
 
    !  #######  #####    #    #####
