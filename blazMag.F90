@@ -238,10 +238,6 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
       !  #      #    # #    # #      # #  # # #  ###
       !  #    # #    # #    # #      # #   ## #    #
       !   ####   ####   ####  ###### # #    #  ####
-!      if ( b_index /= 0d0 ) then
-!         uB = 0.125d0 * (B * (1d0 + (cLight * gamma_bulk * t(i) / R0))**(-b_index))**2 / pi
-!      end if
-
       if ( with_cool ) then
          ! call bolometric_integ(freqs, 4d0 * pi * Inu / cLight, urad)
          ! call RadTrans_blob(Inu, R, jssc(:, i) + jeic(:, i), anut(:, i))
@@ -260,7 +256,7 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
       !  ###### ###### #####
       Qinj(:, i) = injection_pwl(t(i), tinj, gg, g1, g2, pind, Qnth)
       Ddif(:, i) = 1d-200!4.3d-3 * pofg(gg)**(5d0 / 3d0) * (mass_e * cLight**2)**(-1d0 / 3d0)
-      nu0(:, i) = 4d0 * sigmaT * (uB + urad) / (3d0 * mass_e * cLight)
+      nu0(:, i) = 4d0 * sigmaT * urad / (3d0 * mass_e * cLight)
       call FP_FinDif_difu(dt(i), &
             &             pofg(gg), &
             &             nn(:, i - 1), &

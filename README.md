@@ -101,3 +101,6 @@ These are the most referenced works on which I based all the modeling
 - [RM92]  Rees & Meszaros, 1992, MNRAS, 258, 41P
 - [DM09]  Dermer & Menon, 2009, "High Energy Radiation from Black Holes: Gamma Rays, Cosmic Rays, and Neutrinos", Princeton Series in Astrophysics
 - [SPN98] Sari, Piran, Narayan, 1998, ApJ, 497, L17
+- [PK00]  Panaitescu & Kumar, 2000, ApJ, 543, 66
+- [CL00]  Chavalier & Li, 2000, ApJ, 536, 195
+- [CD99]  Chiang & Dermer, 1999, ApJ, 512, 699

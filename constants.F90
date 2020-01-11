@@ -31,6 +31,8 @@ module constants
       cLight  = 2.99792458d10, &                    ! cm / s
       mass_p = 1.672621898d-24, &                   ! g
       mass_e = 9.10938356d-28, &                    ! g
+      energy_e = 8.187105776823886d-07, &           ! erg
+      energy_p = 1.5032776159851257d-3, &           ! erg
       eCharge = 4.80320467299766d-10, &             ! cm^(3/2) g^(1/2) / s
       sigmaT = 6.6524587158d-25, &                  ! 1 / cm^2
       hPlanck = 6.62607004d-27, &                   ! erg s

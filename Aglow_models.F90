@@ -24,18 +24,6 @@ contains
    !############################################################################
 
    !
-   !     Deceleration radius as in eq. (1) of Rees & Mészáros, 1992, MNRAS, 258,
-   !     41P
-   !
-   function deceleration_radius(E0, G0, n) result(Rd)
-      implicit none
-      real(dp), intent(in) :: G0, E0, n
-      real(dp) :: Rd
-      Rd = (3d0 * E0 / (4d0 * pi * (G0 * cLight)**2 * mass_p * n))**(1d0 / 3d0)
-   end function deceleration_radius
-
-
-   !
    !     Evolution model of a blast wave as in eqs. (9) and (10) of SPN98
    !
    function blastwave_approx(tobs, z, G0, E0, n, Rshk, adiabatic) result(Gshk)
@@ -142,16 +130,43 @@ contains
    !############################################################################
 
    !
-   !     Analytic solution for the adiabatic blast wave as in eq. (3) of PM09
+   !     Deceleration radius as in eq. (1) of RM92
    !
-   function adiab_blast_wave(Rshk, R0, G0, E0, n) result(Gshk)
+   subroutine deceleration_radius(Rd1, Rd2, E0, G0, Aw, with_wind, s)
       implicit none
-      real(dp), intent(in) :: R0, Rshk, G0, E0, n
-      real(dp) :: M0, l, x, Gshk
-      M0 = E0 / (G0 * cLight**2)
-      x = Rshk / R0
-      l = 4d0 * pi * mass_p * n * R0**3 / (3d0 * M0)
-      Gshk = (l * (x**3 - 1d0) + G0) / dsqrt( 1d0 + 2d0 * G0 * l * (x**3 - 1d0) + (l * (x**3 - 1d0))**2 )
+      real(dp), intent(in) :: G0, E0, Aw, s
+      logical, intent(in) :: with_wind
+      real(dp), intent(out) :: Rd1, Rd2
+      if ( with_wind ) then
+         !     Eq. (5) in PK00
+         Rd1 = ((3d0 - s) * E0 / (4d0 * pi * Aw * mass_p * (cLight * G0)**2))**(1d0 / (3d0 - s))
+         Rd2 = Rd1 * 0.25d0 ! see R_B in PVP14, p. 3
+      else
+         !     Eq. (1) in RM92
+         Rd1 = (3d0 * E0 / (4d0 * pi * (G0 * cLight)**2 * mass_p * Aw))**(1d0 / 3d0)
+         Rd2 = Rd1 * 2d0**(-2d0 / 3d0) ! see R_B in PVP14, p. 3
+      end if
+   end subroutine deceleration_radius
+
+   !
+   !     Analytic solution for the adiabatic blast wave
+   !
+   function adiab_blast_wave(Rshk, G0, E0, Aw, with_wind, s) result(Gshk)
+      implicit none
+      real(dp), intent(in) :: Rshk, G0, E0, Aw, s
+      logical, intent(in) :: with_wind
+      real(dp) :: M0, x, Gshk, R0
+      if ( with_wind ) then
+         !-----> Eqs. (4)-(5) in PK00
+         R0 = ((3d0 - s) * E0 / (4d0 * pi * mass_p * cLight**2 * Aw * G0**2))**(1d0 / (3d0 - s))
+         x = Rshk / R0
+         Gshk = 0.5d0 * x**(s - 3d0) * G0 * ( dsqrt( 4d0 * x**(3d0 - s) + 1d0 + (2d0 * x**(3d0 - s) / G0)**2 ) - 1d0 )
+      else
+         !-----> Eqs. (9)-(10) in CD99
+         M0 = E0 / (G0 * cLight**2)
+         x = 4d0 * pi * mass_p * Aw * Rshk**3 / 3d0
+         Gshk = (x + G0 * M0) / dsqrt(M0**2 + 2d0 * G0 * M0 * x + x**2)
+      end if
    end function adiab_blast_wave
 
    !
@@ -181,18 +196,21 @@ contains
             call an_error("bw_crossec_area: wrong value of beam_kind")
          end select
 
-         Oj = 2d0 * pi * (1d0 - dcos(theta_j))
 
          if ( blob ) then
             Rb = Rbw * theta_j
             volume = 4d0 * pi * Rb**3 / 3d0
-            ! if ( beam_kind == 0 ) then
-            csa = 2d0 * pi * Rb**2
-            ! else
-            !    csa = Oj * Rbw**2
-            ! end if
-         else ! -----[ slab ]-----
-            Rb = Rbw / (Gbulk * 12d0)
+            if ( beam_kind == 0 ) then
+               Oj = 2d0 * pi
+               csa = 2d0 * pi * Rb**2
+            else
+               Oj = 2d0 * pi * (1d0 - dcos(theta_j))
+               csa = Oj * Rbw**2
+            end if
+         else
+            ! Rb = Rbw / (Gbulk * 12d0)
+            Rb = Rbw / ((Gbulk + 0.75d0) * 12d0)
+            Oj = 2d0 * pi * (1d0 - dcos(theta_j))
             csa = Oj * Rbw**2
             volume = csa * Rb
          end if
@@ -200,7 +218,8 @@ contains
       else
 
          Oj = 4d0 * pi
-         Rb = Rbw / (Gbulk * 12d0)
+         ! Rb = Rbw / (Gbulk * 12d0)
+         Rb = Rbw / ((Gbulk + 0.75d0) * 12d0)
          volume = 4d0 * pi * Rbw**2 * Rb
          csa = Oj * Rbw**2
 
@@ -230,28 +249,5 @@ contains
       dotg_ad = (dlog(vol2) - dlog(vol1)) / (3d0 * dt)
    end function adiab_cool_num
 
-
-   !############################################################################
-   !  ###### #    # #####    #    # ###### #####  # #    # #    #
-   !  #       #  #    #      ##  ## #      #    # # #    # ##  ##
-   !  #####    ##     #      # ## # #####  #    # # #    # # ## #
-   !  #        ##     #      #    # #      #    # # #    # #    #
-   !  #       #  #    #      #    # #      #    # # #    # #    #
-   !  ###### #    #   #      #    # ###### #####  #  ####  #    #
-   !----- Description -----
-   !   Here are some ways to include an external medium
-   !############################################################################
-
-   !
-   !     Analytic solution for the adiabatic blast wave as in eq. (3) of PK00
-   !
-   function wind_blast_wave(Rshk, Aw, G0, E0, s) result(Gshk)
-      implicit none
-      real(dp), intent(in) :: Aw, Rshk, G0, E0, s
-      real(dp) :: x, Gshk, R0
-      R0 = ((3d0 - s) * E0 / (4d0 * pi * mass_p * cLight**2 * Aw * G0**2))**(1d0 / (3d0 - s))
-      x = Rshk / R0
-      Gshk = 0.5d0 * x**(s - 3d0) * G0 * ( dsqrt( 4d0 * x**(3d0 - s) + 1d0 + (2d0 * x**(3d0 - s) / G0)**2 ) - 1d0 )
-   end function wind_blast_wave
 
 end module Aglow_models
