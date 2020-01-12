@@ -57,9 +57,9 @@ contains
 #else
       cyclo = 8d0 * pi**2 * nu_b * dble( (m + 1) * ( m**(2 * m + 1) ) ) * &
       beta**(2 * m) / dgamma(dble(2 * m + 2))
-#endif 
+#endif
       if (cyclo.lt.1d-200) cyclo = 1d-200
-      
+
    end function CyclotronLimit
    ! =========================================================================
 
@@ -128,7 +128,7 @@ contains
       real(dp) :: del,fsum,fa,fb,th
       real(dp), intent(in) :: theta_a,theta_b,beta,gam,chi
       real(dp), intent(inout) :: s
-      
+
       if (n == 1) then
          fa = P81_eq8(beta,gam,theta_a,chi)
          fb = P81_eq8(beta,gam,theta_b,chi)
@@ -144,7 +144,7 @@ contains
          end do
          s = 5d-1 * (s + del * fsum)
       end if
-      
+
    end subroutine P81_trapzd
 
 
@@ -181,6 +181,7 @@ contains
    !
 
    ! ::::: The RMA function :::::
+   ! RMAfit(x) = Rsync(x) = 0.5 pi x CS(x)
    function RMA_new(chi, g) result(res)
       implicit none
       real(dp) :: res,x
@@ -252,9 +253,9 @@ contains
       implicit none
       real(dp) :: res,cs,x
       real(dp), intent(in) :: chi,g
-      
+
       x = 2d0 * chi / (3d0 * g**2)
-      
+
       if (x >= 1d2 .and. x <= 5d2) then
          cs = dexp(-x) * x**(-2d0/3d0) / ( 0.869d0 * dexp(-x) + x**(1d0/3d0) )
       else if (x > 5d2) then
@@ -262,9 +263,9 @@ contains
       else
          cs = x**(-2d0/3d0) / ( 0.869d0 + x**(1d0/3d0) * dexp(x) )
       end if
-      
+
       res = cs * x !* pi * sqrt(3d0) / 8d0
-      
+
    end function SL07
 
 

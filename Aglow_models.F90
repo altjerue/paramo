@@ -196,21 +196,19 @@ contains
             call an_error("bw_crossec_area: wrong value of beam_kind")
          end select
 
+         Oj = 2d0 * pi * (1d0 - dcos(theta_j))
 
          if ( blob ) then
             Rb = Rbw * theta_j
             volume = 4d0 * pi * Rb**3 / 3d0
             if ( beam_kind == 0 ) then
-               Oj = 2d0 * pi
                csa = 2d0 * pi * Rb**2
             else
-               Oj = 2d0 * pi * (1d0 - dcos(theta_j))
                csa = Oj * Rbw**2
             end if
          else
             ! Rb = Rbw / (Gbulk * 12d0)
             Rb = Rbw / ((Gbulk + 0.75d0) * 12d0)
-            Oj = 2d0 * pi * (1d0 - dcos(theta_j))
             csa = Oj * Rbw**2
             volume = csa * Rb
          end if
@@ -221,7 +219,7 @@ contains
          ! Rb = Rbw / (Gbulk * 12d0)
          Rb = Rbw / ((Gbulk + 0.75d0) * 12d0)
          volume = 4d0 * pi * Rbw**2 * Rb
-         csa = Oj * Rbw**2
+         csa = 4d0 * pi * Rbw**2
 
       end if
    end subroutine bw_crossec_area
