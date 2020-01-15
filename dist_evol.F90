@@ -145,21 +145,21 @@ contains
    !  #       # #  # # #     # # #
    !  #       # #   ## #     # # #
    !  #       # #    # ######  # #
-   subroutine FP_FinDif_difu(dt_in, g, nin, nout, gdot_in, Din, Qin, tesc_in, r_size)
+   subroutine FP_FinDif_difu(dt_in, g, nin, nout, gdot_in, Din, Qin, tesc_in, r_size1, r_size2)
       implicit none
-      real(dp), intent(in) :: dt_in, tesc_in, r_size
+      real(dp), intent(in) :: dt_in, tesc_in, r_size1, r_size2
       real(dp), intent(in), dimension(:) :: g, nin, gdot_in, Din, Qin
       real(dp), intent(out), dimension(:) :: nout
       real(dp), parameter :: eps = 1e-3
       integer :: i, Ng, Ng1
-      real(dp) :: dBB, tlc, dt, tesc
+      real(dp) :: dBB, dt, tesc, tlc
       real(dp), dimension(size(g)) :: dx, dxp2, dxm2, CCp2, CCm2, BBp2, BBm2, &
          YYp2, YYm2, WWp2, WWm2, ZZp2, ZZm2, a, b, c, r, DD, QQ, gdot
 
       Ng = size(g)
       Ng1 = Ng - 1
-
-      tlc = r_size / cLight
+      !-----> Dimensionless
+      tlc = r_size1 / cLight
       dt = dt_in / tlc
       if ( tesc_in < 1d100 .and. tesc_in > 1d-100 ) then
          tesc = tesc_in / tlc
@@ -224,13 +224,13 @@ contains
 
       end do
 
-      r = (nin + dt * QQ) / (sigmaT * r_size)
+      r = (nin + dt * QQ) / (sigmaT * r_size1)
       c = -dt * CCp2 * YYp2 * dexp(ZZp2) / (dx * dxp2)
       a = -dt * CCm2 * YYm2 * dexp(-ZZm2) / (dx * dxm2)
       b = 1d0 + dt * ( CCp2 * YYp2 * dexp(-ZZp2) / dxp2 + CCm2 * YYm2 * dexp(ZZm2) / dxm2 ) / dx + dt / tesc
       call tridag_ser(a(2:), b, c(:Ng1), r, nout)
 
-      nout = nout * (sigmaT * r_size)
+      nout = nout * (sigmaT * r_size2)
 
    end subroutine FP_FinDif_difu
 

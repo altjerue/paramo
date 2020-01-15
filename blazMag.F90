@@ -265,7 +265,7 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
             &             Ddif(:, i), &
             &             Qinj(:, i), &
             &             tesc, &
-            &             R)
+            &             R, tlc)
       ! call FP_FinDif_cool(dt(i), gg, nn(i - 1, :), nn(i, :), nu0(i - 1, :), Qinj(i, :), tesc)
 
 

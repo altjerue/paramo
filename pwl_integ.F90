@@ -4,6 +4,17 @@ module pwl_integ
 
 contains
 
+   function powlaw_integ(x1, x2, y1, y2) result(res)
+      implicit none
+      real(dp), intent(in) :: x1, x2, y1, y2
+      real(dp) :: q, res
+      q = -dlog(y2 / y1) / dlog(x2 / x1)
+      if ( q > 8d0 ) q = 8d0
+      if ( q < -8d0 ) q = -8d0
+      res = y1 * x1 * Pinteg(x2 / x1, q, 1d-6)
+   end function powlaw_integ
+
+
    function Pinteg(a, s, eps) result(res)
       !             a
       !            /     -s

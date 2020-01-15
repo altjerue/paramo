@@ -203,19 +203,19 @@ contains
    !
    !     ::::::  Frequency in the observer frame  ::::::
    !
-   function nu_obs_s(nu, z, dopp) result(nuobs)
+   function nu_obs_s(nucom, z, dopp) result(nuobs)
       implicit none
-      real(dp), intent(in) :: nu, z, dopp
+      real(dp), intent(in) :: nucom, z, dopp
       real(dp) ::nuobs
-      nuobs = nu * dopp / (1d0 + z)
+      nuobs = nucom * dopp / (1d0 + z)
     end function nu_obs_s
 
-    function nu_obs_v(nu, z, dopp) result(nuobs)
+    function nu_obs_v(nucom, z, dopp) result(nuobs)
       implicit none
       real(dp), intent(in) :: z, dopp
-      real(dp), intent(in), dimension(:) :: nu
-      real(dp), dimension(size(nu)) :: nuobs
-      nuobs = nu * dopp / (1d0 + z)
+      real(dp), intent(in), dimension(:) :: nucom
+      real(dp), dimension(size(nucom)) :: nuobs
+      nuobs = nucom * dopp / (1d0 + z)
     end function nu_obs_v
 
 
@@ -243,19 +243,19 @@ contains
    !
    ! NOTE: Argument 'x' is the position in the comoving frame
    !
-   function t_obs_s(t, z, gamma, x, muo) result(tobs)
+   function t_obs_s(tcom, z, gamma, xcom, muo) result(tobs)
       implicit none
-      real(dp), intent(in) :: t, z, gamma, x, muo
+      real(dp), intent(in) :: tcom, z, gamma, xcom, muo
       real(dp) :: tobs
-      tobs = (1d0 + z) * ((t / Doppler(gamma, muo)) + (gamma * x * (bofg(gamma) - muo)) / cLight)
+      tobs = (1d0 + z) * ((tcom / Doppler(gamma, muo)) + (gamma * xcom * (bofg(gamma) - muo)) / cLight)
    end function t_obs_s
 
-   function t_obs_v(t, z, gamma, x, muo) result(tobs)
+   function t_obs_v(tcom, z, gamma, xcom, muo) result(tobs)
       implicit none
-      real(dp), intent(in) :: z, gamma, x, muo
-      real(dp), intent(in), dimension(:) :: t
-      real(dp), dimension(size(t)) :: tobs
-      tobs = (1d0 + z) * ((t / Doppler(gamma, muo)) + (gamma * x * (bofg(gamma) - muo)) / cLight)
+      real(dp), intent(in) :: z, gamma, xcom, muo
+      real(dp), intent(in), dimension(:) :: tcom
+      real(dp), dimension(size(tcom)) :: tobs
+      tobs = (1d0 + z) * ((tcom / Doppler(gamma, muo)) + (gamma * xcom * (bofg(gamma) - muo)) / cLight)
    end function t_obs_v
 
 
@@ -264,19 +264,19 @@ contains
    !
    ! NOTE: Argument 'x' is the position in the comoving frame
    !
-   function t_com_s(tobs, z, gamma, x, muo) result(tcom)
+   function t_com_s(tobs, z, gamma, xcom, muo) result(tcom)
       implicit none
-      real(dp), intent(in) :: tobs, z, gamma, x, muo
+      real(dp), intent(in) :: tobs, z, gamma, xcom, muo
       real(dp) :: tcom
-      tcom = Doppler(gamma, muo) * ((tobs / (1d0 + z)) + (gamma * x * (muo - bofg(gamma))) / cLight)
+      tcom = Doppler(gamma, muo) * ((tobs / (1d0 + z)) + (gamma * xcom * (muo - bofg(gamma))) / cLight)
    end function t_com_s
 
-   function t_com_v(t, z, gamma, x, muo) result(tcom)
+   function t_com_v(tobs, z, gamma, xcom, muo) result(tcom)
       implicit none
-      real(dp), intent(in) :: z,gamma, x, muo
-      real(dp), intent(in), dimension(:) :: t
-      real(dp), dimension(size(t)) :: tcom
-      tcom = Doppler(gamma, muo) * ((t / (1d0 + z)) + (gamma * x * (muo - bofg(gamma))) / cLight)
+      real(dp), intent(in) :: z,gamma, xcom, muo
+      real(dp), intent(in), dimension(:) :: tobs
+      real(dp), dimension(size(tobs)) :: tcom
+      tcom = Doppler(gamma, muo) * ((tobs / (1d0 + z)) + (gamma * xcom * (muo - bofg(gamma))) / cLight)
    end function t_com_v
 
 

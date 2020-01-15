@@ -26,7 +26,7 @@ contains
    !
    !     Evolution model of a blast wave as in eqs. (9) and (10) of SPN98
    !
-   function blastwave_approx(tobs, z, G0, E0, n, Rshk, adiabatic) result(Gshk)
+   subroutine blastwave_approx(tobs, z, G0, E0, n, Gshk, Rshk, adiabatic)
       implicit none
       real(dp), intent(in) :: tobs, G0, E0, n, z
       logical, intent(in) :: adiabatic
@@ -43,7 +43,7 @@ contains
          Gshk = (4d0 * cLight * t / L)**(-3d0 / 7d0)
       end if
       Gshk = dmin1(G0, Gshk)
-   end function blastwave_approx
+   end subroutine blastwave_approx
 
 
    !
@@ -182,7 +182,6 @@ contains
 
       ! -----[ Uniform isotropic or beamed? ]-----
       if ( beam_kind >= 0 ) then
-
          select case( beam_kind )
          case(0)
             theta_j = 1d0 / G0
@@ -212,16 +211,14 @@ contains
             csa = Oj * Rbw**2
             volume = csa * Rb
          end if
-
       else
-
          Oj = 4d0 * pi
          ! Rb = Rbw / (Gbulk * 12d0)
          Rb = Rbw / ((Gbulk + 0.75d0) * 12d0)
          volume = 4d0 * pi * Rbw**2 * Rb
          csa = 4d0 * pi * Rbw**2
-
       end if
+
    end subroutine bw_crossec_area
 
 

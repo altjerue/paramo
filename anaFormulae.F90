@@ -430,8 +430,8 @@ contains
       if (n == 1) then
          ega = dexp(lga)
          egb = dexp(lgb)
-         fa = ega**(1d0 - q - 1d0) * RMAfunc(chi, ega) * (q + 1d0 + ega**2 / (ega**2 - 1d0))
-         fb = egb**(1d0 - q - 1d0) * RMAfunc(chi, egb) * (q + 1d0 + egb**2 / (egb**2 - 1d0))
+         fa = ega**(-q) * RMAfunc(chi, ega) * (q + 1d0 + ega**2 / (ega**2 - 1d0))
+         fb = egb**(-q) * RMAfunc(chi, egb) * (q + 1d0 + egb**2 / (egb**2 - 1d0))
          s = 0.5d0 * (lgb - lga) * (fa + fb)
       else
          it = 2**(n - 2)
@@ -440,7 +440,7 @@ contains
          eg = dexp(lg)
          fsum = 0d0
          itloop: do i=1,it
-            fsum = fsum + eg**(1d0 - q - 1d0) * RMAfunc(chi, eg) * (q + 1d0 + eg**2 / (eg**2 - 1d0))
+            fsum = fsum + eg**(-q) * RMAfunc(chi, eg) * (q + 1d0 + eg**2 / (eg**2 - 1d0))
             lg = lg + del
             eg = dexp(lg)
          end do itloop
