@@ -224,13 +224,13 @@ contains
 
       end do
 
-      r = (nin + dt * QQ) / (sigmaT * r_size1)
+      r = (nin + dt * QQ) * (sigmaT * r_size1)
       c = -dt * CCp2 * YYp2 * dexp(ZZp2) / (dx * dxp2)
       a = -dt * CCm2 * YYm2 * dexp(-ZZm2) / (dx * dxm2)
       b = 1d0 + dt * ( CCp2 * YYp2 * dexp(-ZZp2) / dxp2 + CCm2 * YYm2 * dexp(ZZm2) / dxm2 ) / dx + dt / tesc
       call tridag_ser(a(2:), b, c(:Ng1), r, nout)
 
-      nout = nout * (sigmaT * r_size2)
+      nout = nout / (sigmaT * r_size2)
 
    end subroutine FP_FinDif_difu
 

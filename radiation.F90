@@ -128,7 +128,7 @@ contains
       else
          if ( tau > 100d0 ) then
             u = 0.5d0 - 1d0 / tau**2
-         else if ( tau >= 0.01 .and. tau <= 100.0 ) then
+         else if ( tau >= 0.01d0 .and. tau <= 100d0 ) then
             u = 0.5d0 * (1d0 - 2d0 * (1d0 - (1d0 + tau) * dexp(-tau)) / tau**2)
          else
             u = (tau / 3d0) - 0.125d0 * tau**2

@@ -108,8 +108,8 @@ subroutine afterglow(params_file, output_file, with_ic)
    call K1_init
    call K2_init
 
-   beam_kind = 0
-   blob = .false.
+   beam_kind = 1
+   blob = .true.
    full_rad_cool = .false.
    with_wind = .false.
    bw_approx = .false.
@@ -140,8 +140,7 @@ subroutine afterglow(params_file, output_file, with_ic)
    td = (1d0 + z) * Rd / (4d0 * gamma_bulk0**2 * cLight)
 
    !-----> True outflow energy and decceleration radius
-   if ( beam_kind >= 0 ) Omega_j = 2d0 * Omega_j !NOTE: uncomment for a doulbe-sided jet is considered
-   Ejet = E0 * (Omega_j / (4d0 * pi))
+   Ejet = E0 * Omega_j / (4d0 * pi)
 
    !-----> Locating the emission region
    if ( bw_approx ) then
@@ -229,7 +228,7 @@ subroutine afterglow(params_file, output_file, with_ic)
    Inu = 0d0
    Ddiff(:, 0) = 1d-200
    Qinj(:, 0) = injection_pwl(t(0), tinj, gg, g1, g2, pind, Q0)
-   n_e(:, 0) = Qinj(:, 0)
+   n_e(:, 0) = 0d0!Qinj(:, 0)
 
    write(*, "('---> Calculating the emission')")
    write(*, *) ''
