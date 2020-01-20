@@ -212,8 +212,8 @@ contains
       Ng = 384
       Nf = 512
       allocate(nu(Nf), g(Ng), dotg(Ng), Ibb(Nf))
-      gmin = 1d9
-      gmax = 1e15
+      gmin = 1d7
+      gmax = 1e13
       fmin = 1d5
       fmax = 1.26d13
       T = 2.72d0

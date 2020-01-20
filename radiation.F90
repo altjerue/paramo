@@ -515,7 +515,7 @@ contains
             l = -dlog(Inu(j + 1) / Inu(j)) / dlog(nu(j + 1) / nu(j))
             if ( l > 8d0 ) l = 8d0
             if ( l < -8d0 ) l = -8d0
-            e0 = mass_e * cLight**2 / (hPlanck * nu(j + 1))
+            e0 = mass_e * cLight**2 / (4d0 * hPlanck * nu(j + 1))
             f1 = nuout / (4d0 * nu(j))
             f2 = nuout / (4d0 * nu(j + 1))
             g2 = dmin1(g(Ng), e0)
@@ -570,7 +570,7 @@ contains
       integer :: k, Ng
       real(dp) :: w, gmx_star, e0, q, q1, q2, emis
       Ng = size(g, dim=1)
-      e0 = mass_e * cLight**2 / (hPlanck * nuext)
+      e0 = mass_e * cLight**2 / (4d0 * hPlanck * nuext)
       w = nuout / (4d0 * nuext)
       jnu = 0d0
       emis = 0d0
@@ -612,9 +612,9 @@ contains
       real(dp), intent(out), dimension(:) :: dotg
       logical, intent(in) :: withKN
       integer :: j, k, Ng, Nf
-      real(dp) :: nuKN, uind, urad_const, usum, xi_c, xi_rat
+      real(dp) :: uind, urad_const, usum, xi_c, xi_rat
       real(dp), dimension(size(gg, dim=1), size(freqs, dim=1)) :: xi, uxi
-      urad_const = 4d0 * sigmaT * cLight / 3d0
+      urad_const = 4d0 * sigmaT * cLight / (3d0 * energy_e)
       xi_c = 4d0 * hPlanck / energy_e
       Ng = size(gg, dim=1)
       Nf = size(freqs, dim=1)
@@ -625,9 +625,8 @@ contains
          end do
       end do
       !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
-      !$OMP& PRIVATE(k, j, uind, nuKN, xi_rat, usum)
+      !$OMP& PRIVATE(k, j, uind, xi_rat, usum)
       do k = 1, Ng
-         nuKN = mec2_h / gg(k)
          usum = 0d0
          freqloop: do j = 1, Nf - 1
             if ( uxi(k, j + 1) > 1d-100 .and. uxi(k, j) > 1d-100 ) then
@@ -635,18 +634,20 @@ contains
                uind = dlog(uxi(k, j + 1) / uxi(k, j)) / dlog(xi_rat)
                if ( uind > 8d0 ) uind = 8d0
                if ( uind < -8d0 ) uind = -8d0
-               if ( freqs(j) >= nuKN .and. withKN ) then
-                  usum = usum + uxi(k, j) * (Qinteg(xi_rat, uind + 2d0, 1d-6) &
+               if ( xi_c * gg(k) * freqs(j) > 1d0 .and. withKN ) then
+                  usum = usum + 4.5d0 * uxi(k, j) &
+                        * (Qinteg(xi_rat, uind + 2d0, 1d-6) &
                         + (dlog(xi(k, j)) - (11d0 / 6d0)) &
-                        * Pinteg(xi_rat, uind + 2d0, 1d-6)) / (xi(k, j) * xi_c * gg(k)**2 * hPlanck)
-               else if ( freqs(j) >= nuKN .and. .not. withKN ) then
+                        * Pinteg(xi_rat, uind + 2d0, 1d-6)) &
+                        / xi(k, j)
+               else if ( xi_c * gg(k) * freqs(j) > 1d0 .and. .not. withKN ) then
                   cycle freqloop
                else
-                  usum = usum + uxi(k, j) * xi(k, j) * Pinteg(xi_rat, uind, 1d-6) * xi_c * gg(k)**2 * hPlanck
+                  usum = usum + uxi(k, j) * xi(k, j) * Pinteg(xi_rat, uind, 1d-6)
                end if
             end if
          end do freqloop
-         dotg(k) = urad_const * gg(k)**2 * usum
+         dotg(k) = urad_const * usum / xi_c**2
       end do
       !$OMP END PARALLEL DO
    end subroutine rad_cool

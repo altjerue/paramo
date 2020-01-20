@@ -25,10 +25,10 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    real(dp) :: uB, uext, R, gmin, gmax, numin, numax, pind, B, D, g1, g2, &
       tstep, Qnth, tmax, d_lum, z, tinj, gamma_bulk, theta_obs, Rdis, &
       mu_obs, nu_ext, tesc, tlc, mu_mag, L_jet, volume, sigma, beta_bulk, L_B, &
-      eps_B, f_rec
+      eps_B, f_rec, urad_const
    real(dp), allocatable, dimension(:) :: freqs, t, Ntot, Inu, gg, dt, nu_obs, &
       t_obs, dg, urad
-   real(dp), allocatable, dimension(:,:) :: nu0, nn, jnut, jmbs, jssc, jeic, &
+   real(dp), allocatable, dimension(:,:) :: dotg, nn, jnut, jmbs, jssc, jeic, &
       ambs, anut, Qinj, Ddif, Fmbs, Feic, Fssc, Fnut
 
 
@@ -62,7 +62,7 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
 
    allocate(t(0:numdt), freqs(numdf), Ntot(numdt), Inu(numdf), &
       dt(numdt), nu_obs(numdf), t_obs(numdt), dg(numbins), urad(numbins))
-   allocate(nn(numbins, 0:numdt), nu0(numbins, 0:numdt), gg(numbins), &
+   allocate(nn(numbins, 0:numdt), dotg(numbins, 0:numdt), gg(numbins), &
       ambs(numdf, numdt), jmbs(numdf, numdt), jnut(numdf, numdt), &
       jssc(numdf, numdt), anut(numdf, numdt), jeic(numdf, numdt), &
       Qinj(numbins, numdt), Ddif(numbins, numdt), Fnut(numdf, numdt), &
@@ -90,12 +90,12 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    ! ----->    External radiation field
    nu_ext = par_nu_ext * gamma_bulk
    uext = par_uext * gamma_bulk**2 * (1d0 + beta_bulk**2 / 3d0) ! Eq. (5.25) Dermer & Menon (2009)
+   urad_const = 4d0 * sigmaT * cLight / (3d0 * energy_e)
 
    ! ----->    Magnetic field
    L_B = sigma * L_jet / (1d0 + sigma)
    uB = L_B / (pi * cLight * beta_bulk * (gamma_bulk * R)**2) ! B**2 / (8d0 * pi)
    B = dsqrt(uB * 8d0 * pi)
-   nu0 = 4d0 * sigmaT * uB / (3d0 * mass_e * cLight)
 
    ! ----->   Injection of particles
    if ( pind > 2d0 ) then
@@ -112,6 +112,7 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
       ! g2 = dsqrt(6d0 * pi * eCharge * 1d-3 / (sigmaT * B))
    end if
 
+   dotg(:, 0) = urad_const * uB * pofg(gg)**2
    volume = 4d0 * pi * R**3 / 3d0
    tlc = R / cLight
    tesc = tlc
@@ -171,16 +172,7 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    ! ######   ##    ####  ######  ####    #   #  ####  #    #
    time_loop: do i = 1, numdt
 
-      select case(time_grid)
-      case(1)
-         t(i) = tstep * ( (tmax / tstep)**(dble(i - 1) / dble(numdt - 1)) )
-      case(2)
-         t(i) = t(i - 1) + 1d0 / (nu0(i - 1, numbins) * g2)
-      case(3)
-         t(i) = tmax * dble(i) / dble(numdt)
-      case default
-         write(*, *) "Wrong time-grid selection"
-      end select
+      t(i) = tstep * ( (tmax / tstep)**(dble(i - 1) / dble(numdt - 1)) )
       dt(i) = t(i) - t(i - 1)
       t_obs(i) = (1d0 + z) * t(i) / D
 
@@ -232,21 +224,24 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
       end do
       !$OMP END PARALLEL DO
 
+
       !   ####   ####   ####  #      # #    #  ####
       !  #    # #    # #    # #      # ##   # #    #
       !  #      #    # #    # #      # # #  # #
       !  #      #    # #    # #      # #  # # #  ###
       !  #    # #    # #    # #      # #   ## #    #
       !   ####   ####   ####  ###### # #    #  ####
+      dotg(:, i) = 0d0
       if ( with_cool ) then
          ! call bolometric_integ(freqs, 4d0 * pi * Inu / cLight, urad)
          ! call RadTrans_blob(Inu, R, jssc(:, i) + jeic(:, i), anut(:, i))
          call RadTrans_blob(Inu, R, jmbs(:, i), ambs(:, i))
-         call rad_cool(gg, freqs, 4d0 * pi * Inu / cLight, urad)
+         call rad_cool(dotg(:, i), gg, freqs, 4d0 * pi * Inu / cLight, .true.)
       else
          urad = 0d0
       end if
-      urad = urad + uB
+      dotg(:, i) = dotg(:, i) + urad_const * (uB + uext) * pofg(gg)**2
+
 
       !  ###### ###### #####
       !  #      #      #    #
@@ -256,12 +251,12 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
       !  ###### ###### #####
       Qinj(:, i) = injection_pwl(t(i), tinj, gg, g1, g2, pind, Qnth)
       Ddif(:, i) = 1d-200!4.3d-3 * pofg(gg)**(5d0 / 3d0) * (mass_e * cLight**2)**(-1d0 / 3d0)
-      nu0(:, i) = 4d0 * sigmaT * urad / (3d0 * mass_e * cLight)
+      dotg(:, i) = 4d0 * sigmaT * urad / (3d0 * mass_e * cLight)
       call FP_FinDif_difu(dt(i), &
             &             gg, &
             &             nn(:, i - 1), &
             &             nn(:, i), &
-            &             nu0(:, i) * pofg(gg)**2, &
+            &             dotg(:, i), &
             &             Ddif(:, i), &
             &             Qinj(:, i), &
             &             tesc, &
@@ -273,7 +268,7 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
       Ntot(i) = sum(nn(:, i) * dg, mask=nn(:, i) > 1d-200)
 
       if ( mod(i, nmod) == 0 .or. i == 1 ) &
-         write(*, on_screen) i, t(i), dt(i), nu0(numbins, i), Ntot(i)
+         write(*, on_screen) i, t(i), dt(i), dotg(numbins, i), Ntot(i)
 
    end do time_loop
 
@@ -340,7 +335,7 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    call h5io_wdble2(file_id, 'Fssc', Fssc, herror)
    call h5io_wdble2(file_id, 'Feic', Feic, herror)
    call h5io_wdble2(file_id, 'n_e', nn(:, 1:), herror)
-   call h5io_wdble2(file_id, 'nu0_tot', nu0(:, 1:), herror)
+   call h5io_wdble2(file_id, 'dgdt', dotg(:, 1:), herror)
 
    ! ------  Closing output file  ------
    call h5io_closef(file_id, herror)

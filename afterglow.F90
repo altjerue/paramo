@@ -28,10 +28,10 @@ subroutine afterglow(params_file, output_file, with_ic)
    integer :: i, j, k, numbins, numdf, numdt, time_grid, herror, beam_kind
    real(dp) :: uB, uext, L_j, gmin, gmax, numin, numax, pind, B, R0, Rmax, &
          tinj, g1, g2, tstep, Q0, tmax, d_lum, z, n_ext, urad_const, Aw, sind, &
-         theta_obs, mu_obs, nu_ext, tesc_e, uext0, eps_e, tlc, gindex, tau, &
+         theta_obs, mu_obs, nu_ext, tesc_e, uext0, eps_e, tlc, g1_const, Rd2, &
          Ejet, eps_B, E0, gamma_bulk0, L_e, nu_ext0, tmin, td, Rd, dr, &
          b_const, beta_bulk, eps_g2, theta_j0, cs_area, n_ext0, g2_const, &
-         g1_const, Rd2, Omega_j, dt
+         Omega_j, dt
    real(dp), allocatable, dimension(:) :: freqs, t, Inu, gg, urad, &
          nu_obs, t_obs, gamma_bulk, R, D, tcool, gc, nu_c, Rb, volume
    real(dp), allocatable, dimension(:,:) :: dotg, n_e, jnut, jmbs, jssc, jeic, &
@@ -112,7 +112,7 @@ subroutine afterglow(params_file, output_file, with_ic)
    beam_kind = -1
    blob = .true.
    full_rad_cool = .true.
-   cool_withKN = .false.
+   cool_withKN = .true.
    with_wind = .false.
    bw_approx = .false.
    radius_evol = .true.
@@ -174,7 +174,7 @@ subroutine afterglow(params_file, output_file, with_ic)
    !-----> Radiation fields
    uext = uext0 * gamma_bulk(0)**2 * (1d0 + beta_bulk**2 / 3d0) ! eq. (5.25) in DM09
    nu_ext = nu_ext0 * gamma_bulk(0)
-   urad_const = 4d0 * sigmaT * cLight / 3d0
+   urad_const = 4d0 * sigmaT * cLight / (3d0 * energy_e)
 
    !-----> Characteristic Lorentz factor (comoving) and frequency (observer)
    gc(0) = 6d0 * gamma_bulk(0) * energy_e / (5d0 * sigmaT * R(0) * uB)
