@@ -29,14 +29,12 @@ module radiation
    end interface IC_emis_full
 
 contains
-   !
    ! #    # #####   ####     ###### #    # #  ####   ####
    ! ##  ## #    # #         #      ##  ## # #      #
    ! # ## # #####   ####     #####  # ## # #  ####   ####
    ! #    # #    #      #    #      #    # #      #      #
    ! #    # #    # #    #    #      #    # # #    # #    #
    ! #    # #####   ####     ###### #    # #  ####   ####
-   !
    subroutine mbs_emissivity(jnu, freq, gg, nn, B)
       implicit none
       real(dp), intent(in) :: freq, B
@@ -58,14 +56,12 @@ contains
    end subroutine mbs_emissivity
 
 
-   !
    !  #    # #####   ####       ##   #####   ####   ####  #####
    !  ##  ## #    # #          #  #  #    # #      #    # #    #
    !  # ## # #####   ####     #    # #####   ####  #    # #    #
    !  #    # #    #      #    ###### #    #      # #    # #####
    !  #    # #    # #    #    #    # #    # #    # #    # #   #
    !  #    # #####   ####     #    # #####   ####   ####  #    #
-   !
    subroutine mbs_absorption(anu, freq, gg, nn, B)
       implicit none
       real(dp), intent(in) :: freq, B
@@ -85,6 +81,37 @@ contains
       end do calc_anu
       if ( anu < 1d-200 ) anu = 0d0
    end subroutine mbs_absorption
+
+
+   !  #####  #        ##    ####  #    #    #####   ####  #####  #   #
+   !  #    # #       #  #  #    # #   #     #    # #    # #    #  # #
+   !  #####  #      #    # #      ####      #####  #    # #    #   #
+   !  #    # #      ###### #      #  #      #    # #    # #    #   #
+   !  #    # #      #    # #    # #   #     #    # #    # #    #   #
+   !  #####  ###### #    #  ####  #    #    #####   ####  #####    #
+   function BBintensity_s(nu, T) result(B)
+      implicit none
+      real(dp), intent(in) :: nu, T
+      real(dp) :: B
+      B = 2d0 * hPlanck * nu**3 / (cLight**2 * (dexp(hPlanck * nu / (kBoltz * T)) - 1d0))
+   end function BBintensity_s
+
+
+   function BBintensity_v(nu, T) result(B)
+      implicit none
+      real(dp), intent(in) :: T
+      real(dp), intent(in), dimension(:) :: nu
+      real(dp), dimension(size(nu)) :: B
+      B = 2d0 * hPlanck * nu**3 / (cLight**2 * (dexp(hPlanck * nu / (kBoltz * T)) - 1d0))
+   end function BBintensity_v
+
+
+   function BBenergy_dens(T) result(u)
+      implicit none
+      real(dp), intent(in) :: T
+      real(dp) :: u
+      u = 4d0 * sigmaSB * T**4 / cLight
+   end function BBenergy_dens
 
 
    !   ####  #####  #####        #####  ###### #####  ##### #    #
@@ -252,31 +279,6 @@ contains
    !    end do tobs_loop
    !    !$OMP END PARALLEL DO
    ! end subroutine RT_line_of_sight
-
-
-   function BBintensity_s(nu, T) result(B)
-      implicit none
-      real(dp), intent(in) :: nu, T
-      real(dp) :: B
-      B = 2d0 * hPlanck * nu**3 / (cLight**2 * (dexp(hPlanck * nu / (kBoltz * T)) - 1d0))
-   end function BBintensity_s
-
-
-   function BBintensity_v(nu, T) result(B)
-      implicit none
-      real(dp), intent(in) :: T
-      real(dp), intent(in), dimension(:) :: nu
-      real(dp), dimension(size(nu)) :: B
-      B = 2d0 * hPlanck * nu**3 / (cLight**2 * (dexp(hPlanck * nu / (kBoltz * T)) - 1d0))
-   end function BBintensity_v
-
-
-   function BBenergy_dens(T) result(u)
-      implicit none
-      real(dp), intent(in) :: T
-      real(dp) :: u
-      u = 4d0 * sigmaSB * T**4 / cLight
-   end function BBenergy_dens
 
 
    subroutine bolometric_integ(freqs, uu, ubol)

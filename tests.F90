@@ -22,8 +22,9 @@ program tests
    !       [ ] Modify Comala
    !   [ ]
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   call steady_state
+   ! call steady_state
    ! call rad_procs
+   call BB_RadCool
 
    ! write(*, *) '=======  FINISHED  ======='
    write(*, *) ''
@@ -203,336 +204,38 @@ contains
    end subroutine steady_state
 
 
-
-
-
-#if 0
-   !  #####    ##   #####     #####  #####   ####  #####
-   !  #    #  #  #  #    #    #    # #    # #    # #    #
-   !  #    # #    # #    #    #    # #    # #    # #####
-   !  #####  ###### #    #    #####  #####  #    # #    #
-   !  #   #  #    # #    #    #      #   #  #    # #    #
-   !  #    # #    # #####     #      #    #  ####  #####
-   subroutine rad_procs
+   subroutine BB_RadCool
       implicit none
-      integer(HID_T) :: file_id
-      integer :: numf, numg, j, herror
-      real(dp) :: numin, numax, u_ext, u_e, u_0, g1, g2, g3, p, q, alpha, &
-         nu1, nu2, nu_ext, B, k0, ke, R
-      real(dp), allocatable, dimension(:) :: jmbs, ambs, jeic, jssc, Iin, n, &
-         nuj, nua, g
+      integer :: Ng, Nf, j, k
+      real(dp) :: T, Theta, lC, xi_c, gmin, gmax, fmin, fmax
+      real(dp), allocatable, dimension(:) :: Ibb, dotg, nu, g
+      Ng = 384
+      Nf = 512
+      allocate(nu(Nf), g(Ng), dotg(Ng), Ibb(Nf))
+      gmin = 1d9
+      gmax = 1e15
+      fmin = 1d5
+      fmax = 1.26d13
+      T = 2.72d0
+      Theta = kBoltz * T / energy_e
+      lC = hPlanck / (mass_e * cLight)
+      xi_c = 4d0 * hPlanck / energy_e
 
-      numf = 256
-      numg = 128
-
-      allocate(jmbs(numf), ambs(numf), jeic(numf), jssc(numf), Iin(numf), &
-         n(numg), g(numg), nuj(numf), nua(numf))
-
-      numin = 1d5
-      numax = 1d30
-      B = 50d0
-      R = 1e15
-      nu_ext = 1d-8 * mass_e * cLight**2 / hPlanck
-      u_ext = 1d0
-      u_0 = 1d0
-      u_e = 1d4
-      g1 = 5d0
-      g2 = 1d9
-      nu1 = 1d-8 * mass_e * cLight**2 / hPlanck
-      nu2 = 1d0 * mass_e * cLight**2 / hPlanck
-      p = 3.2d0
-      alpha = 0.5d0
-
-      ke = u_e * pwl_norm(mass_e * cLight**2, p - 1d0, g1, g2)
-      do j = 1, numg
-         g(j) = g1 * (g2 / g1)**(dble(j - 1) / dble(numg - 1))
-         n(j) = ke * powlaw_dis(g(j), g1, g2, p)
+      do k = 1, Ng
+         g(k) = gmin * (gmax / gmin)**(dble(k - 1) / dble(Ng - 1))
       end do
 
-      !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
-      !$OMP& PRIVATE(j)
-      k0 = u_0 * cLight * pwl_norm(1d0, alpha, nu1, nu2)
-      do j = 1, numf
-         nuj(j) = numin * ( (numax / numin)**(dble(j - 1) / dble(numf - 1)) )
-         ! Iin(j) = k0 * powlaw_dis(nuj(j), nu1, nu2, alpha)
-         call mbs_emissivity(jmbs(j), nuj(j), g, n, B)
-         call mbs_absorption(ambs(j), nuj(j), g, n, B)
-         call RadTrans(Iin(j), R, jmbs(j), ambs(j))
-      end do
-      !$OMP END PARALLEL DO
-
-      !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
-      !$OMP& PRIVATE(j)
-      do j = 1, numf
-         call IC_emis_full(nuj(j), nuj, g, n, Iin, jssc(j))
-         call IC_emis_full(nuj(j), nu_ext, g, n, u_ext * cLight / (4d0 * pi), jeic(j))
-         ! call EIC_pwlEED(jeic, nuj, u_ext, nu_ext, n, g)
-         write(*,*) nuj(j), nuj(j) * jmbs(j), nuj(j) * jssc(j), nuj(j) * jeic(j)
-      end do
-      !$OMP END PARALLEL DO
-
-      call h5open_f(herror)
-      call h5io_createf(dir//"Rad.h5", file_id, herror)
-      call h5io_wint0(file_id, 'numdf', numf, herror)
-      call h5io_wint0(file_id, 'numg', numg, herror)
-      call h5io_wdble0(file_id, 'nu_min', numin, herror)
-      call h5io_wdble0(file_id, 'nu_max', numax, herror)
-      call h5io_wdble1(file_id, 'nuj', nuj, herror)
-      call h5io_wdble1(file_id, 'gamma', g, herror)
-      call h5io_wdble1(file_id, 'distrib', n, herror)
-      call h5io_wdble1(file_id, 'jmbs', jmbs, herror)
-      call h5io_wdble1(file_id, 'jssc', jssc, herror)
-      call h5io_wdble1(file_id, 'jeic', jeic, herror)
-! #if 0
-      !  ----->   Absorption
-      B = 1d3
-      numin = 1d8
-      numax = 1d21
-      do j = 1, numf
-         nua(j) = numin * ( (numax / numin)**(dble(j - 1) / dble(numf - 1)) )
-      end do
-      call h5io_wdble1(file_id, 'nua', nua, herror)
-
-      g1 = 1d2
-      g2 = 1d5
-      p = 3.0d0
-      ke = u_e * pwl_norm(mass_e * cLight**2, p - 1d0, g1, g2)
-      do j = 1, numg
-         g(j) = g1 * (g2 / g1)**(dble(j - 1) / dble(numg - 1))
-         n(j) = ke * powlaw_dis(g(j), g1, g2, p)
+      do j = 1, Nf
+         nu(j) = fmin * (fmax / fmin)**(dble(j - 1) / dble(Nf - 1))
+         Ibb(j) = BBintensity(nu(j), T)
       end do
 
-      call mbs_absorption(ambs, nua, g, n, B)
-      call h5io_wdble1(file_id, 'ambs1', ambs, herror)
+      call rad_cool(dotg, g, nu, 4 * pi * Ibb / cLight, .true.)
 
-      g1 = 1.01d0
-      g2 = 1d2
-      p = 1.3d0
-      ke = u_e * pwl_norm(mass_e * cLight**2, p - 1d0, g1, g2)
-      do j = 1, numg
-         g(j) = g1 * (g2 / g1)**(dble(j - 1) / dble(numg - 1))
-         n(j) = ke * powlaw_dis(g(j), g1, g2, p)
+      do k = 1, Ng
+         write(*, *) g(k), dotg(k)
       end do
 
-      call mbs_absorption(ambs, nua, g, n, B)
-      call h5io_wdble1(file_id, 'ambs2', ambs, herror)
-
-      g1 = 1d1
-      g2 = 1d3
-      g3 = 1d5
-      q = 1.3d0
-      p = 3.0d0
-      do j = 1, numg
-         g(j) = g1 * (g3 / g1)**(dble(j - 1) / dble(numg - 1))
-      end do
-      ke = u_e * (g2**(q - p) * pwl_norm(mass_e * cLight**2, q - 1d0, g1, g2) + pwl_norm(mass_e * cLight**2, p - 1d0, g2, g3))
-      do j = 1, numg
-         if ( g(j) < g2 ) then
-            n(j) = ke * g2**(q - p) * powlaw_dis(g(j), g1, g2, q)
-         else
-            n(j) = ke * powlaw_dis(g(j), g2, g3, p)
-         end if
-      end do
-
-      call mbs_absorption(ambs, nua, g, n, B)
-      call h5io_wdble1(file_id, 'ambs3', ambs, herror)
-! #endif
-      call h5io_closef(file_id, herror)
-      call h5close_f(herror)
-
-      ! write(*, "('--> Radiation processes test')")
-
-   end subroutine rad_procs
-
-
-! #if 0
-   subroutine no_diff_CG99
-
-      call K1_init
-      call K2_init
-
-      !   # #    # # #####     ####   ####  #    # #####
-      !   # ##   # #   #      #    # #    # ##   # #    #
-      !   # # #  # #   #      #      #    # # #  # #    #
-      !   # #  # # #   #      #      #    # #  # # #    #
-      !   # #   ## #   #      #    # #    # #   ## #    #
-      !   # #    # #   #       ####   ####  #    # #####
-      beta_bulk = bofg(gamma_bulk)
-
-      ! --->    Magnetic field
-      L_B = sigma * L_j / (1d0 + sigma)
-      uB = L_B / (pi * cLight * beta_bulk * (gamma_bulk * R)**2) ! B**2 / (8d0 * pi)
-      B = dsqrt(uB * 8d0 * pi)
-      mu_mag = gamma_bulk * (1d0 + sigma)
-      nu0 = 4d0 * sigmaT * uB / (3d0 * mass_e * cLight)
-
-      tesc = 1.5d0 * R / cLight
-      tacc = 1d0 / (nu0(1, 1) * 10d0**4.5d0)!tesc
-      if ( hyb_dis ) then
-         kappa = 3d0 * theta_e + dexp(K1_func(-dlog(theta_e))) / dexp(K2_func(-dlog(theta_e)))
-         Qth = (1d0 - zetae) * (L_j - L_B) / (kappa * volume * mass_e * cLight**2)
-         Qnth = zetae * Qth * pwl_norm(1d0 - zetae, qind, g1, g2)
-      else
-         kappa = 1d0
-         Qth = 0d0
-         Qnth = 0d0 !eps_e * (L_j - L_B) * pwl_norm(volume * mass_e * cLight**2, qind, g1, g2)
-      end if
-
-      ! ----->>   Viewing angle
-      mu_obs = dcos(theta_obs * pi / 180d0)
-      mu_com = mu_com_f(gamma_bulk, mu_obs)
-      D = Doppler(gamma_bulk, mu_obs)
-
-      do i = 1, numt
-         if ( b_index /= 0d0 ) then
-            uB = 0.125 * (B * (1d0 + (cLight * gamma_bulk * t(i) / R0))**(-b_index))**2 / pi
-         end if
-
-         if ( with_cool ) then
-            urad = 0d0
-            do j = 2, numdf
-               if ( Inu(j - 1) > 1d-200 .and. Inu(j) > 1d-200 ) then
-                  Iind = -dlog(Inu(j) / Inu(j - 1)) / dlog(freqs(j) / freqs(j - 1))
-                  if ( Iind > 8d0 ) Iind = 8d0
-                  if ( Iind < -8d0 ) Iind = -8d0
-                  urad = urad + Inu(j - 1) * freqs(j - 1) * Pinteg(freqs(j) / freqs(j - 1), Iind, 1d-9)
-               end if
-            end do
-            urad = 4d0 * pi * urad / cLight
-            urad = urad + IC_cool(gg, freqs, R * (jssc(:, i) + jeic(:, i)))
-         else
-            urad = 0d0
-         end if
-         nu0(i, :) = 4d0 * sigmaT * (uB + urad) / (3d0 * mass_e * cLight)
-      end do
-
-
-   end subroutine no_diff_CG99
-
-
-   subroutine syn_test
-      implicit none
-      integer(HID_T) :: file_id
-      integer :: numf, numg, j, herror
-      real(dp) :: numin, numax, u_ext, u_e, u_0, g1, g2, g3, p, q, alpha, &
-         nu1, nu2, nu_ext, B, k0, ke
-      real(dp), allocatable, dimension(:) :: jmbs, ambs, jeic, jssc, Iin, n, &
-         nuj, nua, g
-
-      numf = 256
-      numg = 128
-
-      allocate(jmbs(numf), ambs(numf), jeic(numf), jssc(numf), Iin(numf), &
-         n(numg), g(numg), nuj(numf), nua(numf))
-
-      numin = 1d8
-      numax = 1d28
-      B = 1d0
-      nu_ext = 1d-8 * mass_e * cLight**2 / hPlanck
-      u_ext = 1d0
-      u_0 = 1d0
-      u_e = 1d0
-      g1 = 1d2
-      g2 = 1d7
-      nu1 = 1d-9 * mass_e * cLight**2 / hPlanck
-      nu2 = 1d-6 * mass_e * cLight**2 / hPlanck
-      p = 2.2d0
-      alpha = 0.5d0
-
-      ke = u_e * pwl_norm(mass_e * cLight**2, p - 1d0, g1, g2)
-      do j = 1, numg
-         g(j) = g1 * (g2 / g1)**(dble(j - 1) / dble(numg - 1))
-         n(j) = ke * powlaw_dis(g(j), g1, g2, p)
-      end do
-
-      !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
-      !$OMP& PRIVATE(j)
-      do j = 1, numf
-         nuj(j) = numin * ( (numax / numin)**(dble(j - 1) / dble(numf - 1)) )
-         call mbs_emissivity(jmbs(j), nuj(j), g, n, B)
-      end do
-      !$OMP END PARALLEL DO
-
-      !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
-      !$OMP& PRIVATE(j)
-      do j = 1, numf
-         call EIC_pwlEED(jeic, nuj, u_ext, nu_ext, n, g)
-      end do
-      !$OMP END PARALLEL DO
-
-      call h5open_f(herror)
-      call h5io_createf(dir//"Syn.h5", file_id, herror)
-      call h5io_wint0(file_id, 'numdf', numf, herror)
-      call h5io_wint0(file_id, 'numg', numg, herror)
-      call h5io_wdble0(file_id, 'nu_min', numin, herror)
-      call h5io_wdble0(file_id, 'nu_max', numax, herror)
-      call h5io_wdble1(file_id, 'nuj', nuj, herror)
-      call h5io_wdble1(file_id, 'gamma', g, herror)
-      call h5io_wdble1(file_id, 'distrib', n, herror)
-      call h5io_wdble1(file_id, 'jmbs', jmbs, herror)
-      call h5io_wdble1(file_id, 'jssc', jssc, herror)
-      call h5io_wdble1(file_id, 'jeic', jeic, herror)
-
-      !  ----->   Absorption
-      B = 1d3
-      numin = 1d8
-      numax = 1d21
-      do j = 1, numf
-         nua(j) = numin * ( (numax / numin)**(dble(j - 1) / dble(numf - 1)) )
-      end do
-      call h5io_wdble1(file_id, 'nua', nua, herror)
-
-      g1 = 1d2
-      g2 = 1d5
-      p = 3.0d0
-      ke = u_e * pwl_norm(mass_e * cLight**2, p - 1d0, g1, g2)
-      do j = 1, numg
-         g(j) = g1 * (g2 / g1)**(dble(j - 1) / dble(numg - 1))
-         n(j) = ke * powlaw_dis(g(j), g1, g2, p)
-      end do
-
-      call mbs_absorption(ambs, nua, g, n, B)
-      call h5io_wdble1(file_id, 'ambs1', ambs, herror)
-
-      g1 = 1.01d0
-      g2 = 1d2
-      p = 1.3d0
-      ke = u_e * pwl_norm(mass_e * cLight**2, p - 1d0, g1, g2)
-      do j = 1, numg
-         g(j) = g1 * (g2 / g1)**(dble(j - 1) / dble(numg - 1))
-         n(j) = ke * powlaw_dis(g(j), g1, g2, p)
-      end do
-
-      call mbs_absorption(ambs, nua, g, n, B)
-      call h5io_wdble1(file_id, 'ambs2', ambs, herror)
-
-      g1 = 1d1
-      g2 = 1d3
-      g3 = 1d5
-      q = 1.3d0
-      p = 3.0d0
-      do j = 1, numg
-         g(j) = g1 * (g3 / g1)**(dble(j - 1) / dble(numg - 1))
-      end do
-      ke = u_e * (g2**(q - p) * pwl_norm(mass_e * cLight**2, q - 1d0, g1, g2) + pwl_norm(mass_e * cLight**2, p - 1d0, g2, g3))
-      do j = 1, numg
-         if ( g(j) < g2 ) then
-            n(j) = ke * g2**(q - p) * powlaw_dis(g(j), g1, g2, q)
-         else
-            n(j) = ke * powlaw_dis(g(j), g2, g3, p)
-         end if
-      end do
-
-      call mbs_absorption(ambs, nua, g, n, B)
-      call h5io_wdble1(file_id, 'ambs3', ambs, herror)
-
-      call h5io_closef(file_id, herror)
-      call h5close_f(herror)
-
-      write(*, "('--> Radiation processes test')")
-
-   end subroutine syn_test
-#endif
-
+   end subroutine BB_RadCool
 
 end program tests
