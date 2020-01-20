@@ -258,14 +258,14 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
       Ddif(:, i) = 1d-200!4.3d-3 * pofg(gg)**(5d0 / 3d0) * (mass_e * cLight**2)**(-1d0 / 3d0)
       nu0(:, i) = 4d0 * sigmaT * urad / (3d0 * mass_e * cLight)
       call FP_FinDif_difu(dt(i), &
-            &             pofg(gg), &
+            &             gg, &
             &             nn(:, i - 1), &
             &             nn(:, i), &
             &             nu0(:, i) * pofg(gg)**2, &
             &             Ddif(:, i), &
             &             Qinj(:, i), &
             &             tesc, &
-            &             R, tlc)
+            &             tlc)
       ! call FP_FinDif_cool(dt(i), gg, nn(i - 1, :), nn(i, :), nu0(i - 1, :), Qinj(i, :), tesc)
 
 

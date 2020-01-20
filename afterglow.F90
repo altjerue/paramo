@@ -27,16 +27,17 @@ subroutine afterglow(params_file, output_file, with_ic)
    integer(HID_T) :: file_id, group_id
    integer :: i, j, k, numbins, numdf, numdt, time_grid, herror, beam_kind
    real(dp) :: uB, uext, L_j, gmin, gmax, numin, numax, pind, B, R0, Rmax, &
-      tinj, g1, g2, tstep, Q0, tmax, d_lum, z, n_ext, urad_const, Aw, sind, &
-      theta_obs, mu_obs, nu_ext, tesc_e, uext0, eps_e, tlc, gindex, tau, Ejet, &
-      eps_B, E0, gamma_bulk0, L_e, nu_ext0, tmin, td, Rd, dr, &
-      b_const, beta_bulk, eps_g2, theta_j0, cs_area, n_ext0, &
-      g2_const, g1_const, Rd2, Omega_j, dt
+         tinj, g1, g2, tstep, Q0, tmax, d_lum, z, n_ext, urad_const, Aw, sind, &
+         theta_obs, mu_obs, nu_ext, tesc_e, uext0, eps_e, tlc, gindex, tau, &
+         Ejet, eps_B, E0, gamma_bulk0, L_e, nu_ext0, tmin, td, Rd, dr, &
+         b_const, beta_bulk, eps_g2, theta_j0, cs_area, n_ext0, g2_const, &
+         g1_const, Rd2, Omega_j, dt
    real(dp), allocatable, dimension(:) :: freqs, t, Inu, gg, urad, &
-      nu_obs, t_obs, gamma_bulk, R, D, tcool, gc, nu_c, Rb, volume
+         nu_obs, t_obs, gamma_bulk, R, D, tcool, gc, nu_c, Rb, volume
    real(dp), allocatable, dimension(:,:) :: dotg, n_e, jnut, jmbs, jssc, jeic, &
-      ambs, anut, Qinj, tau_gg, pow_syn, Ddiff
-   logical :: blob, full_rad_cool, with_wind, bw_approx, radius_evol, pwl_over_trpzd_integ
+         ambs, anut, Qinj, tau_gg, pow_syn, Ddiff
+   logical :: blob, full_rad_cool, with_wind, bw_approx, radius_evol, &
+         cool_withKN, pwl_over_trpzd_integ
 
    !!!!!!!! TODO:
    !!  [ ] Cases for each model to compare:
@@ -74,7 +75,7 @@ subroutine afterglow(params_file, output_file, with_ic)
    numin = par_numin
    numax = par_numax
    nu_ext0 = par_nu_ext
-   uext0 = 0d0!par_uext
+   uext0 = par_uext
    numbins = par_numbins
    numdt = par_numdt
    numdf = par_numdf
@@ -108,9 +109,10 @@ subroutine afterglow(params_file, output_file, with_ic)
    call K1_init
    call K2_init
 
-   beam_kind = 1
+   beam_kind = -1
    blob = .true.
-   full_rad_cool = .false.
+   full_rad_cool = .true.
+   cool_withKN = .false.
    with_wind = .false.
    bw_approx = .false.
    radius_evol = .true.
@@ -130,7 +132,7 @@ subroutine afterglow(params_file, output_file, with_ic)
       !!!!!NOTE: n_ext0 is A_{*}
       sind = 2d0
       Aw = n_ext0 * 3d35
-      n_ext = Aw * R(0)**(-sind)
+      n_ext = Aw * R0**(-sind)
    else
       sind = 0d0
       Aw = n_ext0
@@ -160,6 +162,9 @@ subroutine afterglow(params_file, output_file, with_ic)
 
    call bw_crossec_area(gamma_bulk0, R(0), gamma_bulk(0), theta_j0, beam_kind, blob, Rb(0), volume(0), cs_area, Omega_j)
 
+   !-----> External medioum
+   n_ext = Aw * R(0)**(-sind)
+
    !-----> Magnetic field
    b_const = dsqrt(32d0 * pi * eps_B * mass_p) * cLight
    ! B = b_const * dsqrt(n_ext) * gamma_bulk(0)
@@ -169,7 +174,7 @@ subroutine afterglow(params_file, output_file, with_ic)
    !-----> Radiation fields
    uext = uext0 * gamma_bulk(0)**2 * (1d0 + beta_bulk**2 / 3d0) ! eq. (5.25) in DM09
    nu_ext = nu_ext0 * gamma_bulk(0)
-   urad_const = 4d0 * sigmaT / (3d0 * mass_e * cLight)
+   urad_const = 4d0 * sigmaT * cLight / 3d0
 
    !-----> Characteristic Lorentz factor (comoving) and frequency (observer)
    gc(0) = 6d0 * gamma_bulk(0) * energy_e / (5d0 * sigmaT * R(0) * uB)
@@ -200,10 +205,12 @@ subroutine afterglow(params_file, output_file, with_ic)
    write(*, "('volume  =', ES15.7)") volume(0)
    write(*, "('Gamma_0 =', ES15.7)") gamma_bulk(0)
    write(*, "('Aw      =', ES15.7)") Aw
+   write(*, "('sind    =', ES15.7)") sind
    write(*, "('E_0     =', ES15.7)") E0
    write(*, "('E_jet   =', ES15.7)") Ejet
    write(*, "('L_e     =', ES15.7)") L_e
    write(*, "('Q_0     =', ES15.7)") Q0
+   write(*, "('pind    =', ES15.7)") pind
    write(*, "('B0      =', ES15.7)") B
    write(*, "('u_B     =', ES15.7)") uB
    write(*, "('u_ext   =', ES15.7)") uext
@@ -308,15 +315,14 @@ subroutine afterglow(params_file, output_file, with_ic)
       !  #      #      #    #
       !  ###### ###### #####
       call FP_FinDif_difu(dt, &
-            &             pofg(gg), &
+            &             gg, &
             &             n_e(:, i - 1), &
             &             n_e(:, i), &
             &             dotg(:, i - 1), &
             &             Ddiff(:, i - 1), &
             &             Qinj(:, i - 1), &
             &             tesc_e, &
-            &             Rb(i - 1), &
-            &             Rb(i))
+            &             tlc)
 
 
       !-----> External medioum
@@ -415,21 +421,22 @@ subroutine afterglow(params_file, output_file, with_ic)
       !
       !     Radiative cooling
       !
+      dotg(:, i) = 0d0
       if ( full_rad_cool ) then
          call RadTrans(Inu, Rb(i), jmbs(:, i), ambs(:, i))
          ! call bolometric_integ(freqs, 4d0 * pi * Inu / cLight, urad)
-         call rad_cool(gg, freqs, 4d0 * pi * Inu / cLight, urad)
-         urad = urad + uext
+         ! urad = urad + uext
+         call rad_cool(dotg(:, i), gg, freqs, 4d0 * pi * Inu / cLight, cool_withKN)
       else
          urad = 0d0
       end if
-      urad = urad + uB
+      dotg(:, i) = dotg(:, i) + urad_const * uB * pofg(gg)**2
 
       !
       !     Adiabatic cooling
       !
       !-----> Numeric using finite differences
-      dotg(:, i) = urad_const * urad * pofg(gg)**2 + pofg(gg) * adiab_cool_num(volume(i - 1), volume(i), dt)
+      dotg(:, i) = dotg(:, i) + pofg(gg) * adiab_cool_num(volume(i - 1), volume(i), dt)
       !-----> Analytic expression from PVP14, eq. (36)
       ! if ( with_wind ) then
       !    if ( R(i) < Rd2 ) then

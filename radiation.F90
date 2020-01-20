@@ -298,34 +298,6 @@ contains
    end subroutine bolometric_integ
 
 
-   subroutine rad_cool(gg, freqs, uu, ubol)
-      implicit none
-      real(dp), intent(in), dimension(:) :: freqs, gg, uu
-      real(dp), intent(out), dimension(:) :: ubol
-      integer :: j, k, Ng, Nf
-      real(dp) :: nuKN, uind
-      Ng = size(gg, dim=1)
-      Nf = size(freqs, dim=1)
-      if ( size(ubol, dim=1) /= Ng ) call an_error("rad_cool: ubol and gg have different size")
-      !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
-      !$OMP& PRIVATE(k, j, uind, nuKN)
-      do k = 1, Ng
-         nuKN = mec2_h / gg(k)
-         ubol(k) = 0d0
-         freqloop: do j = 2, Nf
-            if ( freqs(j) >= nuKN ) exit freqloop
-            if ( uu(j - 1) > 1d-200 .and. uu(j) > 1d-200 ) then
-               uind = -dlog(uu(j) / uu(j - 1)) / dlog(freqs(j) / freqs(j - 1))
-               if ( uind > 8d0 ) uind = 8d0
-               if ( uind < -8d0 ) uind = -8d0
-               ubol(k) = ubol(k) + uu(j - 1) * freqs(j - 1) * Pinteg(freqs(j) / freqs(j - 1), uind, 1d-9)
-            end if
-         end do freqloop
-      end do
-      !$OMP END PARALLEL DO
-   end subroutine rad_cool
-
-
    !  #######  #####    #    #####
    !       #  #     #  ##   #     #
    !      #   #       # #         #
@@ -625,9 +597,65 @@ contains
       jnu = jnu * cLight * sigmaT * uext / (4d0 * pi * nuext)
    end subroutine IC_iso_monochrom
 
-   !
-   !     ----------{     Photons evolution     }----------
-   !
+
+   !   ####   ####   ####  #      # #    #  ####
+   !  #    # #    # #    # #      # ##   # #    #
+   !  #      #    # #    # #      # # #  # #
+   !  #      #    # #    # #      # #  # # #  ###
+   !  #    # #    # #    # #      # #   ## #    #
+   !   ####   ####   ####  ###### # #    #  ####
+   subroutine rad_cool(dotg, gg, freqs, uu, withKN)
+      implicit none
+      real(dp), intent(in), dimension(:) :: freqs, gg, uu
+      real(dp), intent(out), dimension(:) :: dotg
+      logical, intent(in) :: withKN
+      integer :: j, k, Ng, Nf
+      real(dp) :: nuKN, uind, urad_const, usum, xi_c, xi_rat
+      real(dp), dimension(size(gg, dim=1), size(freqs, dim=1)) :: xi, uxi
+      urad_const = 4d0 * sigmaT * cLight / 3d0
+      xi_c = 4d0 * hPlanck / energy_e
+      Ng = size(gg, dim=1)
+      Nf = size(freqs, dim=1)
+      do k = 1, Ng
+         do j = 1, Nf
+            xi(k, j) = xi_c * gg(k) * freqs(j)
+            uxi(k, j) = uu(j) * xi_c * gg(k)
+         end do
+      end do
+      !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
+      !$OMP& PRIVATE(k, j, uind, nuKN, xi_rat, usum)
+      do k = 1, Ng
+         nuKN = mec2_h / gg(k)
+         usum = 0d0
+         freqloop: do j = 1, Nf - 1
+            if ( uxi(k, j + 1) > 1d-100 .and. uxi(k, j) > 1d-100 ) then
+               xi_rat = xi(k, j + 1) / xi(k, j)
+               uind = dlog(uxi(k, j + 1) / uxi(k, j)) / dlog(xi_rat)
+               if ( uind > 8d0 ) uind = 8d0
+               if ( uind < -8d0 ) uind = -8d0
+               if ( freqs(j) >= nuKN .and. withKN ) then
+                  usum = usum + uxi(k, j) * (Qinteg(xi_rat, uind + 2d0, 1d-6) &
+                        + (dlog(xi(k, j)) - (11d0 / 6d0)) &
+                        * Pinteg(xi_rat, uind + 2d0, 1d-6)) / (xi(k, j) * xi_c * gg(k)**2 * hPlanck)
+               else if ( freqs(j) >= nuKN .and. .not. withKN ) then
+                  cycle freqloop
+               else
+                  usum = usum + uxi(k, j) * xi(k, j) * Pinteg(xi_rat, uind, 1d-6) * xi_c * gg(k)**2 * hPlanck
+               end if
+            end if
+         end do freqloop
+         dotg(k) = urad_const * gg(k)**2 * usum
+      end do
+      !$OMP END PARALLEL DO
+   end subroutine rad_cool
+
+
+   !  ###### #    #  ####  #      #    # ##### #  ####  #    #
+   !  #      #    # #    # #      #    #   #   # #    # ##   #
+   !  #####  #    # #    # #      #    #   #   # #    # # #  #
+   !  #      #    # #    # #      #    #   #   # #    # #  # #
+   !  #       #  #  #    # #      #    #   #   # #    # #   ##
+   !  ######   ##    ####  ######  ####    #   #  ####  #    #
    subroutine photons_evol(dt, nin, nout, nu, QQ, tesc, Loss)
       implicit none
       real(dp), intent(in) :: dt, tesc
