@@ -108,7 +108,7 @@ subroutine afterglow(params_file, output_file, with_ic)
    call K1_init
    call K2_init
 
-   beam_kind = 0
+   beam_kind = -1
    blob = .true.
    full_rad_cool = .true.
    cool_withKN = .true.
@@ -193,7 +193,10 @@ subroutine afterglow(params_file, output_file, with_ic)
 
    !-----> Fraction of accreted kinetic energy injected into non-thermal electrons
    L_e = eps_e * cs_area * n_ext * energy_p * cLight * beta_bulk * gamma_bulk(0) * (gamma_bulk(0) - 1d0)
-   Q0 = L_e * pwl_norm(volume(0) * energy_e, pind - 1d0, g1, g2)
+   ! Q0 = L_e * pwl_norm(energy_e * volume(0), pind - 1d0, g1, g2)
+   !!!!!NOTE: The expression below corresponds to the normalization in Eq. (13)
+   !!!!!      in PM09
+   Q0 = L_e / ( (g1**(2d0 - pind) * Pinteg(g2 / g1, pind - 1d0, 1d-6) - g1**(1d0 - pind) * Pinteg(g2 / g1, pind, 1d-6)) * volume(0) * energy_e )
 
    write(*, "('mu_obs  =', ES15.7)") mu_obs
    write(*, "('Omega_j =', ES15.7)") Omega_j
@@ -318,7 +321,7 @@ subroutine afterglow(params_file, output_file, with_ic)
             &             dotg(:, i - 1), &
             &             Ddiff(:, i - 1), &
             &             Qinj(:, i - 1), &
-            &             tesc_e, &!1d200, &!
+            &             1d200, &!tesc_e, &!
             &             tlc)
 
 
@@ -351,7 +354,10 @@ subroutine afterglow(params_file, output_file, with_ic)
 
       !-----> Fraction of accreted kinetic energy injected into non-thermal electrons
       L_e = eps_e * cs_area * n_ext * energy_p * cLight * beta_bulk * gamma_bulk(i) * (gamma_bulk(i) - 1d0)
-      Q0 = L_e * pwl_norm(volume(i) * energy_e, pind - 1d0, g1, g2)
+      ! Q0 = L_e * pwl_norm(energy_e * volume(i), pind - 1d0, g1, g2)
+      !!!!!NOTE: The expression below corresponds to the normalization in Eq. (13)
+      !!!!!      in PM09
+      Q0 = L_e / ( (g1**(2d0 - pind) * Pinteg(g2 / g1, pind - 1d0, 1d-6) - g1**(1d0 - pind) * Pinteg(g2 / g1, pind, 1d-6)) * volume(i) * energy_e )
       Qinj(:, i) = injection_pwl(t(i), tinj, gg, g1, g2, pind, Q0)
 
 
@@ -367,9 +373,9 @@ subroutine afterglow(params_file, output_file, with_ic)
          freqs(j) = nu_com_f(nu_obs(j), z, D(i))
          call mbs_emissivity(jmbs(j, i), freqs(j), gg, n_e(:, i), B)
          call mbs_absorption(ambs(j, i), freqs(j), gg, n_e(:, i), B)
-         do k = 1, numbins
-            pow_syn(j, k) = dsqrt(3d0) * eCharge**3 * B * RMA_new(freqs(j) / (nuconst * B), gg(k))
-         end do
+         ! do k = 1, numbins
+         !    pow_syn(j, k) = dsqrt(3d0) * eCharge**3 * B * RMA_new(freqs(j) / (nuconst * B), gg(k))
+         ! end do
       end do
       !$OMP END PARALLEL DO
 
@@ -377,9 +383,9 @@ subroutine afterglow(params_file, output_file, with_ic)
 
       !-----> Synchrotron boiler from GGS88
       do k=1,numbins
-         call bolometric_integ(freqs, Inu * pow_syn(:, k) / freqs**2, Ddiff(k, i))
-         Ddiff(k, i) = Ddiff(k, i) * gg(k) * pofg(gg(k)) / (2d0 * mass_e * energy_e)
-         ! Ddiff(k, i) = 1d-200
+      !    call bolometric_integ(freqs, Inu * pow_syn(:, k) / freqs**2, Ddiff(k, i))
+      !    Ddiff(k, i) = Ddiff(k, i) * gg(k) * pofg(gg(k)) / (2d0 * mass_e * energy_e)
+         Ddiff(k, i) = 1d-200
       end do
 
       !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
@@ -420,7 +426,6 @@ subroutine afterglow(params_file, output_file, with_ic)
       !
       !     Radiative cooling
       !
-      dotg(:, i) = 0d0
       if ( full_rad_cool ) then
          call RadTrans(Inu, Rb(i), jmbs(:, i), ambs(:, i))
          ! call bolometric_integ(freqs, 4d0 * pi * Inu / cLight, urad)
@@ -436,6 +441,23 @@ subroutine afterglow(params_file, output_file, with_ic)
       !
       !-----> Numeric using finite differences
       dotg(:, i) = dotg(:, i) + pofg(gg) * adiab_cool_num(volume(i - 1), volume(i), dt)
+      !-----> Analytic expression from PVP14, eq. (36)
+      ! if ( with_wind ) then
+      !    if ( R(i) < Rd2 ) then
+      !       gindex = 1d0
+      !    else
+      !       gindex = 1.5d0
+      !    end if
+      ! else
+      !    if ( R(i) < Rd2 ) then
+      !       gindex = 1d0
+      !    else
+      !       gindex = 2.5d0
+      !    end if
+      ! end if
+      ! dotg(:, i) = urad_const * uB * pofg(gg)**2 + gg * bofg(gg)**2 * ((2d0 / gindex) + 1d0) / 3d0
+      !!!!!NOTE: using time-scile in Hao's paper, eq. (11)
+      ! dotg(:, i) = dotg(:, i) + 1.6d0 * cLight * beta_bulk * gamma_bulk(i) * gg / R(i)
 
 
       !   ####  #    #     ####   ####  #####  ###### ###### #    #

@@ -390,6 +390,7 @@ contains
       emiss = 0.25d0 * fout * sigmaT * jbol0
    end subroutine IC_emis_full_v
 
+
    !
    !   ----------{   Romberg integrator   }----------
    !
@@ -397,8 +398,8 @@ contains
       implicit none
       real(dp), intent(in) :: fin, fout, a, b
       real(dp), intent(in), dimension(:) :: nn, gg
-      integer, parameter :: jmax = 30, jmaxp = jmax + 1, kq = 6, km = kq - 1
-      real(dp), parameter :: eps = 1d-4
+      integer, parameter :: jmax = 50, jmaxp = jmax + 1, kq = 10, km = kq - 1
+      real(dp), parameter :: eps = 1d-5
       integer :: jq
       real(dp) :: dqromb, qromb
       real(dp), dimension(jmaxp) :: h, s

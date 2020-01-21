@@ -48,8 +48,8 @@ contains
    function CyclotronLimit(beta,m,nu_b) result(cyclo)
       implicit none
       integer, intent(in) :: m
+      real(dp), intent(in) :: beta, nu_b
       real(dp) :: cyclo
-      real(dp), intent(in) :: beta,nu_b
 
 #ifdef BRWN
       cyclo = 8d0 * pi**2 * nu_b * dble( (m + 1) * ( m**(2 * m + 1) ) ) * &
@@ -67,8 +67,8 @@ contains
    !!$ ::::  Eq. 3.40 from Relativistic Jets from Active Galactic Nuclei ::::
    function RJfAGN_eq340_pow(gam, beta, chi) result(P_nu)
       implicit none
+      real(dp), intent(in) :: chi, gam, beta
       real(dp) :: P_nu, chi_new
-      real(dp), intent(in) :: chi,gam,beta
       chi_new = 2d0 * chi / (3d0 * gam**2)
       !chi_new = 0.8d0 * chi / gam**2
       !P_nu = 1.6d1 * pi * (4d0 * pi * chi / (3d0 * gam**2))**(1d0/3d0) * &
@@ -82,17 +82,17 @@ contains
 #else
            / (27d0 * dgamma(4d0 / 3d0))
 #endif
-      if (P_nu .lt. 1d-200) P_nu = 1d-200
+      if (P_nu < 1d-200) P_nu = 1d-200
    end function RJfAGN_eq340_pow
 
 
-   function RJfAGN_eq340_emiss(B,n0,nu,g1,g2,q) result(j_nu)
+   function RJfAGN_eq340_emiss(B, n0, nu, g1, g2, q) result(j_nu)
       implicit none
-      real(dp) :: j_nu,uB,nu0
       real(dp), intent(in) :: nu,n0,B,g1,g2,q
+      real(dp) :: j_nu,uB,nu0
       uB = B**2 / 8d0 / pi
       nu0 = 3d0 * B * nuconst / 2d0
-      if (nu.ge.nu0*g1**2.and.nu.le.nu0*g2**2) then
+      if ( nu >= nu0 * g1**2 .and. nu <= nu0*g2**2) then
          j_nu = 4d0 * cLight * (eCharge**2 / mass_e / cLight**2)**2 * uB * n0 * nu0**((q - 3d0) / 2d0) * nu**((1d0 - q) / 2d0) / 9d0
       else
          j_nu = 1d-200
@@ -109,9 +109,8 @@ contains
    ! :::: Equation 8 in Petrosian (1981) ::::
    function P81_eq8(beta, gam, theta, chi) result(jnu_of_theta)
       implicit none
-      real(dp) :: scrZ_max,m,t
-      real(dp) :: jnu_of_theta
       real(dp), intent(in) :: beta,theta,chi,gam
+      real(dp) :: scrZ_max, m, t, jnu_of_theta
       t = beta * gam * dsin(theta)
       m = chi * (1d0 + t**2) / gam
       scrZ_max = t * dexp( 1d0 / dsqrt(1d0 + t**2) ) / ( 1d0 + dsqrt(1d0 + t**2) )
@@ -121,14 +120,13 @@ contains
 
 
    ! :::: Trapezoidal integrator over viewing angles ::::
-   subroutine P81_trapzd(theta_a,theta_b,beta,gam,chi,s,n)
+   subroutine P81_trapzd(theta_a, theta_b, beta, gam, chi, s, n)
       implicit none
-      integer :: it,i
       integer, intent(in) :: n
-      real(dp) :: del,fsum,fa,fb,th
-      real(dp), intent(in) :: theta_a,theta_b,beta,gam,chi
+      real(dp), intent(in) :: theta_a, theta_b, beta, gam, chi
       real(dp), intent(inout) :: s
-
+      integer :: it, i
+      real(dp) :: del, fsum, fa, fb, th
       if (n == 1) then
          fa = P81_eq8(beta,gam,theta_a,chi)
          fb = P81_eq8(beta,gam,theta_b,chi)
@@ -144,22 +142,21 @@ contains
          end do
          s = 5d-1 * (s + del * fsum)
       end if
-
    end subroutine P81_trapzd
 
 
    ! :::: Romberg integrator over viewing angles ::::
-   function P81_qromb(theta_a,theta_b,beta,gam,chi)
+   function P81_qromb(theta_a, theta_b, beta, gam, chi)
       implicit none
-      real(dp) :: P81_qromb
       real(dp), intent(in) :: theta_a,theta_b,beta,gam,chi
+      real(dp) :: P81_qromb
       integer, parameter :: JMAX=20,JMAXP=JMAX+1,K=5,KM=K-1
       real(dp), parameter :: EPS=1d-12
       real(dp), dimension(JMAXP) :: h,s
       real(dp) :: dqromb
       integer :: j
       h(1) = 1d0
-      do j=1,JMAX
+      do j=1, JMAX
          call P81_trapzd(theta_a,theta_b,beta,gam,chi,s(j),j)
          if (j >= K) then
             call polint(h(j-KM:j),s(j-KM:j),0d0,P81_qromb,dqromb)
@@ -230,8 +227,8 @@ contains
 
    function RMA(chi, g) result(res)
       implicit none
-      real(dp) :: res,cs,x
-      real(dp), intent(in) :: chi,g
+      real(dp), intent(in) :: chi, g
+      real(dp) :: res, cs, x
       if (chi > 0.8d0 / g) then
          x = 2d0 * chi / (3d0 * g**2)
          if (x >= 1d2 .and. x <= 7d2) then
@@ -251,8 +248,8 @@ contains
    ! ::::: Eq. 16 in Schlickeiser & Lerch (2007) :::::
    function SL07(chi, g) result(res)
       implicit none
-      real(dp) :: res,cs,x
       real(dp), intent(in) :: chi,g
+      real(dp) :: res,cs,x
 
       x = 2d0 * chi / (3d0 * g**2)
 
@@ -271,16 +268,16 @@ contains
 
    function SL07_alt(chi, g) result(res)
       implicit none
-      real(dp) :: res,cs,x,a,b,c,infpow
-      real(dp), intent(in) :: chi,g
-      a=1.0d0
-      b=1.0d0
-      c=0.5d0
+      real(dp), intent(in) :: chi, g
+      real(dp) :: res, cs, x, a, b, c, infpow
+      a = 1.0d0
+      b = 1.0d0
+      c = 0.5d0
       infpow = 5d0 / 6d0
       x = 2d0 * chi / (3d0 * g**2)
       !!$print*,"a=",a,"  b=",b,"  c=",c
       !!$x = chi / g**2
-      if ( x.ge.1d2 .and. x.le.5d2) then
+      if ( x >= 1d2 .and. x <= 5d2) then
          cs = a * dexp(-x) * x**(-2d0/3d0) / ( b * dexp(-x) + c * x**infpow )
       else if ( x.gt.5d2 ) then
          cs = 0d0
@@ -300,14 +297,14 @@ contains
    !  ###### #    # #  ####   ####  #   ##   #   #     #
    function j_mb(nu, B, n0, gmin, gmax, qq, RMAfunc) result(emiss)
       implicit none
+      real(dp), intent(in) :: nu, B, gmin, gmax, qq, n0
+      real(dp) :: RMAfunc
       interface
-         function RMAfunc(c, g) result(res)
+         function RMAfunc(c, g)
             use data_types
-            real(dp) :: res
             real(dp), intent(in) :: c, g
          end function RMAfunc
       end interface
-      real(dp), intent(in) :: nu, B, gmin, gmax, qq, n0
       real(dp) :: emiss, chi, nu_b, I2
       nu_b = nuconst * B
       chi = nu / nu_b
@@ -317,17 +314,17 @@ contains
 
    subroutine RMA_trapzd(chi, q, lga, lgb, s, n, RMAfunc)
       implicit none
+      integer, intent(in) :: n
+      real(dp), intent(in) :: chi, q, lga, lgb
+      real(dp), intent(inout) :: s
+      real(dp) :: RMAfunc
       interface
-         function RMAfunc(c, g) result(res)
+         function RMAfunc(c, g)
             use data_types
-            real(dp) :: res
             real(dp), intent(in) :: c, g
          end function RMAfunc
       end interface
       integer :: it,i
-      integer, intent(in) :: n
-      real(dp), intent(in) :: chi, q, lga, lgb
-      real(dp), intent(inout) :: s
       real(dp) :: del, fsum, lg, fa, fb, ega, egb, eg
       if ( n == 1 ) then
          ega = dexp(lga)
@@ -352,14 +349,14 @@ contains
 
    function RMA_qromb(chi, q, lga, lgb, RMAfunc) result(qromb)
       implicit none
+      real(dp), intent(in) :: chi, q, lga, lgb
+      real(dp) :: RMAfunc
       interface
-         function RMAfunc(c, g) result(res)
+         function RMAfunc(c, g)
             use data_types
-            real(dp) :: res
             real(dp), intent(in) :: c, g
          end function RMAfunc
       end interface
-      real(dp), intent(in) :: chi, q, lga, lgb
       real(dp) :: qromb
       integer, parameter :: JMAX = 50, JMAXP = JMAX + 1, K = 10, KM = K - 1
       real(dp), parameter :: EPS = 1d-5
@@ -398,15 +395,15 @@ contains
    !  #    # #####   ####   ####  #    # #        #   #  ####  #    #
    function a_mb(nu, B, n0, gmin, gmax, qq, RMAfunc) result(absor)
       implicit none
+      real(dp), intent(in) :: nu, B, gmin, gmax, qq, n0
+      real(dp) :: RMAfunc
       interface
-         function RMAfunc(c,g) result(res)
+         function RMAfunc(c, g)
             use data_types
-            real(dp) :: res
-            real(dp), intent(in) :: c,g
+            real(dp), intent(in) :: c, g
          end function RMAfunc
       end interface
       real(dp) :: absor, chi, nu_b, A2
-      real(dp), intent(in) :: nu, B, gmin, gmax, qq, n0
       nu_b = nuconst * B
       chi = nu / nu_b
       A2 = ARMA_qromb(chi, qq, dlog(gmin), dlog(gmax), RMAfunc)
@@ -415,17 +412,17 @@ contains
 
    subroutine ARMA_trapzd(chi, q, lga, lgb, s, n, RMAfunc)
       implicit none
+      integer, intent(in) :: n
+      real(dp), intent(in) :: chi, q, lga, lgb
+      real(dp), intent(inout) :: s
+      real(dp) :: RMAfunc
       interface
-         function RMAfunc(c, g) result(res)
+         function RMAfunc(c, g)
             use data_types
-            real(dp) :: res
             real(dp), intent(in) :: c, g
          end function RMAfunc
       end interface
       integer :: it,i
-      integer, intent(in) :: n
-      real(dp), intent(in) :: chi, q, lga, lgb
-      real(dp), intent(inout) :: s
       real(dp) :: del, fsum, lg, fa, fb, ega, egb, eg
       if (n == 1) then
          ega = dexp(lga)
@@ -450,15 +447,15 @@ contains
 
    function ARMA_qromb(chi, q, lga, lgb, RMAfunc) result(qromb)
       implicit none
+      real(dp), intent(in) :: chi, q, lga, lgb
+      real(dp) :: RMAfunc
       interface
-         function RMAfunc(c, g) result(res)
+         function RMAfunc(c, g)
             use data_types
-            real(dp) :: res
             real(dp), intent(in) :: c, g
          end function RMAfunc
       end interface
-      real(dp), intent(in) :: chi, q, lga, lgb
-      real(dp) :: qromb!,temp_s
+      real(dp) :: qromb
       integer, parameter :: JMAX = 50, JMAXP = JMAX + 1, K = 10, KM = K - 1
       real(dp), parameter :: EPS = 1d-5
       real(dp), dimension(JMAXP) :: h, s
