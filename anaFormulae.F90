@@ -361,8 +361,8 @@ contains
       end interface
       real(dp), intent(in) :: chi, q, lga, lgb
       real(dp) :: qromb
-      integer, parameter :: JMAX = 25, JMAXP = JMAX + 1, K = 5, KM = K - 1
-      real(dp), parameter :: EPS = 1d-4
+      integer, parameter :: JMAX = 50, JMAXP = JMAX + 1, K = 10, KM = K - 1
+      real(dp), parameter :: EPS = 1d-5
       real(dp), dimension(JMAXP) :: h, s
       real(dp) :: dqromb
       integer :: j
@@ -459,7 +459,7 @@ contains
       end interface
       real(dp), intent(in) :: chi, q, lga, lgb
       real(dp) :: qromb!,temp_s
-      integer, parameter :: JMAX = 100, JMAXP = JMAX + 1, K = 10, KM = K - 1
+      integer, parameter :: JMAX = 50, JMAXP = JMAX + 1, K = 10, KM = K - 1
       real(dp), parameter :: EPS = 1d-5
       real(dp), dimension(JMAXP) :: h, s
       real(dp) :: dqromb

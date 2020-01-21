@@ -297,6 +297,7 @@ contains
             ubol = ubol + uu(j - 1) * freqs(j - 1) * Pinteg(freqs(j) / freqs(j - 1), uind, 1d-9)
          end if
       end do freqloop
+      ubol = dmax1(ubol, 1d-200)
    end subroutine bolometric_integ
 
 

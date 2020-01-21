@@ -113,7 +113,6 @@ contains
    end subroutine syn_aglow_SPN98
 
 
-
    !############################################################################
    !  ######  #     #
    !  #     # #  #  #     ####   ####  #      #    # ##### #  ####  #    #
@@ -148,6 +147,7 @@ contains
       end if
    end subroutine deceleration_radius
 
+
    !
    !     Analytic solution for the adiabatic blast wave
    !
@@ -169,6 +169,7 @@ contains
       end if
    end function adiab_blast_wave
 
+
    !
    !     Blas wave cross sectional area
    !
@@ -182,6 +183,7 @@ contains
 
       ! -----[ Uniform isotropic or beamed? ]-----
       if ( beam_kind >= 0 ) then
+
          select case( beam_kind )
          case(0)
             theta_j = 1d0 / G0
@@ -207,16 +209,21 @@ contains
             end if
          else
             ! Rb = Rbw / (Gbulk * 12d0)
-            Rb = Rbw / ((Gbulk + 0.75d0) * 12d0)
+            ! Rb = Rbw / ((Gbulk + 0.75d0) * 12d0)
+            Rb = Rbw / ((G0 + 0.75d0) * 12d0)
             csa = Oj * Rbw**2
             volume = csa * Rb
          end if
+
       else
+
          Oj = 4d0 * pi
          ! Rb = Rbw / (Gbulk * 12d0)
-         Rb = Rbw / ((Gbulk + 0.75d0) * 12d0)
+         ! Rb = Rbw / ((Gbulk + 0.75d0) * 12d0)
+         Rb = Rbw / ((G0 + 0.75d0) * 12d0)
          volume = 4d0 * pi * Rbw**2 * Rb
          csa = 4d0 * pi * Rbw**2
+
       end if
 
    end subroutine bw_crossec_area
