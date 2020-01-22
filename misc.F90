@@ -159,20 +159,18 @@ contains
       end if
    end function arth
 
+
    !
    !     Find closest element in an array to a value
    !
    function locate(xx, x, in_bounds)
       implicit none
-
       real(dp), intent(in) :: x
       real(dp), intent(in), dimension(:) :: xx
       logical, intent(in), optional :: in_bounds
-
       integer :: locate
       integer :: n, jl, jm, ju
       logical :: ascnd, bounds
-
       !! NOTE: The flag 'bounds' tells the function to return the index of the
       !!       lower value of the interval of 'xx' in which 'x' is
       if ( present(in_bounds) ) then
@@ -180,12 +178,10 @@ contains
       else
          bounds = .false.
       end if
-
       n = size(xx)
       ascnd = ( xx(n) >= xx(1) )
       jl = 0
       ju = n + 1
-
       do
          if ( ju - jl <= 1 ) exit
          jm = (ju + jl) / 2
@@ -195,7 +191,6 @@ contains
             ju = jm
          end if
       end do
-
       if ( dabs(x - xx(1)) < 1d-9 ) then
          locate = 1
          return
@@ -218,27 +213,26 @@ contains
 
    end function locate
 
-   ! ::::: Chebychev evaluation :::::
+
+   !
+   !   -----{  Chebychev evaluation  }-----
+   !
    function chebev(x,coef,num_coefs,xmin,xmax) result(res)
       implicit none
-
       integer, intent(in) :: num_coefs
       real(dp), intent(in) :: x,xmin,xmax
       real(dp), intent(in), dimension(:) :: coef
       integer :: j
       real(dp) :: d,dd,y,y2,sv,res
-
       if ((x-xmin)*(x-xmax) > 0d0) then
          print*,x,xmin,xmax
          write(*,*)'x is not in rage in chebev'
          stop
       end if
-
       d = 0d0
       dd = 0d0
       y = (2d0 * x - xmin - xmax) / (xmax - xmin)
       y2 = 2d0 * y
-
       do j=num_coefs,2,-1
          sv = dd
          dd = d
@@ -247,13 +241,9 @@ contains
       res = y * d - dd + 0.5d0 * coef(1)
    end function chebev
 
+
    !
-   ! ##### #####  # #####  #   ##    ####   ####  #    #   ##   #
-   !   #   #    # # #    # #  #  #  #    # #    # ##   #  #  #  #
-   !   #   #    # # #    # # #    # #      #    # # #  # #    # #
-   !   #   #####  # #    # # ###### #  ### #    # #  # # ###### #
-   !   #   #   #  # #    # # #    # #    # #    # #   ## #    # #
-   !   #   #    # # #####  # #    #  ####   ####  #    # #    # ######
+   !   -----{  Tridiagonal matrix solver  }-----
    !
    subroutine tridag_ser(a, b, c, r, u)
       !  Description:
@@ -288,16 +278,19 @@ contains
    end subroutine tridag_ser
 
 
+   !
+   !   -----{  Trapezoidal rule  }-----
+   !
    subroutine trapzd(func, a, b, s, n)
       implicit none
+      integer, intent(in) :: n
       real(dp), intent(in) :: a, b
       real(dp), intent(inout) :: s
-      integer, intent(in) :: n
+      real(dp), dimension(:) :: func
       interface
          function func(x)
             use data_types
             real(dp), dimension(:), intent(in) :: x
-            real(dp), dimension(size(x)) :: func
          end function func
       end interface
       real(dp) :: del, fsum
@@ -312,7 +305,10 @@ contains
       end if
    end subroutine trapzd
 
-   ! ::::: checking equality of integers :::::
+
+   !
+   !   -----{  checking equality of integers  }-----
+   !
    function assert_eq(nn, string)
       implicit none
       character(len=*), intent(in) :: string
