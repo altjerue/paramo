@@ -286,11 +286,11 @@ contains
       integer, intent(in) :: n
       real(dp), intent(in) :: a, b
       real(dp), intent(inout) :: s
-      real(dp), dimension(:) :: func
       interface
-         function func(x)
+         function func(x) result(res)
             use data_types
             real(dp), dimension(:), intent(in) :: x
+            real(dp), dimension(size(x, dim=1)) :: res
          end function func
       end interface
       real(dp) :: del, fsum

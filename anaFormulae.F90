@@ -400,7 +400,7 @@ contains
       real(dp), intent(in) :: nu, B, gmin, gmax, qq, n0
       real(dp) :: RMAfunc
       interface
-         function RMAfunc(c, g) result(res)
+         function RMAfunc(c, g)
             use data_types
             real(dp), intent(in) :: c, g
          end function RMAfunc
@@ -419,10 +419,9 @@ contains
       real(dp), intent(inout) :: s
       real(dp) :: RMAfunc
       interface
-         function RMAfunc(c, g) result(res)
+         function RMAfunc(c, g)
             use data_types
             real(dp), intent(in) :: c, g
-            real(dp) :: res
          end function RMAfunc
       end interface
       integer :: it, i
@@ -453,9 +452,8 @@ contains
       real(dp), intent(in) :: chi, q, lga, lgb
       real(dp) :: RMAfunc
       interface
-         function RMAfunc(c, g) result(res)
+         function RMAfunc(c, g)
             use data_types
-            real(dp) :: res
             real(dp), intent(in) :: c, g
          end function RMAfunc
       end interface
