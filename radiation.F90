@@ -508,7 +508,7 @@ contains
       real(dp), intent(in), dimension(:) :: nu, n, g, Inu
       real(dp), intent(out) :: jnu
       integer :: j, k, Ng, Nf
-      real(dp) :: w1, w2, gmx_star, e0, l, q, f1, f2, emis, g1, g2, s1, s2
+      real(dp) :: w1, w2, gmx_star, gKN, l, q, f1, f2, emis, g1, g2, s1, s2
       Ng = size(g, dim=1)
       Nf = size(nu, dim=1)
       jnu = 0d0
@@ -517,10 +517,10 @@ contains
             l = -dlog(Inu(j + 1) / Inu(j)) / dlog(nu(j + 1) / nu(j))
             if ( l > 8d0 ) l = 8d0
             if ( l < -8d0 ) l = -8d0
-            e0 = mass_e * cLight**2 / (4d0 * hPlanck * nu(j + 1))
+            gKN = mass_e * cLight**2 / (4d0 * hPlanck * nu(j + 1))
             f1 = nuout / (4d0 * nu(j))
             f2 = nuout / (4d0 * nu(j + 1))
-            g2 = dmin1(g(Ng), e0)
+            g2 = dmin1(g(Ng), gKN)
             g1 = dmax1(g(1), dsqrt(f1))
             g1g2_cond: if ( g1 < g2 ) then
                g_loop: do k = 1, Ng - 1
@@ -536,7 +536,7 @@ contains
                      if ( s1 < -8d0 ) s1 = -8d0
                      if ( s2 > 8d0 ) s2 = 8d0
                      if ( s2 < -8d0 ) s2 = -8d0
-                     gmx_star = dmin1(g(k + 1), e0)
+                     gmx_star = dmin1(g(k + 1), gKN)
                      w1 = dmin1(f1, gmx_star**2)
                      w2 = dmax1(f2, 0.25d0)
                      contrib_if: if ( w1 > w2 ) then
@@ -570,14 +570,14 @@ contains
       real(dp), intent(out) :: jnu
       real(dp), parameter :: eps = 1d-9
       integer :: k, Ng
-      real(dp) :: w, gmx_star, e0, q, q1, q2, emis
+      real(dp) :: w, gmx_star, gKN, q, q1, q2, emis
       Ng = size(g, dim=1)
-      e0 = mass_e * cLight**2 / (4d0 * hPlanck * nuext)
+      gKN = mass_e * cLight**2 / (4d0 * hPlanck * nuext)
       w = nuout / (4d0 * nuext)
       jnu = 0d0
       emis = 0d0
       g_loop: do k = 1, Ng - 1
-         gmx_star = dmin1(g(k + 1), e0)
+         gmx_star = dmin1(g(k + 1), gKN)
          e_dist: if ( n(k) > 1d-200 .and. n(k + 1) > 1d-200 ) then
             q = -dlog(n(k + 1) / n(k)) / dlog(g(k + 1) / g(k))
             if ( q > 8d0 ) q = 8d0

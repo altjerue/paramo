@@ -360,8 +360,8 @@ contains
             real(dp), intent(in) :: c, g
          end function RMAfunc
       end interface
-      integer, parameter :: JMAX = 25, JMAXP = JMAX + 1, K = 5, KM = K - 1
-      real(dp), parameter :: EPS = 1d-4
+      integer, parameter :: JMAX = 60, JMAXP = JMAX + 1, K = 10, KM = K - 1
+      real(dp), parameter :: EPS = 1d-5
       real(dp), dimension(JMAXP) :: h, s
       real(dp) :: dqromb, qromb
       integer :: j

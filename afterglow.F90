@@ -37,23 +37,8 @@ subroutine afterglow(params_file, output_file, with_ic)
    real(dp), allocatable, dimension(:,:) :: dotg, n_e, jnut, jmbs, jssc, jeic, &
          ambs, anut, Qinj, tau_gg, pow_syn, Ddiff
    logical :: blob, full_rad_cool, with_wind, bw_approx, radius_evol, &
-         cool_withKN, pwl_over_trpzd_integ
+         cool_withKN, pwl_over_trpzd_integ, ssa_boiler
 
-   !!!!!!!! TODO:
-   !!  [ ] Cases for each model to compare:
-   !!       - SPN98
-   !!       - PM09
-   !!       - PVP14
-   !!       - Hao19
-   !!  [X] Winds
-   !!  [ ] Pair production
-   !!  [ ] Solve photons kinetic equation or Integrate emissivities
-   !!  [X] Time dependent adiabatic cooling
-   !!  [ ] Dilution term
-   !!  [X] Save cooling break lorentz factor
-   !!  [X] Geometry of the emission region: blob (size of the jet), slab (DM09), a region from eq. (30) in PVP14
-   !!  [X] Jet vs isotropic expansion
-   !!  [X] Swept up material
 
    !  #####    ##   #####    ##   #    #  ####
    !  #    #  #  #  #    #  #  #  ##  ## #
@@ -88,6 +73,7 @@ subroutine afterglow(params_file, output_file, with_ic)
    tmax = par_tmax
    E0 = par_E0
 
+
    !  ####  ###### ##### #    # #####
    ! #      #        #   #    # #    #
    !  ####  #####    #   #    # #    #
@@ -109,13 +95,14 @@ subroutine afterglow(params_file, output_file, with_ic)
    call K2_init
 
    beam_kind = -1
-   blob = .true.
+   blob = .false.
    full_rad_cool = .true.
    cool_withKN = .true.
    with_wind = .false.
    bw_approx = .false.
    radius_evol = .true.
    pwl_over_trpzd_integ = .false.
+   ssa_boiler = .true.
 
    !-----> About the observer
    theta_obs = par_theta_obs * pi / 180d0
@@ -167,7 +154,7 @@ subroutine afterglow(params_file, output_file, with_ic)
    !-----> Magnetic field
    b_const = dsqrt(32d0 * pi * eps_B * mass_p) * cLight
    ! B = b_const * dsqrt(n_ext) * gamma_bulk(0)
-   B = b_const * dsqrt(n_ext * (gamma_bulk(0) - 1d0) * (gamma_bulk(0) + 0.75d0)) ! eq.(20) in PK00
+   B = b_const * dsqrt(n_ext * (gamma_bulk(0) - 1d0) * gamma_bulk(0))
    uB = B**2 / (8d0 * pi)
 
    !-----> Radiation fields
@@ -183,7 +170,7 @@ subroutine afterglow(params_file, output_file, with_ic)
    g1 = g1_const * (gamma_bulk(0) - 1d0)
 
    !-----> Time-scales
-   tlc = Rb(0) / cLight
+   tlc = Rb(0) / (cLight * beta_bulk)
    !!!!!COMBAK: here may be implemented escape time-scale in PVP14, eq. (27)
    ! call bolometric_integ(freqs, opt_depth(anut(:, i - 1), 2d0 * Rb(i)), tau)
    ! tesc_e = tlc * 0.75d0 * Rb(i) * (1d0 + (1d0 - dexp(-tau)) / (1d0 + dexp(-tau))) / cLight
@@ -193,9 +180,6 @@ subroutine afterglow(params_file, output_file, with_ic)
 
    !-----> Fraction of accreted kinetic energy injected into non-thermal electrons
    L_e = eps_e * cs_area * n_ext * energy_p * cLight * beta_bulk * gamma_bulk(0) * (gamma_bulk(0) - 1d0)
-   ! Q0 = L_e * pwl_norm(energy_e * volume(0), pind - 1d0, g1, g2)
-   !!!!!NOTE: The expression below corresponds to the normalization in Eq. (13)
-   !!!!!      in PM09
    Q0 = L_e / ( (g1**(2d0 - pind) * Pinteg(g2 / g1, pind - 1d0, 1d-6) - g1**(1d0 - pind) * Pinteg(g2 / g1, pind, 1d-6)) * volume(0) * energy_e )
 
    write(*, "('mu_obs  =', ES15.7)") mu_obs
@@ -233,7 +217,7 @@ subroutine afterglow(params_file, output_file, with_ic)
    Inu = 0d0
    Ddiff(:, 0) = 1d-200
    Qinj(:, 0) = injection_pwl(t(0), tinj, gg, g1, g2, pind, Q0)
-   n_e(:, 0) = 0d0!Qinj(:, 0)
+   n_e(:, 0) = Qinj(:, 0)
 
    write(*, "('---> Calculating the emission')")
    write(*, *) ''
@@ -321,7 +305,7 @@ subroutine afterglow(params_file, output_file, with_ic)
             &             dotg(:, i - 1), &
             &             Ddiff(:, i - 1), &
             &             Qinj(:, i - 1), &
-            &             1d200, &!tesc_e, &!
+            &             tesc_e, &!1d200, &!
             &             tlc)
 
 
@@ -332,7 +316,7 @@ subroutine afterglow(params_file, output_file, with_ic)
 
       !-----> Magnetic field
       ! B = b_const * dsqrt(n_ext) * gamma_bulk(i)
-      B = b_const * dsqrt(n_ext * (gamma_bulk(i) - 1d0) * (gamma_bulk(i) + 0.75d0)) ! eq.(20) in PK00
+      B = b_const * dsqrt(n_ext * (gamma_bulk(i) - 1d0) * gamma_bulk(i))
       uB = B**2 / (8d0 * pi)
 
       !-----> Radiation fields
@@ -344,7 +328,7 @@ subroutine afterglow(params_file, output_file, with_ic)
       g1 = g1_const * (gamma_bulk(i) - 1d0)
 
       !-----> Time-scales
-      tlc = Rb(i) / cLight
+      tlc = Rb(i) / (cLight * beta_bulk)
       !!!!!COMBAK: here may be implemented escape time-scale in PVP14, eq. (27)
       ! call bolometric_integ(freqs, opt_depth(anut(:, i - 1), 2d0 * Rb(i)), tau)
       ! tesc_e = tlc * 0.75d0 * Rb(i) * (1d0 + (1d0 - dexp(-tau)) / (1d0 + dexp(-tau))) / cLight
@@ -373,45 +357,42 @@ subroutine afterglow(params_file, output_file, with_ic)
          freqs(j) = nu_com_f(nu_obs(j), z, D(i))
          call mbs_emissivity(jmbs(j, i), freqs(j), gg, n_e(:, i), B)
          call mbs_absorption(ambs(j, i), freqs(j), gg, n_e(:, i), B)
-         ! do k = 1, numbins
-         !    pow_syn(j, k) = dsqrt(3d0) * eCharge**3 * B * RMA_new(freqs(j) / (nuconst * B), gg(k))
-         ! end do
+         do k = 1, numbins
+            pow_syn(j, k) = dsqrt(3d0) * eCharge**3 * B * RMA_new(freqs(j) / (nuconst * B), gg(k))
+         end do
       end do
       !$OMP END PARALLEL DO
 
-      call RadTrans(Inu, Rb(i), jmbs(:, i), ambs(:, i))
+      call RadTrans_blob(Inu, Rb(i), jmbs(:, i), ambs(:, i))
 
       !-----> Synchrotron boiler from GGS88
-      do k=1,numbins
-      !    call bolometric_integ(freqs, Inu * pow_syn(:, k) / freqs**2, Ddiff(k, i))
-      !    Ddiff(k, i) = Ddiff(k, i) * gg(k) * pofg(gg(k)) / (2d0 * mass_e * energy_e)
-         Ddiff(k, i) = 1d-200
-      end do
+      if ( ssa_boiler ) then
+         do k=1,numbins
+            call bolometric_integ(freqs, Inu * pow_syn(:, k) / freqs**2, Ddiff(k, i))
+            Ddiff(k, i) = Ddiff(k, i) * gg(k) * pofg(gg(k)) / (2d0 * mass_e * energy_e)
+         end do
+      else
+         Ddiff(:, i) = 1d-200
+      end if
 
       !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
       !$OMP& PRIVATE(j)
       do j = 1, numdf
          if ( with_ic ) then
             call IC_iso_powlaw(jssc(j, i), freqs(j), freqs, Inu, n_e(:, i), gg)
-            jeic(j, i) = 0d0
             call IC_iso_monochrom(jeic(j, i), freqs(j), uext, nu_ext, n_e(:, i), gg)
-            ! call IC_emis_full(freqs(j), freqs, gg, n_e(:, i), Inu, jssc(j, i))
-            ! call IC_emis_full(freqs(j), nu_ext, gg, n_e(:, i), uext * cLight / (4d0 * pi), jeic(j, i))
          else
             jssc(j, i) = 0d0
             jeic(j, i) = 0d0
          end if
-
          !!!!!COMBAK: pairs optical depth
          ! if ( hPlanck * freqs(j) > 5d11 * (0.01d0 / 0.02d0) * (100d0 / gamma_bulk(i)) ) then
          !    tau_gg(j, i) = 0.16d0 * (R(i) / 1d16) * (100d0 / gamma_bulk(i)) * (uext / 1d-7) * (1d11 / (hPlanck * freqs(j))) * (0.01d0 / 0.02d0)**2
          ! else
          ! tau_gg(j, i) = 0d0
          ! end if
-
          jnut(j, i) = jmbs(j, i) + jssc(j, i) + jeic(j, i)
          anut(j, i) = ambs(j, i)! + tau_gg(j, i) / (2d0 * Rb(i))
-
       end do
       !$OMP END PARALLEL DO
 
@@ -427,9 +408,7 @@ subroutine afterglow(params_file, output_file, with_ic)
       !     Radiative cooling
       !
       if ( full_rad_cool ) then
-         call RadTrans(Inu, Rb(i), jmbs(:, i), ambs(:, i))
-         ! call bolometric_integ(freqs, 4d0 * pi * Inu / cLight, urad)
-         ! urad = urad + uext
+         call RadTrans_blob(Inu, Rb(i), jmbs(:, i), ambs(:, i))
          call rad_cool(dotg(:, i), gg, freqs, 4d0 * pi * Inu / cLight, cool_withKN)
       else
          dotg(:, i) = 0d0

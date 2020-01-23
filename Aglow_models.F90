@@ -208,9 +208,7 @@ contains
                csa = Oj * Rbw**2
             end if
          else
-            ! Rb = Rbw / (Gbulk * 12d0)
-            ! Rb = Rbw / ((Gbulk + 0.75d0) * 12d0)
-            Rb = Rbw / ((G0 + 0.75d0) * 12d0)
+            Rb = Rbw / (Gbulk * 12d0)
             csa = Oj * Rbw**2
             volume = csa * Rb
          end if
@@ -218,9 +216,8 @@ contains
       else
 
          Oj = 4d0 * pi
-         ! Rb = Rbw / (Gbulk * 12d0)
-         ! Rb = Rbw / ((Gbulk + 0.75d0) * 12d0)
-         Rb = Rbw / ((G0 + 0.75d0) * 12d0)
+         ! Rb = Rbw / Gbulk
+         Rb = Rbw / (Gbulk * 12d0)
          volume = 4d0 * pi * Rbw**2 * Rb
          csa = 4d0 * pi * Rbw**2
 
