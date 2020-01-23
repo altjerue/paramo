@@ -301,11 +301,11 @@ contains
    function j_mb(nu, B, n0, gmin, gmax, qq, RMAfunc) result(emiss)
       implicit none
       real(dp), intent(in) :: nu, B, gmin, gmax, qq, n0
-      real(dp) :: RMAfunc
       interface
          function RMAfunc(c, g)
             use data_types
             real(dp), intent(in) :: c, g
+            real(dp) :: RMAfunc
          end function RMAfunc
       end interface
       real(dp) :: emiss, chi, nu_b, I2
@@ -320,11 +320,11 @@ contains
       integer, intent(in) :: n
       real(dp), intent(in) :: chi, q, lga, lgb
       real(dp), intent(inout) :: s
-      real(dp) :: RMAfunc
       interface
          function RMAfunc(c, g)
             use data_types
             real(dp), intent(in) :: c, g
+            real(dp) :: RMAfunc
          end function RMAfunc
       end interface
       integer :: it,i
@@ -353,11 +353,11 @@ contains
    function RMA_qromb(chi, q, lga, lgb, RMAfunc) result(qromb)
       implicit none
       real(dp), intent(in) :: chi, q, lga, lgb
-      real(dp) :: RMAfunc
       interface
          function RMAfunc(c, g)
             use data_types
             real(dp), intent(in) :: c, g
+            real(dp) :: RMAfunc
          end function RMAfunc
       end interface
       integer, parameter :: JMAX = 60, JMAXP = JMAX + 1, K = 10, KM = K - 1
@@ -398,11 +398,11 @@ contains
    function a_mb(nu, B, n0, gmin, gmax, qq, RMAfunc) result(absor)
       implicit none
       real(dp), intent(in) :: nu, B, gmin, gmax, qq, n0
-      real(dp) :: RMAfunc
       interface
          function RMAfunc(c, g)
             use data_types
             real(dp), intent(in) :: c, g
+            real(dp) :: RMAfunc
          end function RMAfunc
       end interface
       real(dp) :: absor, chi, nu_b, A2
@@ -417,11 +417,11 @@ contains
       integer, intent(in) :: n
       real(dp), intent(in) :: chi, q, lga, lgb
       real(dp), intent(inout) :: s
-      real(dp) :: RMAfunc
       interface
          function RMAfunc(c, g)
             use data_types
             real(dp), intent(in) :: c, g
+            real(dp) :: RMAfunc
          end function RMAfunc
       end interface
       integer :: it, i
@@ -450,18 +450,17 @@ contains
    function ARMA_qromb(chi, q, lga, lgb, RMAfunc) result(qromb)
       implicit none
       real(dp), intent(in) :: chi, q, lga, lgb
-      real(dp) :: RMAfunc
       interface
          function RMAfunc(c, g)
             use data_types
             real(dp), intent(in) :: c, g
+            real(dp) :: RMAfunc
          end function RMAfunc
       end interface
-      real(dp) :: qromb
       integer, parameter :: JMAX = 60, JMAXP = JMAX + 1, K = 10, KM = K - 1
       real(dp), parameter :: EPS = 1d-5
       real(dp), dimension(JMAXP) :: h, s
-      real(dp) :: dqromb
+      real(dp) :: dqromb, qromb
       integer :: j
       h(1) = 1d0
       do j = 1, JMAX
