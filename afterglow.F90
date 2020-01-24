@@ -360,7 +360,7 @@ subroutine afterglow(params_file, output_file, with_ic)
          do k = 1, numbins
             ! pow_syn(j, k) = dsqrt(3d0) * eCharge**3 * B * RMA_new(freqs(j) / (nuconst * B), gg(k))
             !-----> Expression below is Eq. (3.63) in my thesis
-            pow_syn(j, k) = 1.315d-28 * nuconst * B * RMA_new(freqs(j) / (nuconst * B), gg(k)) * volume(i)
+            pow_syn(j, k) = 1.315d-28 * nuconst * B * volume(i) * RMA_new(freqs(j) / (nuconst * B), gg(k))
          end do
       end do
       !$OMP END PARALLEL DO
@@ -372,7 +372,7 @@ subroutine afterglow(params_file, output_file, with_ic)
       !    tau_gg(j, i) = 0d0
       ! end if
 
-      anut(j, i) = ambs(j, i)! + tau_gg(j, i) / (2d0 * Rb(i))
+      anut(:, i) = ambs(:, i)! + tau_gg(j, i) / (2d0 * Rb(i))
 
       call RadTrans(Inu, Rb(i), jmbs(:, i), ambs(:, i))
 
