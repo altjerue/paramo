@@ -312,7 +312,8 @@ contains
       nu_b = nuconst * B
       chi = nu / nu_b
       I2 = RMA_qromb(chi, qq, dlog(gmin), dlog(gmax), RMAfunc)
-      emiss = jmbconst * nu_b * n0 * I2 * gmin**qq
+      emiss = pi * eCharge**2 * nu_b * n0 * I2 * gmin**qq / (2d0 * cLight)
+      ! emiss = jmbconst * nu_b * n0 * I2 * gmin**qq
    end function j_mb
 
    subroutine RMA_trapzd(chi, q, lga, lgb, s, n, RMAfunc)
@@ -409,7 +410,8 @@ contains
       nu_b = nuconst * B
       chi = nu / nu_b
       A2 = ARMA_qromb(chi, qq, dlog(gmin), dlog(gmax), RMAfunc)
-      absor = ambconst * nu_b * n0 * A2 * gmin**qq / nu**2
+      absor = pi * eCharge**2 * nu_b * n0 * A2 * gmin**qq / (4d0 * mass_e * cLight * nu**2)
+      ! absor = ambconst * nu_b * n0 * A2 * gmin**qq / nu**2
    end function a_mb
 
    subroutine ARMA_trapzd(chi, q, lga, lgb, s, n, RMAfunc)

@@ -102,7 +102,7 @@ subroutine afterglow(params_file, output_file, with_ic)
    bw_approx = .false.
    radius_evol = .true.
    pwl_over_trpzd_integ = .false.
-   ssa_boiler = .true.
+   ssa_boiler = .false.
 
    !-----> About the observer
    theta_obs = par_theta_obs * pi / 180d0
@@ -375,26 +375,26 @@ subroutine afterglow(params_file, output_file, with_ic)
          Ddiff(:, i) = 1d-200
       end if
 
-      !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
-      !$OMP& PRIVATE(j)
-      do j = 1, numdf
-         if ( with_ic ) then
+      if ( with_ic ) then
+         !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
+         !$OMP& PRIVATE(j)
+         do j = 1, numdf
             call IC_iso_powlaw(jssc(j, i), freqs(j), freqs, Inu, n_e(:, i), gg)
             call IC_iso_monochrom(jeic(j, i), freqs(j), uext, nu_ext, n_e(:, i), gg)
-         else
-            jssc(j, i) = 0d0
-            jeic(j, i) = 0d0
-         end if
-         !!!!!COMBAK: pairs optical depth
-         ! if ( hPlanck * freqs(j) > 5d11 * (0.01d0 / 0.02d0) * (100d0 / gamma_bulk(i)) ) then
-         !    tau_gg(j, i) = 0.16d0 * (R(i) / 1d16) * (100d0 / gamma_bulk(i)) * (uext / 1d-7) * (1d11 / (hPlanck * freqs(j))) * (0.01d0 / 0.02d0)**2
-         ! else
-         ! tau_gg(j, i) = 0d0
-         ! end if
-         jnut(j, i) = jmbs(j, i) + jssc(j, i) + jeic(j, i)
-         anut(j, i) = ambs(j, i)! + tau_gg(j, i) / (2d0 * Rb(i))
-      end do
-      !$OMP END PARALLEL DO
+         end do
+         !$OMP END PARALLEL DO
+      else
+         jssc(:, i) = 0d0
+         jeic(:, i) = 0d0
+      end if
+      !!!!!COMBAK: pairs optical depth
+      ! if ( hPlanck * freqs(j) > 5d11 * (0.01d0 / 0.02d0) * (100d0 / gamma_bulk(i)) ) then
+      !    tau_gg(j, i) = 0.16d0 * (R(i) / 1d16) * (100d0 / gamma_bulk(i)) * (uext / 1d-7) * (1d11 / (hPlanck * freqs(j))) * (0.01d0 / 0.02d0)**2
+      ! else
+      !    tau_gg(j, i) = 0d0
+      ! end if
+      jnut(j, i) = jmbs(j, i) + jssc(j, i) + jeic(j, i)
+      anut(j, i) = ambs(j, i)! + tau_gg(j, i) / (2d0 * Rb(i))
 
 
       !   ####   ####   ####  #      # #    #  ####
@@ -419,7 +419,7 @@ subroutine afterglow(params_file, output_file, with_ic)
       !     Adiabatic cooling
       !
       !-----> Numeric using finite differences
-      dotg(:, i) = dotg(:, i) + pofg(gg) * adiab_cool_num(volume(i - 1), volume(i), dt)
+      ! dotg(:, i) = dotg(:, i) + pofg(gg) * adiab_cool_num(volume(i - 1), volume(i), dt)
       !-----> Analytic expression from PVP14, eq. (36)
       ! if ( with_wind ) then
       !    if ( R(i) < Rd2 ) then
@@ -436,7 +436,7 @@ subroutine afterglow(params_file, output_file, with_ic)
       ! end if
       ! dotg(:, i) = urad_const * uB * pofg(gg)**2 + gg * bofg(gg)**2 * ((2d0 / gindex) + 1d0) / 3d0
       !!!!!NOTE: using time-scile in Hao's paper, eq. (11)
-      ! dotg(:, i) = dotg(:, i) + 1.6d0 * cLight * beta_bulk * gamma_bulk(i) * gg / R(i)
+      dotg(:, i) = dotg(:, i) + 1.6d0 * cLight * beta_bulk * gamma_bulk(i) * gg / R(i)
 
 
       !   ####  #    #     ####   ####  #####  ###### ###### #    #

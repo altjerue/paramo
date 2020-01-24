@@ -2,9 +2,7 @@ module Aglow_models
    use data_types
    use constants
    use misc
-!   use pwl_integ
    use SRtoolkit
-!   use anaFormulae
    implicit none
 
 contains
