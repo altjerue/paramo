@@ -595,10 +595,9 @@ contains
             else
                cycle g_loop
             end if contrib_if
-            jnu = jnu + emis * n(k) * g(k)**q * w**(-q1)
+            jnu = jnu + emis * n(k) * g(k)**q * w**(-q1) * cLight * sigmaT * uext / (4d0 * nuext)
          end if e_dist
       end do g_loop
-      jnu = jnu * cLight * sigmaT * uext / (4d0 * pi * nuext)
    end subroutine IC_iso_monochrom
 
 

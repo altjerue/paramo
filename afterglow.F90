@@ -358,12 +358,23 @@ subroutine afterglow(params_file, output_file, with_ic)
          call mbs_emissivity(jmbs(j, i), freqs(j), gg, n_e(:, i), B)
          call mbs_absorption(ambs(j, i), freqs(j), gg, n_e(:, i), B)
          do k = 1, numbins
-            pow_syn(j, k) = dsqrt(3d0) * eCharge**3 * B * RMA_new(freqs(j) / (nuconst * B), gg(k))
+            ! pow_syn(j, k) = dsqrt(3d0) * eCharge**3 * B * RMA_new(freqs(j) / (nuconst * B), gg(k))
+            !-----> Expression below is Eq. (3.63) in my thesis
+            pow_syn(j, k) = 1.315d-28 * nuconst * B * RMA_new(freqs(j) / (nuconst * B), gg(k)) * volume(i)
          end do
       end do
       !$OMP END PARALLEL DO
 
-      call RadTrans_blob(Inu, Rb(i), jmbs(:, i), ambs(:, i))
+      !!!!!COMBAK: pairs optical depth
+      ! if ( hPlanck * freqs(j) > 5d11 * (0.01d0 / 0.02d0) * (100d0 / gamma_bulk(i)) ) then
+      !    tau_gg(j, i) = 0.16d0 * (R(i) / 1d16) * (100d0 / gamma_bulk(i)) * (uext / 1d-7) * (1d11 / (hPlanck * freqs(j))) * (0.01d0 / 0.02d0)**2
+      ! else
+      !    tau_gg(j, i) = 0d0
+      ! end if
+
+      anut(j, i) = ambs(j, i)! + tau_gg(j, i) / (2d0 * Rb(i))
+
+      call RadTrans(Inu, Rb(i), jmbs(:, i), ambs(:, i))
 
       !-----> Synchrotron boiler from GGS88
       if ( ssa_boiler ) then
@@ -381,20 +392,12 @@ subroutine afterglow(params_file, output_file, with_ic)
          do j = 1, numdf
             call IC_iso_powlaw(jssc(j, i), freqs(j), freqs, Inu, n_e(:, i), gg)
             call IC_iso_monochrom(jeic(j, i), freqs(j), uext, nu_ext, n_e(:, i), gg)
+            jnut(j, i) = jmbs(j, i) + jssc(j, i) + jeic(j, i)
          end do
          !$OMP END PARALLEL DO
       else
-         jssc(:, i) = 0d0
-         jeic(:, i) = 0d0
+         jnut(:, i) = jmbs(:, i)
       end if
-      !!!!!COMBAK: pairs optical depth
-      ! if ( hPlanck * freqs(j) > 5d11 * (0.01d0 / 0.02d0) * (100d0 / gamma_bulk(i)) ) then
-      !    tau_gg(j, i) = 0.16d0 * (R(i) / 1d16) * (100d0 / gamma_bulk(i)) * (uext / 1d-7) * (1d11 / (hPlanck * freqs(j))) * (0.01d0 / 0.02d0)**2
-      ! else
-      !    tau_gg(j, i) = 0d0
-      ! end if
-      jnut(:, i) = jmbs(:, i) + jssc(:, i) + jeic(:, i)
-      anut(:, i) = ambs(:, i)! + tau_gg(j, i) / (2d0 * Rb(i))
 
 
       !   ####   ####   ####  #      # #    #  ####
@@ -408,7 +411,7 @@ subroutine afterglow(params_file, output_file, with_ic)
       !     Radiative cooling
       !
       if ( full_rad_cool ) then
-         call RadTrans_blob(Inu, Rb(i), jmbs(:, i), ambs(:, i))
+         ! call RadTrans(Inu, Rb(i), jmbs(:, i), ambs(:, i))
          call rad_cool(dotg(:, i), gg, freqs, 4d0 * pi * Inu / cLight, cool_withKN)
       else
          dotg(:, i) = 0d0
