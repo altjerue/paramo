@@ -393,8 +393,8 @@ subroutine afterglow(params_file, output_file, with_ic)
       ! else
       !    tau_gg(j, i) = 0d0
       ! end if
-      jnut(j, i) = jmbs(j, i) + jssc(j, i) + jeic(j, i)
-      anut(j, i) = ambs(j, i)! + tau_gg(j, i) / (2d0 * Rb(i))
+      jnut(:, i) = jmbs(:, i) + jssc(:, i) + jeic(:, i)
+      anut(:, i) = ambs(:, i)! + tau_gg(j, i) / (2d0 * Rb(i))
 
 
       !   ####   ####   ####  #      # #    #  ####
