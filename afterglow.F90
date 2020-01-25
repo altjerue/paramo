@@ -175,7 +175,7 @@ subroutine afterglow(params_file, output_file, with_ic)
    ! call bolometric_integ(freqs, opt_depth(anut(:, i - 1), 2d0 * Rb(i)), tau)
    ! tesc_e = tlc * 0.75d0 * Rb(i) * (1d0 + (1d0 - dexp(-tau)) / (1d0 + dexp(-tau))) / cLight
    !!!!!!!!!!!!!!!
-   tesc_e = tlc
+   tesc_e = 3d0 * tlc
    tinj = 1d200
 
    !-----> Fraction of accreted kinetic energy injected into non-thermal electrons
@@ -333,7 +333,7 @@ subroutine afterglow(params_file, output_file, with_ic)
       ! call bolometric_integ(freqs, opt_depth(anut(:, i - 1), 2d0 * Rb(i)), tau)
       ! tesc_e = tlc * 0.75d0 * Rb(i) * (1d0 + (1d0 - dexp(-tau)) / (1d0 + dexp(-tau))) / cLight
       !!!!!!!!!!!!!!!
-      tesc_e = tlc
+      tesc_e = 3d0 * tlc
       tinj = 1d200
 
       !-----> Fraction of accreted kinetic energy injected into non-thermal electrons
@@ -390,6 +390,7 @@ subroutine afterglow(params_file, output_file, with_ic)
          !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
          !$OMP& PRIVATE(j)
          do j = 1, numdf
+            ! call IC_emis_full(freqs(j), freqs, gg, n_e(:, i), Inu, jssc(j, i))
             call IC_iso_powlaw(jssc(j, i), freqs(j), freqs, Inu, n_e(:, i), gg)
             call IC_iso_monochrom(jeic(j, i), freqs(j), uext, nu_ext, n_e(:, i), gg)
             jnut(j, i) = jmbs(j, i) + jssc(j, i) + jeic(j, i)
@@ -422,11 +423,11 @@ subroutine afterglow(params_file, output_file, with_ic)
       !     Adiabatic cooling
       !
       !-----> Numeric using finite differences
-      ! dotg(:, i) = dotg(:, i) + pofg(gg) * adiab_cool_num(volume(i - 1), volume(i), dt)
+      dotg(:, i) = dotg(:, i) + pofg(gg) * dlog(volume(i) / volume(i - 1)) / (3d0 * dt)
       !-----> MSB00
       ! dotg(:, i) = dotg(:, i) + cLight * beta_bulk * gamma_bulk(i) * gg / R(i)
       !!!!!NOTE: using time-scile in Hao's paper, eq. (11)
-      dotg(:, i) = dotg(:, i) + 1.6d0 * cLight * beta_bulk * gamma_bulk(i) * gg / R(i)
+      ! dotg(:, i) = dotg(:, i) + 1.6d0 * cLight * beta_bulk * gamma_bulk(i) * gg / R(i)
 
 
       !   ####  #    #     ####   ####  #####  ###### ###### #    #

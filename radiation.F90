@@ -376,7 +376,8 @@ contains
       gmax = gg(Ng)
       fin_loop: do j = 1, Nf
          g1 = dmax1(dsqrt(0.25d0 * fout / fin(j)), gmin)
-         g2 = dmin1(3d0 * mass_e * cLight**2 / (4d0 * hPlanck * fin(j)), gmax)
+         ! g2 = dmin1(3d0 * mass_e * cLight**2 / (4d0 * hPlanck * fin(j)), gmax)
+         g2 = dmin1(mass_e * cLight**2 / (hPlanck * fin(j)), gmax)
          if ( g1 >= g2 ) then
             I0(j) = 0d0
          else
@@ -541,14 +542,14 @@ contains
                      w2 = dmax1(f2, 0.25d0)
                      contrib_if: if ( w1 > w2 ) then
                         if ( 0.25d0 < f1 .and. f1 < g(k)**2 ) then
-                           emis = sscG1ISO(1d0 / gmx_star**2, 1d0 / g(k)**2, w2, w1, s1, s2)
-                        else if ( f2 <= g(k)**2 .and. g(k)**2 <= f1 ) then
-                           emis = sscG1ISO(1d0 / gmx_star**2, 1d0 / g(k)**2, w2, g(k)**2, s1, s2) + &
-                              sscG2ISO(1d0 / gmx_star**2, 1d0, g(k)**2, w1, s1, s2)
-                        else if ( g(k)**2 < f2 .and. f2 <= gmx_star**2 ) then
-                           emis = sscG2ISO(1d0 / gmx_star**2, 1d0, w2, w1, s1, s2)
+                           emis = sscG1ISO(gmx_star**(-2), g(k)**(-2), w2, w1, s1, s2)
+                        else if ( f1 <= g(k)**2 .and. f2 <= g(k)**2 ) then
+                           emis = sscG1ISO(gmx_star**(-2), g(k)**(-2), w2, g(k)**2, s1, s2) + &
+                              sscG2ISO(gmx_star**(-2), 1d0, g(k)**2, w1, s1, s2)
+                        else if ( f2 <= gmx_star**2 .and. f2 > g(k)**2 ) then
+                           emis = sscG2ISO(gmx_star**(-2), 1d0, w2, w1, s1, s2)
                         else
-                           cycle g_loop
+                           emis = 0d0
                         end if
                         jnu = jnu + emis * n(k) * g(k)**q * Inu(j) * sigmaT * f1**(-l)
                      end if contrib_if
@@ -593,7 +594,7 @@ contains
             else if ( g(k)**2 < w .and. w <= gmx_star**2 ) then
                emis = (w / gmx_star**2)**q2 * ( Pinteg(gmx_star**2 / w, -q1, eps) - (w / gmx_star**2) * Pinteg(gmx_star**2 / w, -q2, eps) )
             else
-               cycle g_loop
+               emis = 0d0
             end if contrib_if
             jnu = jnu + emis * n(k) * g(k)**q * w**(-q1) * cLight * sigmaT * uext / (4d0 * nuext)
          end if e_dist

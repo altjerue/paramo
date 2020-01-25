@@ -225,28 +225,4 @@ contains
 
    end subroutine bw_crossec_area
 
-
-   !############################################################################
-   !    ##   #####  #   ##   #####      ####   ####   ####  #
-   !   #  #  #    # #  #  #  #    #    #    # #    # #    # #
-   !  #    # #    # # #    # #####     #      #    # #    # #
-   !  ###### #    # # ###### #    #    #      #    # #    # #
-   !  #    # #    # # #    # #    #    #    # #    # #    # #
-   !  #    # #####  # #    # #####      ####   ####   ####  ######
-   !
-   !----- Description -----
-   !   Here are the ways to estimate the adiabatic cooling.
-   !############################################################################
-
-   !
-   !     Numerical form of the adiabatic term
-   !
-   function adiab_cool_num(vol1, vol2, dt) result(dotg_ad)
-      implicit none
-      real(dp), intent(in) :: vol1, vol2, dt
-      real(dp) :: dotg_ad
-      dotg_ad = (dlog(vol2) - dlog(vol1)) / (3d0 * dt)
-   end function adiab_cool_num
-
-
 end module Aglow_models
