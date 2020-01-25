@@ -517,7 +517,7 @@ contains
             l = -dlog(Inu(j + 1) / Inu(j)) / dlog(nu(j + 1) / nu(j))
             if ( l > 8d0 ) l = 8d0
             if ( l < -8d0 ) l = -8d0
-            gKN = mass_e * cLight**2 / (4d0 * hPlanck * nu(j + 1))
+            gKN = mass_e * cLight**2 / (hPlanck * nu(j + 1))
             f1 = nuout / (4d0 * nu(j))
             f2 = nuout / (4d0 * nu(j + 1))
             g2 = dmin1(g(Ng), gKN)
@@ -572,7 +572,7 @@ contains
       integer :: k, Ng
       real(dp) :: w, gmx_star, gKN, q, q1, q2, emis
       Ng = size(g, dim=1)
-      gKN = mass_e * cLight**2 / (4d0 * hPlanck * nuext)
+      gKN = mass_e * cLight**2 / (hPlanck * nuext)
       w = nuout / (4d0 * nuext)
       jnu = 0d0
       emis = 0d0

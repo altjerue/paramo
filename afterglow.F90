@@ -83,13 +83,13 @@ subroutine afterglow(params_file, output_file, with_ic)
    write(*, "('--> Simulation setup')")
 
    allocate(t(0:numdt), freqs(numdf), Inu(numdf), gg(numbins), urad(numbins), &
-      nu_obs(numdf), t_obs(0:numdt), R(0:numdt), tcool(numbins), Rb(0:numdt), &
-      gamma_bulk(0:numdt), D(0:numdt), volume(0:numdt))
+         nu_obs(numdf), t_obs(0:numdt), R(0:numdt), tcool(numbins), Rb(0:numdt), &
+         gamma_bulk(0:numdt), D(0:numdt), volume(0:numdt))
    allocate(n_e(numbins, 0:numdt), Ddiff(numbins, 0:numdt), &
-      dotg(numbins, 0:numdt), ambs(numdf, numdt), jmbs(numdf, numdt), &
-      jnut(numdf, numdt), jssc(numdf, numdt), anut(numdf, numdt), &
-      jeic(numdf, numdt), Qinj(numbins, 0:numdt), pow_syn(numdf, numbins), &
-      tau_gg(numdf, numdt))
+         dotg(numbins, 0:numdt), ambs(numdf, numdt), jmbs(numdf, numdt), &
+         jnut(numdf, numdt), jssc(numdf, numdt), anut(numdf, numdt), &
+         jeic(numdf, numdt), Qinj(numbins, 0:numdt), pow_syn(numdf, numbins), &
+         tau_gg(numdf, numdt))
 
    call K1_init
    call K2_init
@@ -154,7 +154,7 @@ subroutine afterglow(params_file, output_file, with_ic)
    !-----> Magnetic field
    b_const = dsqrt(32d0 * pi * eps_B * mass_p) * cLight
    ! B = b_const * dsqrt(n_ext) * gamma_bulk(0)
-   B = b_const * dsqrt(n_ext * (gamma_bulk(0) - 1d0) * gamma_bulk(0))
+   B = b_const * dsqrt(n_ext * (gamma_bulk(0) - 1d0) * (gamma_bulk(0) + 0.75d0))
    uB = B**2 / (8d0 * pi)
 
    !-----> Radiation fields
@@ -163,14 +163,14 @@ subroutine afterglow(params_file, output_file, with_ic)
    urad_const = 4d0 * sigmaT * cLight / (3d0 * energy_e)
 
    !-----> Minimum and maximum Lorentz factors of the particles distribution
-   eps_g2 = 0.35
+   eps_g2 = 0.35d0
    g2_const = dsqrt(6d0 * pi * eCharge * eps_g2 / sigmaT)
    g1_const = eps_e * mass_p * (pind - 2d0) / ((pind - 1d0) * mass_e)
    g2 = g2_const / dsqrt(B)
    g1 = g1_const * (gamma_bulk(0) - 1d0)
 
    !-----> Time-scales
-   tlc = Rb(0) / (cLight * beta_bulk)
+   tlc = Rb(0) / cLight
    !!!!!COMBAK: here may be implemented escape time-scale in PVP14, eq. (27)
    ! call bolometric_integ(freqs, opt_depth(anut(:, i - 1), 2d0 * Rb(i)), tau)
    ! tesc_e = tlc * 0.75d0 * Rb(i) * (1d0 + (1d0 - dexp(-tau)) / (1d0 + dexp(-tau))) / cLight
@@ -180,6 +180,7 @@ subroutine afterglow(params_file, output_file, with_ic)
 
    !-----> Fraction of accreted kinetic energy injected into non-thermal electrons
    L_e = eps_e * cs_area * n_ext * energy_p * cLight * beta_bulk * gamma_bulk(0) * (gamma_bulk(0) - 1d0)
+   ! Q0 = L_e / ( g1**(2d0 - pind) * Pinteg(g2 / g1, pind - 1d0, 1d-6) * volume(0) * energy_e )
    Q0 = L_e / ( (g1**(2d0 - pind) * Pinteg(g2 / g1, pind - 1d0, 1d-6) - g1**(1d0 - pind) * Pinteg(g2 / g1, pind, 1d-6)) * volume(0) * energy_e )
 
    write(*, "('mu_obs  =', ES15.7)") mu_obs
@@ -213,7 +214,7 @@ subroutine afterglow(params_file, output_file, with_ic)
       gg(k) = (gmin - 1d0) * ((gmax - 1d0) / (gmin - 1d0))**(dble(k - 1) / dble(numbins - 1)) + 1d0
    end do build_g
 
-   dotg(:, 0) = urad_const * uB * pofg(gg)**2
+   dotg(:, 0) = urad_const * (uB + uext) * pofg(gg)**2
    Inu = 0d0
    Ddiff(:, 0) = 1d-200
    Qinj(:, 0) = injection_pwl(t(0), tinj, gg, g1, g2, pind, Q0)
@@ -308,7 +309,6 @@ subroutine afterglow(params_file, output_file, with_ic)
             &             tesc_e, &!1d200, &!
             &             tlc)
 
-
       call bw_crossec_area(gamma_bulk0, R(i), gamma_bulk(i), theta_j0, beam_kind, blob, Rb(i), volume(i), cs_area, Omega_j)
 
       !-----> External medioum
@@ -316,7 +316,7 @@ subroutine afterglow(params_file, output_file, with_ic)
 
       !-----> Magnetic field
       ! B = b_const * dsqrt(n_ext) * gamma_bulk(i)
-      B = b_const * dsqrt(n_ext * (gamma_bulk(i) - 1d0) * gamma_bulk(i))
+      B = b_const * dsqrt(n_ext * (gamma_bulk(i) - 1d0) * (gamma_bulk(i) + 0.75d0))
       uB = B**2 / (8d0 * pi)
 
       !-----> Radiation fields
@@ -328,7 +328,7 @@ subroutine afterglow(params_file, output_file, with_ic)
       g1 = g1_const * (gamma_bulk(i) - 1d0)
 
       !-----> Time-scales
-      tlc = Rb(i) / (cLight * beta_bulk)
+      tlc = Rb(i) / cLight
       !!!!!COMBAK: here may be implemented escape time-scale in PVP14, eq. (27)
       ! call bolometric_integ(freqs, opt_depth(anut(:, i - 1), 2d0 * Rb(i)), tau)
       ! tesc_e = tlc * 0.75d0 * Rb(i) * (1d0 + (1d0 - dexp(-tau)) / (1d0 + dexp(-tau))) / cLight
@@ -338,9 +338,9 @@ subroutine afterglow(params_file, output_file, with_ic)
 
       !-----> Fraction of accreted kinetic energy injected into non-thermal electrons
       L_e = eps_e * cs_area * n_ext * energy_p * cLight * beta_bulk * gamma_bulk(i) * (gamma_bulk(i) - 1d0)
-      ! Q0 = L_e * pwl_norm(energy_e * volume(i), pind - 1d0, g1, g2)
+      ! Q0 = L_e / ( g1**(2d0 - pind) * Pinteg(g2 / g1, pind - 1d0, 1d-6) * volume(i) * energy_e )
       !!!!!NOTE: The expression below corresponds to the normalization in Eq. (13)
-      !!!!!      in PM09
+      !!!!!!!!!! in PM09
       Q0 = L_e / ( (g1**(2d0 - pind) * Pinteg(g2 / g1, pind - 1d0, 1d-6) - g1**(1d0 - pind) * Pinteg(g2 / g1, pind, 1d-6)) * volume(i) * energy_e )
       Qinj(:, i) = injection_pwl(t(i), tinj, gg, g1, g2, pind, Q0)
 
@@ -423,21 +423,8 @@ subroutine afterglow(params_file, output_file, with_ic)
       !
       !-----> Numeric using finite differences
       ! dotg(:, i) = dotg(:, i) + pofg(gg) * adiab_cool_num(volume(i - 1), volume(i), dt)
-      !-----> Analytic expression from PVP14, eq. (36)
-      ! if ( with_wind ) then
-      !    if ( R(i) < Rd2 ) then
-      !       gindex = 1d0
-      !    else
-      !       gindex = 1.5d0
-      !    end if
-      ! else
-      !    if ( R(i) < Rd2 ) then
-      !       gindex = 1d0
-      !    else
-      !       gindex = 2.5d0
-      !    end if
-      ! end if
-      ! dotg(:, i) = urad_const * uB * pofg(gg)**2 + gg * bofg(gg)**2 * ((2d0 / gindex) + 1d0) / 3d0
+      !-----> MSB00
+      ! dotg(:, i) = dotg(:, i) + cLight * beta_bulk * gamma_bulk(i) * gg / R(i)
       !!!!!NOTE: using time-scile in Hao's paper, eq. (11)
       dotg(:, i) = dotg(:, i) + 1.6d0 * cLight * beta_bulk * gamma_bulk(i) * gg / R(i)
 
