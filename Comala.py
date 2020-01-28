@@ -2,8 +2,6 @@ import os
 from time import strftime, localtime
 from SAPytho.misc import fortran_double
 
-# TODO: get rid of b_index
-
 
 #
 #  #####    ##   #####    ##   #    #  ####
@@ -33,6 +31,7 @@ class parameters(object):
         self.eps_e = 0.1                # epsilon_e
         self.theta_e = 10.0             # electrons temperature
         self.zeta_e = 0.99              # fraction of non-thermal particles
+        self.f_esc = 1.0                # electrons escape time factor
         self.tstep = 1e-2               # time step factor
         self.tmax = 1e5                 # maximum time
         self.tmin = 0e0                 # minimum time
@@ -74,6 +73,7 @@ class parameters(object):
             print(fortran_double(self.Bfield), ' ! magnetic field strength', file=f)
             print(fortran_double(self.theta_e), ' ! electrons temperature', file=f)
             print(fortran_double(self.zeta_e), ' ! fraction of nonthermal electrons', file=f)
+            print(fortran_double(self.f_esc), ' ! electrons escape time', file=f)
             print(fortran_double(self.tstep), ' ! time step factor', file=f)
             print(fortran_double(self.tmax), ' ! maximum time', file=f)
             print(fortran_double(self.tmin), ' ! minimum time', file=f)

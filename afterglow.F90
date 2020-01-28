@@ -31,7 +31,7 @@ subroutine afterglow(params_file, output_file, with_ic)
          theta_obs, mu_obs, nu_ext, tesc_e, uext0, eps_e, tlc, g1_const, Rd2, &
          Ejet, eps_B, E0, gamma_bulk0, L_e, nu_ext0, tmin, td, Rd, dr, &
          b_const, beta_bulk, eps_g2, theta_j0, cs_area, n_ext0, g2_const, &
-         Omega_j, dt
+         Omega_j, dt, f_esc
    real(dp), allocatable, dimension(:) :: freqs, t, Inu, gg, urad, &
          nu_obs, t_obs, gamma_bulk, R, D, tcool, Rb, volume
    real(dp), allocatable, dimension(:,:) :: dotg, n_e, jnut, jmbs, jssc, jeic, &
@@ -72,6 +72,7 @@ subroutine afterglow(params_file, output_file, with_ic)
    Rmax = par_R
    tmax = par_tmax
    E0 = par_E0
+   f_esc = par_fesc
 
 
    !  ####  ###### ##### #    # #####
@@ -97,7 +98,7 @@ subroutine afterglow(params_file, output_file, with_ic)
    beam_kind = -1
    blob = .false.
    full_rad_cool = .true.
-   cool_withKN = .true.
+   cool_withKN = .false.
    with_wind = .false.
    bw_approx = .false.
    radius_evol = .true.
@@ -171,11 +172,7 @@ subroutine afterglow(params_file, output_file, with_ic)
 
    !-----> Time-scales
    tlc = Rb(0) / cLight
-   !!!!!COMBAK: here may be implemented escape time-scale in PVP14, eq. (27)
-   ! call bolometric_integ(freqs, opt_depth(anut(:, i - 1), 2d0 * Rb(i)), tau)
-   ! tesc_e = tlc * 0.75d0 * Rb(i) * (1d0 + (1d0 - dexp(-tau)) / (1d0 + dexp(-tau))) / cLight
-   !!!!!!!!!!!!!!!
-   tesc_e = 3d0 * tlc
+   tesc_e = f_esc * tlc! * R(0) / (cLight * gamma_bulk(0))!
    tinj = 1d200
 
    !-----> Fraction of accreted kinetic energy injected into non-thermal electrons
@@ -333,7 +330,7 @@ subroutine afterglow(params_file, output_file, with_ic)
       ! call bolometric_integ(freqs, opt_depth(anut(:, i - 1), 2d0 * Rb(i)), tau)
       ! tesc_e = tlc * 0.75d0 * Rb(i) * (1d0 + (1d0 - dexp(-tau)) / (1d0 + dexp(-tau))) / cLight
       !!!!!!!!!!!!!!!
-      tesc_e = 3d0 * tlc
+      tesc_e = f_esc * tlc! * R(i) / (cLight * gamma_bulk(i))!
       tinj = 1d200
 
       !-----> Fraction of accreted kinetic energy injected into non-thermal electrons
@@ -417,7 +414,8 @@ subroutine afterglow(params_file, output_file, with_ic)
       else
          dotg(:, i) = 0d0
       end if
-      dotg(:, i) = dotg(:, i) + urad_const * (uB + uext) * pofg(gg)**2
+      dotg(:, i) = dabs(dotg(:, i)) + urad_const * (uB + uext) * pofg(gg)**2
+
 
       !
       !     Adiabatic cooling
@@ -425,9 +423,9 @@ subroutine afterglow(params_file, output_file, with_ic)
       !-----> Numeric using finite differences
       dotg(:, i) = dotg(:, i) + pofg(gg) * dlog(volume(i) / volume(i - 1)) / (3d0 * dt)
       !-----> MSB00
-      ! dotg(:, i) = dotg(:, i) + cLight * beta_bulk * gamma_bulk(i) * gg / R(i)
+      !dotg(:, i) = dotg(:, i) + cLight * beta_bulk * gamma_bulk(i) * pofg(gg) / R(i)
       !!!!!NOTE: using time-scile in Hao's paper, eq. (11)
-      ! dotg(:, i) = dotg(:, i) + 1.6d0 * cLight * beta_bulk * gamma_bulk(i) * gg / R(i)
+      !dotg(:, i) = dotg(:, i) + 1.6d0 * cLight * gamma_bulk(i) * pofg(gg) / R(i)
 
 
       !   ####  #    #     ####   ####  #####  ###### ###### #    #
@@ -437,7 +435,7 @@ subroutine afterglow(params_file, output_file, with_ic)
       !  #    # #   ##    #    # #    # #   #  #      #      #   ##
       !   ####  #    #     ####   ####  #    # ###### ###### #    #
       if ( mod(i, nmod) == 0 .or. i == 1 ) &
-         write(*, on_screen) i, t_obs(i), R(i), gamma_bulk(i), B
+            write(*, on_screen) i, t_obs(i), R(i), gamma_bulk(i), B
 
    end do time_loop
 
