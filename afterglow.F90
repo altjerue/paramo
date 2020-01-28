@@ -1,4 +1,5 @@
-subroutine afterglow(params_file, output_file, with_ic)
+subroutine afterglow(params_file, output_file, cool_withKN, ssa_boiler, &
+      with_wind, flow_kind, blob)
    use data_types
    use constants
    use params
@@ -16,8 +17,9 @@ subroutine afterglow(params_file, output_file, with_ic)
    use K2
    implicit none
 
+   integer, intent(in) :: flow_kind
    character(len=*), intent(in) :: output_file, params_file
-   logical, intent(in) :: with_ic
+   logical, intent(in) :: cool_withKN, ssa_boiler, with_wind, blob
    integer, parameter :: nmod = 50
    character(len=*), parameter :: screan_head = &
       '| Iteration | Obser. time |   BW radius |  gamma_bulk |      Bfield |'&
@@ -25,7 +27,7 @@ subroutine afterglow(params_file, output_file, with_ic)
       ' ---------------------------------------------------------------------', &
       on_screen = "(' | ', I9, ' | ', ES11.4, ' | ', ES11.4, ' | ', ES11.4, ' | ', ES11.4, ' |')"
    integer(HID_T) :: file_id, group_id
-   integer :: i, j, k, numbins, numdf, numdt, time_grid, herror, beam_kind
+   integer :: i, j, k, numbins, numdf, numdt, time_grid, herror
    real(dp) :: uB, uext, L_j, gmin, gmax, numin, numax, pind, B, R0, Rmax, &
          tinj, g1, g2, tstep, Q0, tmax, d_lum, z, n_ext, urad_const, Aw, sind, &
          theta_obs, mu_obs, nu_ext, tesc_e, uext0, eps_e, tlc, g1_const, Rd2, &
@@ -36,8 +38,8 @@ subroutine afterglow(params_file, output_file, with_ic)
          nu_obs, t_obs, gamma_bulk, R, D, tcool, Rb, volume
    real(dp), allocatable, dimension(:,:) :: dotg, n_e, jnut, jmbs, jssc, jeic, &
          ambs, anut, Qinj, tau_gg, pow_syn, Ddiff
-   logical :: blob, full_rad_cool, with_wind, bw_approx, radius_evol, &
-         cool_withKN, pwl_over_trpzd_integ, ssa_boiler
+   logical :: full_rad_cool, bw_approx, radius_evol, pwl_over_trpzd_integ, &
+         with_ic
 
 
    !  #####    ##   #####    ##   #    #  ####
@@ -95,15 +97,11 @@ subroutine afterglow(params_file, output_file, with_ic)
    call K1_init
    call K2_init
 
-   beam_kind = -1
-   blob = .false.
+   with_ic = .true.
    full_rad_cool = .true.
-   cool_withKN = .false.
-   with_wind = .false.
    bw_approx = .false.
    radius_evol = .true.
    pwl_over_trpzd_integ = .false.
-   ssa_boiler = .false.
 
    !-----> About the observer
    theta_obs = par_theta_obs * pi / 180d0
@@ -112,7 +110,7 @@ subroutine afterglow(params_file, output_file, with_ic)
    !-----> Initializing blast wave
    theta_j0 = 0.2d0
    beta_bulk = bofg(gamma_bulk0)
-   call bw_crossec_area(gamma_bulk0, R0, gamma_bulk0, theta_j0, beam_kind, blob, Rb(0), volume(0), cs_area, Omega_j)
+   call bw_crossec_area(gamma_bulk0, R0, gamma_bulk0, theta_j0, flow_kind, blob, Rb(0), volume(0), cs_area, Omega_j)
 
    !-----> External medioum
    if ( with_wind ) then
@@ -147,7 +145,7 @@ subroutine afterglow(params_file, output_file, with_ic)
       t(0) = R(0) / (beta_bulk * gamma_bulk(0) * cLight)
    end if
 
-   call bw_crossec_area(gamma_bulk0, R(0), gamma_bulk(0), theta_j0, beam_kind, blob, Rb(0), volume(0), cs_area, Omega_j)
+   call bw_crossec_area(gamma_bulk0, R(0), gamma_bulk(0), theta_j0, flow_kind, blob, Rb(0), volume(0), cs_area, Omega_j)
 
    !-----> External medioum
    n_ext = Aw * R(0)**(-sind)
@@ -306,7 +304,7 @@ subroutine afterglow(params_file, output_file, with_ic)
             &             tesc_e, &!1d200, &!
             &             tlc)
 
-      call bw_crossec_area(gamma_bulk0, R(i), gamma_bulk(i), theta_j0, beam_kind, blob, Rb(i), volume(i), cs_area, Omega_j)
+      call bw_crossec_area(gamma_bulk0, R(i), gamma_bulk(i), theta_j0, flow_kind, blob, Rb(i), volume(i), cs_area, Omega_j)
 
       !-----> External medioum
       n_ext = Aw * R(i)**(-sind)

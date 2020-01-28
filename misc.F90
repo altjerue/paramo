@@ -337,15 +337,13 @@ contains
       !
       character(len=*), intent(in) :: c
       integer :: i
-      read (c,'(i5)') i
-      return
+      read (c,'(I5)') i
    end function char2int
 
    function char2double(c) result(d)
       character(len=*), intent(in) :: c
       real(dp) :: d
       read(c, *) d
-      return
    end function char2double
 
    function zeros1D(n) result(a)

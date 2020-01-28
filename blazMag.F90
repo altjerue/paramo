@@ -1,4 +1,4 @@
-subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
+subroutine blazMag(params_file, output_file, cool_withKN, with_abs)
    use data_types
    use constants
    use params
@@ -13,7 +13,7 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    implicit none
 
    character(len=*), intent(in) :: output_file, params_file
-   logical, intent(in) :: with_cool, with_abs, with_ssc
+   logical, intent(in) :: cool_withKN, with_abs
    integer, parameter :: nmod = 50
    character(len=*), parameter :: screan_head = &
       '| Iteration |        Time |   Time step |    nu_0(g2) |       N_tot |'&
@@ -30,7 +30,7 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
       t_obs, dg, urad
    real(dp), allocatable, dimension(:,:) :: dotg, nn, jnut, jmbs, jssc, jeic, &
       ambs, anut, Qinj, Ddif, Fmbs, Feic, Fssc, Fnut
-
+   logical :: with_cool
 
    !  ####  ###### ##### #    # #####
    ! #      #        #   #    # #    #
@@ -58,6 +58,7 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    numdt = par_numdt
    numdf = par_numdf
    time_grid = par_time_grid
+   f_esc = par_fesc
 
 
    allocate(t(0:numdt), freqs(numdf), Ntot(numdt), Inu(numdf), &
@@ -77,6 +78,8 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    !   # #   ## #   #      #    # #    # #   ## #    #
    !   # #    # #   #       ####   ####  #    # #####
    !
+
+   with_cool = .true.
 
    ! sigma = (mu_mag / gamma_bulk) - 1d0
    mu_mag = gamma_bulk * (sigma + 1d0)
@@ -115,7 +118,7 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    dotg(:, 0) = urad_const * uB * pofg(gg)**2
    volume = 4d0 * pi * R**3 / 3d0
    tlc = R / cLight
-   tesc = tlc
+   tesc = f_esc * tlc
    tinj = 2d0 * tlc
 
    Qnth = f_rec * L_B * pwl_norm(volume * mass_e * cLight**2, pind - 1d0, g1, g2)
@@ -200,15 +203,10 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
       !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
       !$OMP& PRIVATE(j)
       do j = 1, numdf
-         if ( with_ssc ) then
-            call IC_iso_powlaw(jssc(j, i), freqs(j), freqs, Inu, nn(:, i - 1), gg)
-            call IC_iso_monochrom(jeic(j, i), freqs(j), uext, nu_ext, nn(:, i - 1), gg)
-            ! call IC_emis_full(freqs(j), freqs, gg, nn(:, i - 1), Inu, jssc(j, i))
-            ! call IC_emis_full(freqs(j), nu_ext, gg, nn(:, i - 1), uext * cLight / (4d0 * pi), jeic(j, i))
-         else
-            jeic(j, i) = 0d0
-            jssc(j, i) = 0d0
-         end if
+         call IC_iso_powlaw(jssc(j, i), freqs(j), freqs, Inu, nn(:, i - 1), gg)
+         call IC_iso_monochrom(jeic(j, i), freqs(j), uext, nu_ext, nn(:, i - 1), gg)
+         ! call IC_emis_full(freqs(j), freqs, gg, nn(:, i - 1), Inu, jssc(j, i))
+         ! call IC_emis_full(freqs(j), nu_ext, gg, nn(:, i - 1), uext * cLight / (4d0 * pi), jeic(j, i))
          jnut(j, i) = jmbs(j, i) + jssc(j, i) + jeic(j, i)
          anut(j, i) = ambs(j, i)
 
@@ -236,7 +234,7 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
          ! call bolometric_integ(freqs, 4d0 * pi * Inu / cLight, urad)
          ! call RadTrans_blob(Inu, R, jssc(:, i) + jeic(:, i), anut(:, i))
          call RadTrans_blob(Inu, R, jmbs(:, i), ambs(:, i))
-         call rad_cool(dotg(:, i), gg, freqs, 4d0 * pi * Inu / cLight, .true.)
+         call rad_cool(dotg(:, i), gg, freqs, 4d0 * pi * Inu / cLight, cool_withKN)
       else
          urad = 0d0
       end if
@@ -261,7 +259,6 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
             &             Qinj(:, i), &
             &             tesc, &
             &             tlc)
-      ! call FP_FinDif_cool(dt(i), gg, nn(i - 1, :), nn(i, :), nu0(i - 1, :), Qinj(i, :), tesc)
 
 
       ! ----->   N_tot
@@ -280,12 +277,10 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    ! #    # #    #  #  #  # #   ## #    #
    !  ####  #    #   ##   # #    #  ####
    write(*, *) "---> Saving"
-
-   ! ------  Opening output file  ------
+   !----->   Opening output file
    call h5open_f(herror)
    call h5io_createf(output_file, file_id, herror)
-
-   ! ------  Saving initial parameters  ------
+   !----->   Saving initial parameters
    call h5io_createg(file_id, "Parameters", group_id, herror)
    call h5io_wint0(group_id, 'numdt', numdt, herror)
    call h5io_wint0(group_id, 'numdf', numdf, herror)
@@ -310,20 +305,17 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    call h5io_wdble0(group_id, 'nu_max', numax, herror)
    call h5io_wdble0(group_id, 'mu_mag', mu_mag, herror)
    call h5io_closeg(group_id, herror)
-
-   ! ------  Saving data  ------
+   !----->   Saving data
    call h5io_wdble0(file_id, 't_inj', tinj, herror)
    call h5io_wdble0(file_id, 't_esc', tesc, herror)
    call h5io_wdble0(file_id, 'Bfield', B, herror)
    call h5io_wdble0(file_id, 'Q_nth', Qnth, herror)
-
    call h5io_wdble1(file_id, 'time', t(1:), herror)
    call h5io_wdble1(file_id, 't_obs', t_obs, herror)
    call h5io_wdble1(file_id, 'Ntot', Ntot, herror)
    call h5io_wdble1(file_id, 'nu', freqs, herror)
    call h5io_wdble1(file_id, 'nu_obs', nu_obs, herror)
    call h5io_wdble1(file_id, 'gamma', gg, herror)
-
    call h5io_wdble2(file_id, 'jnut', jnut, herror)
    call h5io_wdble2(file_id, 'jmbs', jmbs, herror)
    call h5io_wdble2(file_id, 'jssc', jssc, herror)
@@ -336,8 +328,7 @@ subroutine blazMag(params_file, output_file, with_cool, with_abs, with_ssc)
    call h5io_wdble2(file_id, 'Feic', Feic, herror)
    call h5io_wdble2(file_id, 'n_e', nn(:, 1:), herror)
    call h5io_wdble2(file_id, 'dgdt', dotg(:, 1:), herror)
-
-   ! ------  Closing output file  ------
+   !----->   Closing output file
    call h5io_closef(file_id, herror)
    call h5close_f(herror)
 

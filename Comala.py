@@ -221,24 +221,11 @@ class Runner(object):
     '''This class sets up the exectuable instructions.
     '''
 
-    def __init__(self, wCool=False, wAbs=False, wIC=False, flabel='DriverTest', par_kw={}, comp_kw={}):
+    def __init__(self, flabel='DriverTest', par_kw={}, comp_kw={}):
         self.par = parameters(**par_kw)
         self.par.wParams()
         self.cwd = os.getcwd()
         self.comp_kw = comp_kw
-        # -----  ARGS OF THE EXECUTABLE  -----
-        if wCool:
-            self.wCool = 'T'
-        else:
-            self.wCool = 'F'
-        if wAbs:
-            self.wAbs = 'T'
-        else:
-            self.wAbs = 'F'
-        if wIC:
-            self.wIC = 'T'
-        else:
-            self.wIC = 'F'
         self.flabel = flabel  # a label to identify each output
 
     def run_test(self, clean=False):
@@ -252,17 +239,31 @@ class Runner(object):
         os.system(run_cmd)
         print("\n--> Finished")
 
-    def run_blazMag(self, pream=None, clean=False, cl=False):
+    #
+    # ----->   BlazMag compilation and run
+    #
+    def run_blazMag(self, cmd_args=(None, None), pream=None, clean=False, cl=False):
+        if cmd_args[0] is None or cmd_args[0] is True:
+            wCool = True
+        else:
+            wCool = False
+        if cmd_args[1] is None or cmd_args[1] is False:
+            wAbs = False
+        else:
+            wAbs = True
+
         comp = compiler(rules='xBlazMag', **self.comp_kw)
+
         if clean:
             comp.cleanup()
         comp.compile()
-        os.system("sleep 5")
+        os.system("sleep 3")
         outfile = self.flabel + '.jp.h5'
+
         if pream is None:
-            run_cmd = '{0}xBlazMag {1} {2} {3} {4} {5}'.format(comp.compile_dir, self.par.params_file, self.wAbs, self.wIC, self.wCool, outfile)
+            run_cmd = '{0}xBlazMag {1} {2} {3} {4}'.format(comp.compile_dir, self.par.params_file, wCool, wAbs, outfile)
         else:
-            run_cmd = '{0} {1}xBlazMag {2} {3} {4} {5} {6}'.format(pream, comp.compile_dir, self.par.params_file, self.wAbs, self.wIC, self.wCool, outfile)
+            run_cmd = '{0} {1}xBlazMag {2} {3} {4} {5}'.format(pream, comp.compile_dir, self.par.params_file, wCool, wAbs, outfile)
         print("\n--> Parameters:")
         os.system("cat -n " + self.par.params_file)
         if cl:
@@ -273,17 +274,25 @@ class Runner(object):
             os.system(run_cmd)
             print("\n--> Finished")
 
-    def run_Aglow(self, pream=None, clean=False, cl=False):
+    #
+    # ----->   Aglow compilation and run
+    #
+    def run_Aglow(self, cmd_args=(False, False, False, -1, False), pream=None, clean=False, cl=False):
+        wCool = cmd_args[0]
+        wAbs = cmd_args[1]
+        wWind = cmd_args[2]
+        flow_geom = cmd_args[3]
+        wBlob = cmd_args[4]
         comp = compiler(rules='xAglow', **self.comp_kw)
         if clean:
             comp.cleanup()
         comp.compile()
-        os.system("sleep 5")
+        os.system("sleep 3")
         outfile = self.flabel + '.jp.h5'
         if pream is None:
-            run_cmd = '{0}xAglow {1} {2} {3} {4} {5}'.format(comp.compile_dir, self.wAbs, self.wCool, self.wIC, self.par.params_file, outfile)
+            run_cmd = '{0}xAglow {1} {2} {3} {4} {5} {6} {7}'.format(comp.compile_dir, self.par.params_file, wCool, wAbs, wWind, flow_geom, wBlob, outfile)
         else:
-            run_cmd = '{0} {1}xAglow {2} {3} {4} {5} {6}'.format(pream, comp.compile_dir, self.wAbs, self.wCool, self.wIC, self.par.params_file, outfile)
+            run_cmd = '{0} {1}xAglow {2} {3} {4} {5} {6} {7} {8}'.format(pream, comp.compile_dir, self.par.params_file, wCool, wAbs, wWind, flow_geom, wBlob, outfile)
         print("\n--> Parameters:")
         os.system("cat -n " + self.par.params_file)
         if cl:
