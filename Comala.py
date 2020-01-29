@@ -243,10 +243,10 @@ class Runner(object):
     # ----->   BlazMag compilation and run
     #
     def run_blazMag(self, cmd_args=(None, None), pream=None, clean=False, cl=False):
-        if cmd_args[0] is None or cmd_args[0] is True:
-            wCool = True
-        else:
+        if cmd_args[0] is None or cmd_args[0] is False:
             wCool = False
+        else:
+            wCool = True
         if cmd_args[1] is None or cmd_args[1] is False:
             wAbs = False
         else:

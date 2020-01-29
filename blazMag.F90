@@ -149,8 +149,7 @@ subroutine blazMag(params_file, output_file, cool_withKN, with_abs)
    end do build_f
 
    build_g: do k = 1, numbins
-      ! gg(k) = gmin * (gmax / gmin)**(dble(k - 1) / dble(numbins - 1))
-      gg(k) = (gmin - 1d0) * ((gmax - 1d0) / (gmin - 1d0))**(dble(k - 1) / dble(numbins - 1)) + 1d0
+      gg(k) = gmin * (gmax / gmin)**(dble(k - 1) / dble(numbins - 1))
       if ( k > 1 ) dg(k) = gg(k) - gg(k - 1)
    end do build_g
    dg(1) = dg(2)

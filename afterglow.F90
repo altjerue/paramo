@@ -206,7 +206,7 @@ subroutine afterglow(params_file, output_file, cool_withKN, ssa_boiler, &
    end do build_f
 
    build_g: do k = 1, numbins
-      gg(k) = (gmin - 1d0) * ((gmax - 1d0) / (gmin - 1d0))**(dble(k - 1) / dble(numbins - 1)) + 1d0
+      gg(k) = gmin * (gmax / gmin)**(dble(k - 1) / dble(numbins - 1))
    end do build_g
 
    dotg(:, 0) = urad_const * (uB + uext) * pofg(gg)**2
