@@ -29,6 +29,7 @@ class parameters(object):
         self.Bfield = 1.0               # magnetic field decay index
         self.eps_B = 0.03               # epsilon_B
         self.eps_e = 0.1                # epsilon_e
+        self.eps_acc = 1e-2             # epsilon_acc
         self.theta_e = 10.0             # electrons temperature
         self.zeta_e = 0.99              # fraction of non-thermal particles
         self.f_esc = 1.0                # electrons escape time factor
@@ -83,6 +84,7 @@ class parameters(object):
             print(fortran_double(self.n_ext), ' ! number density of the external medium', file=f)
             print(fortran_double(self.eps_e), ' ! epsilon_e', file=f)
             print(fortran_double(self.eps_B), ' ! epsilon_B', file=f)
+            print(fortran_double(self.eps_acc), ' ! epsilon_acc', file=f)
             print(fortran_double(self.g1), ' ! power-law min Lorentz factor', file=f)
             print(fortran_double(self.g2), ' ! power-law max Lorentz factor', file=f)
             print(fortran_double(self.gmin), ' ! EED min Lorentz factor', file=f)

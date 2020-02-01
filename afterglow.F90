@@ -51,6 +51,7 @@ subroutine afterglow(params_file, output_file, cool_withKN, ssa_boiler, &
    call read_params(params_file)
    eps_e = par_eps_e
    eps_B = par_eps_B
+   eps_g2 = par_eps_acc
    gamma_bulk0 = par_gamma_bulk
    d_lum = par_d_lum
    z = par_z
@@ -162,7 +163,6 @@ subroutine afterglow(params_file, output_file, cool_withKN, ssa_boiler, &
    urad_const = 4d0 * sigmaT * cLight / (3d0 * energy_e)
 
    !-----> Minimum and maximum Lorentz factors of the particles distribution
-   eps_g2 = 0.35d0
    g2_const = dsqrt(6d0 * pi * eCharge * eps_g2 / sigmaT)
    g1_const = eps_e * mass_p * (pind - 2d0) / ((pind - 1d0) * mass_e)
    g2 = g2_const / dsqrt(B)
@@ -206,7 +206,8 @@ subroutine afterglow(params_file, output_file, cool_withKN, ssa_boiler, &
    end do build_f
 
    build_g: do k = 1, numbins
-      gg(k) = (gmin - 1d0) * ((gmax - 1d0) / (gmin - 1d0))**(dble(k - 1) / dble(numbins - 1)) + 1d0
+      gg(k) = gmin * (gmax / gmin)**(dble(k - 1) / dble(numbins - 1))
+      ! gg(k) = (gmin - 1d0) * ((gmax - 1d0) / (gmin - 1d0))**(dble(k - 1) / dble(numbins - 1)) + 1d0
    end do build_g
 
    dotg(:, 0) = urad_const * (uB + uext) * pofg(gg)**2

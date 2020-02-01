@@ -25,12 +25,13 @@ subroutine blazMag(params_file, output_file, cool_withKN, with_abs)
    real(dp) :: uB, uext, R, gmin, gmax, numin, numax, pind, B, D, g1, g2, &
       tstep, Qnth, tmax, d_lum, z, tinj, gamma_bulk, theta_obs, Rdis, &
       mu_obs, nu_ext, tesc, tlc, mu_mag, L_jet, volume, sigma, beta_bulk, L_B, &
-      eps_B, f_rec, urad_const
+      eps_B, f_rec, urad_const, f_esc, eps_acc
    real(dp), allocatable, dimension(:) :: freqs, t, Ntot, Inu, gg, dt, nu_obs, &
       t_obs, dg, urad
    real(dp), allocatable, dimension(:,:) :: dotg, nn, jnut, jmbs, jssc, jeic, &
       ambs, anut, Qinj, Ddif, Fmbs, Feic, Fssc, Fnut
    logical :: with_cool
+
 
    !  ####  ###### ##### #    # #####
    ! #      #        #   #    # #    #
@@ -44,6 +45,7 @@ subroutine blazMag(params_file, output_file, cool_withKN, with_abs)
    tstep = par_tstep
    tmax = par_tmax
    eps_B = par_eps_B
+   eps_acc = par_eps_acc
    f_rec = par_frec
    L_jet = par_L_j
    gamma_bulk = par_gamma_bulk
@@ -70,15 +72,12 @@ subroutine blazMag(params_file, output_file, cool_withKN, with_abs)
       Fmbs(numdf, numdt), Fssc(numdf, numdt), Feic(numdf, numdt))
 
 
-   !
    !   # #    # # #####     ####   ####  #    # #####
    !   # ##   # #   #      #    # #    # ##   # #    #
    !   # # #  # #   #      #      #    # # #  # #    #
    !   # #  # # #   #      #      #    # #  # # #    #
    !   # #   ## #   #      #    # #    # #   ## #    #
    !   # #    # #   #       ####   ####  #    # #####
-   !
-
    with_cool = .true.
 
    ! sigma = (mu_mag / gamma_bulk) - 1d0
@@ -104,7 +103,7 @@ subroutine blazMag(params_file, output_file, cool_withKN, with_abs)
    if ( pind > 2d0 ) then
       g1 = (pind - 2d0) * f_rec * sigma * mass_p / ((pind - 1d0) * mass_e)
       ! g2 = par_g2
-      g2 = dsqrt(6d0 * pi * eCharge * 1d-6 / (sigmaT * B))
+      g2 = dsqrt(6d0 * pi * eCharge * eps_acc / (sigmaT * B))
    else if ( pind > 1d0 .and. pind < 2d0 ) then
       g1 = par_g1
       ! g2 = dsqrt(6d0 * pi * eCharge * 1d-3 / (sigmaT * B))
@@ -149,8 +148,8 @@ subroutine blazMag(params_file, output_file, cool_withKN, with_abs)
    end do build_f
 
    build_g: do k = 1, numbins
-      ! gg(k) = gmin * (gmax / gmin)**(dble(k - 1) / dble(numbins - 1))
-      gg(k) = (gmin - 1d0) * ((gmax - 1d0) / (gmin - 1d0))**(dble(k - 1) / dble(numbins - 1)) + 1d0
+      gg(k) = gmin * (gmax / gmin)**(dble(k - 1) / dble(numbins - 1))
+      ! gg(k) = (gmin - 1d0) * ((gmax - 1d0) / (gmin - 1d0))**(dble(k - 1) / dble(numbins - 1)) + 1d0
       if ( k > 1 ) dg(k) = gg(k) - gg(k - 1)
    end do build_g
    dg(1) = dg(2)
