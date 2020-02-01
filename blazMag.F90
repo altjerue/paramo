@@ -78,13 +78,13 @@ subroutine blazMag(params_file, output_file, cool_withKN, with_abs)
    !   # #  # # #   #      #      #    # #  # # #    #
    !   # #   ## #   #      #    # #    # #   ## #    #
    !   # #    # #   #       ####   ####  #    # #####
-   with_cool = .true.
+   with_cool = .false.
 
    ! sigma = (mu_mag / gamma_bulk) - 1d0
    mu_mag = gamma_bulk * (sigma + 1d0)
 
    beta_bulk = bofg(gamma_bulk)
-   theta_obs = 1d0 / gamma_bulk!par_theta_obs * pi / 180d0!
+   theta_obs = par_theta_obs * pi / 180d0!1d0 / gamma_bulk!
    mu_obs = dcos(theta_obs)
    D = Doppler(gamma_bulk, mu_obs)
    R = par_R
@@ -114,7 +114,7 @@ subroutine blazMag(params_file, output_file, cool_withKN, with_abs)
       ! g2 = dsqrt(6d0 * pi * eCharge * 1d-3 / (sigmaT * B))
    end if
 
-   dotg(:, 0) = urad_const * uB * pofg(gg)**2
+   dotg(:, 0) = urad_const * (uB + uext) * pofg(gg)**2
    volume = 4d0 * pi * R**3 / 3d0
    tlc = R / cLight
    tesc = f_esc * tlc
@@ -178,6 +178,27 @@ subroutine blazMag(params_file, output_file, cool_withKN, with_abs)
       dt(i) = t(i) - t(i - 1)
       t_obs(i) = (1d0 + z) * t(i) / D
 
+
+      !  ###### ###### #####
+      !  #      #      #    #
+      !  #####  #####  #    #
+      !  #      #      #    #
+      !  #      #      #    #
+      !  ###### ###### #####
+      Qinj(:, i) = injection_pwl(t(i), tinj, gg, g1, g2, pind, Qnth)
+      Ddif(:, i) = 1d-200!4.3d-3 * pofg(gg)**(5d0 / 3d0) * (mass_e * cLight**2)**(-1d0 / 3d0)
+      dotg(:, i) = 4d0 * sigmaT * urad / (3d0 * mass_e * cLight)
+      call FP_FinDif_difu(dt(i), &
+            &             gg, &
+            &             nn(:, i - 1), &
+            &             nn(:, i), &
+            &             dotg(:, i - 1), &
+            &             Ddif(:, i - 1), &
+            &             Qinj(:, i - 1), &
+            &             tesc, &
+            &             tlc)
+
+
       !  #####    ##   #####  #   ##   ##### #  ####  #    #
       !  #    #  #  #  #    # #  #  #    #   # #    # ##   #
       !  #    # #    # #    # # #    #   #   # #    # # #  #
@@ -187,13 +208,8 @@ subroutine blazMag(params_file, output_file, cool_withKN, with_abs)
       !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
       !$OMP& PRIVATE(j)
       do j = 1, numdf
-         call mbs_emissivity(jmbs(j, i), freqs(j), gg, nn(:, i - 1), B)
-         if ( with_abs ) then
-            call mbs_absorption(ambs(j, i), freqs(j), gg, nn(:, i - 1), B)
-         else
-            ambs(j, i) = 0d0
-         end if
-         ! Inu(j) = opt_depth_blob(ambs(j, i), R) * jmbs(j, i) * 2d0 * R
+         call mbs_emissivity(jmbs(j, i), freqs(j), gg, nn(:, i), B)
+         call mbs_absorption(ambs(j, i), freqs(j), gg, nn(:, i), B)
       end do
       !$OMP END PARALLEL DO
 
@@ -202,8 +218,8 @@ subroutine blazMag(params_file, output_file, cool_withKN, with_abs)
       !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
       !$OMP& PRIVATE(j)
       do j = 1, numdf
-         call IC_iso_powlaw(jssc(j, i), freqs(j), freqs, Inu, nn(:, i - 1), gg)
-         call IC_iso_monochrom(jeic(j, i), freqs(j), uext, nu_ext, nn(:, i - 1), gg)
+         call IC_iso_powlaw(jssc(j, i), freqs(j), freqs, Inu, nn(:, i), gg)
+         call IC_iso_monochrom(jeic(j, i), freqs(j), uext, nu_ext, nn(:, i), gg)
          ! call IC_emis_full(freqs(j), freqs, gg, nn(:, i - 1), Inu, jssc(j, i))
          ! call IC_emis_full(freqs(j), nu_ext, gg, nn(:, i - 1), uext * cLight / (4d0 * pi), jeic(j, i))
          jnut(j, i) = jmbs(j, i) + jssc(j, i) + jeic(j, i)
@@ -234,30 +250,8 @@ subroutine blazMag(params_file, output_file, cool_withKN, with_abs)
          ! call RadTrans_blob(Inu, R, jssc(:, i) + jeic(:, i), anut(:, i))
          call RadTrans_blob(Inu, R, jmbs(:, i), ambs(:, i))
          call rad_cool(dotg(:, i), gg, freqs, 4d0 * pi * Inu / cLight, cool_withKN)
-      else
-         urad = 0d0
       end if
       dotg(:, i) = dotg(:, i) + urad_const * (uB + uext) * pofg(gg)**2
-
-
-      !  ###### ###### #####
-      !  #      #      #    #
-      !  #####  #####  #    #
-      !  #      #      #    #
-      !  #      #      #    #
-      !  ###### ###### #####
-      Qinj(:, i) = injection_pwl(t(i), tinj, gg, g1, g2, pind, Qnth)
-      Ddif(:, i) = 1d-200!4.3d-3 * pofg(gg)**(5d0 / 3d0) * (mass_e * cLight**2)**(-1d0 / 3d0)
-      dotg(:, i) = 4d0 * sigmaT * urad / (3d0 * mass_e * cLight)
-      call FP_FinDif_difu(dt(i), &
-            &             gg, &
-            &             nn(:, i - 1), &
-            &             nn(:, i), &
-            &             dotg(:, i), &
-            &             Ddif(:, i), &
-            &             Qinj(:, i), &
-            &             tesc, &
-            &             tlc)
 
 
       ! ----->   N_tot
