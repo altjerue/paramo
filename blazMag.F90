@@ -29,7 +29,7 @@ subroutine blazMag(params_file, output_file, cool_withKN, with_abs)
    real(dp), allocatable, dimension(:) :: freqs, t, Ntot, Inu, gg, dt, nu_obs, &
       t_obs, dg, urad
    real(dp), allocatable, dimension(:,:) :: dotg, nn, jnut, jmbs, jssc, jeic, &
-      ambs, anut, Qinj, Ddif, Fmbs, Feic, Fssc, Fnut
+      ambs, anut, Qinj, Ddiff, Fmbs, Feic, Fssc, Fnut
    logical :: with_cool
 
 
@@ -68,7 +68,7 @@ subroutine blazMag(params_file, output_file, cool_withKN, with_abs)
    allocate(nn(numbins, 0:numdt), dotg(numbins, 0:numdt), gg(numbins), &
       ambs(numdf, numdt), jmbs(numdf, numdt), jnut(numdf, numdt), &
       jssc(numdf, numdt), anut(numdf, numdt), jeic(numdf, numdt), &
-      Qinj(numbins, numdt), Ddif(numbins, numdt), Fnut(numdf, numdt), &
+      Qinj(numbins, numdt), Ddiff(numbins, 0:numdt), Fnut(numdf, numdt), &
       Fmbs(numdf, numdt), Fssc(numdf, numdt), Feic(numdf, numdt))
 
 
@@ -114,7 +114,6 @@ subroutine blazMag(params_file, output_file, cool_withKN, with_abs)
       ! g2 = dsqrt(6d0 * pi * eCharge * 1d-3 / (sigmaT * B))
    end if
 
-   dotg(:, 0) = urad_const * (uB + uext) * pofg(gg)**2
    volume = 4d0 * pi * R**3 / 3d0
    tlc = R / cLight
    tesc = f_esc * tlc
@@ -155,8 +154,10 @@ subroutine blazMag(params_file, output_file, cool_withKN, with_abs)
    dg(1) = dg(2)
 
    t(0) = 0d0
-   nn(:, 0) = injection_pwl(0d0, tinj, gg, g1, g2, pind, Qnth)
-   jnut = 0d0
+   dotg(:, 0) = urad_const * (uB + uext) * pofg(gg)**2
+   Ddiff(:, 0) = 1d-200
+   Qinj(:, 0) = injection_pwl(0d0, tinj, gg, g1, g2, pind, Qnth)
+   nn(:, 0) = Qinj(:, 0)
 
    write(*, "('--> Calculating the emission')")
    write(*, *) ''
@@ -185,18 +186,18 @@ subroutine blazMag(params_file, output_file, cool_withKN, with_abs)
       !  #      #      #    #
       !  #      #      #    #
       !  ###### ###### #####
-      Qinj(:, i) = injection_pwl(t(i), tinj, gg, g1, g2, pind, Qnth)
-      Ddif(:, i) = 1d-200!4.3d-3 * pofg(gg)**(5d0 / 3d0) * (mass_e * cLight**2)**(-1d0 / 3d0)
-      dotg(:, i) = 4d0 * sigmaT * urad / (3d0 * mass_e * cLight)
       call FP_FinDif_difu(dt(i), &
             &             gg, &
             &             nn(:, i - 1), &
             &             nn(:, i), &
             &             dotg(:, i - 1), &
-            &             Ddif(:, i - 1), &
+            &             Ddiff(:, i - 1), &
             &             Qinj(:, i - 1), &
             &             tesc, &
             &             tlc)
+
+      Qinj(:, i) = injection_pwl(t(i), tinj, gg, g1, g2, pind, Qnth)
+      Ddiff(:, i) = 1d-200!4.3d-3 * pofg(gg)**(5d0 / 3d0) * (mass_e * cLight**2)**(-1d0 / 3d0)
 
 
       !  #####    ##   #####  #   ##   ##### #  ####  #    #
@@ -220,20 +221,14 @@ subroutine blazMag(params_file, output_file, cool_withKN, with_abs)
       do j = 1, numdf
          call IC_iso_powlaw(jssc(j, i), freqs(j), freqs, Inu, nn(:, i), gg)
          call IC_iso_monochrom(jeic(j, i), freqs(j), uext, nu_ext, nn(:, i), gg)
-         ! call IC_emis_full(freqs(j), freqs, gg, nn(:, i - 1), Inu, jssc(j, i))
-         ! call IC_emis_full(freqs(j), nu_ext, gg, nn(:, i - 1), uext * cLight / (4d0 * pi), jeic(j, i))
          jnut(j, i) = jmbs(j, i) + jssc(j, i) + jeic(j, i)
          anut(j, i) = ambs(j, i)
 
-         ! Fmbs(j, i) = D**4 * volume * freqs(j) * jmbs(j, i) * opt_depth_blob(anut(j, i), R) / d_lum**2
-         ! Fssc(j, i) = D**4 * volume * freqs(j) * jssc(j, i) * opt_depth_blob(anut(j, i), R) / d_lum**2
-         ! Feic(j, i) = D**4 * volume * freqs(j) * jeic(j, i) * opt_depth_blob(anut(j, i), R) / d_lum**2
          Fmbs(j, i) = D**4 * volume * freqs(j) * jmbs(j, i) * opt_depth_blob(anut(j, i), R) / (4d0 * pi * d_lum**2)
          Fssc(j, i) = D**4 * volume * freqs(j) * jssc(j, i) * opt_depth_blob(anut(j, i), R) / (4d0 * pi * d_lum**2)
          Feic(j, i) = D**4 * volume * freqs(j) * jeic(j, i) * opt_depth_blob(anut(j, i), R) / (4d0 * pi * d_lum**2)
 
          Fnut(j, i) = Fmbs(j, i) + Fssc(j, i) + Feic(j, i)
-         ! Fnut(j, i) = D**4 * volume * freqs(j) * jnut(j, i) * opt_depth_blob(anut(j, i), R) / d_lum**2
       end do
       !$OMP END PARALLEL DO
 
