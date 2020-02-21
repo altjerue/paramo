@@ -22,11 +22,11 @@ program tests
    !       [ ] Modify Comala
    !   [ ]
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   ! call steady_state
-   ! call rad_procs
-   call BB_RadCool
+   call steady_state
+   !call rad_procs
+   !call BB_RadCool
 
-   ! write(*, *) '=======  FINISHED  ======='
+   write(*, *) '=======  FINISHED  ======='
    write(*, *) ''
 
 contains
@@ -51,14 +51,14 @@ contains
       numg = 128
       numt = 300
       numf = 192
-      g1 = 1e2
+      g1 = 1e1
       g2 = 1e6
       gmin = 1.01d0
       gmax = 1.5d0 * g2
       numin = 1d10
       numax = 1d27
       tstep = 1e0
-      tmax = 1e7
+      tmax = 1e8
       qind = 0d0
       R = 1e16
       B = 1d0
@@ -126,31 +126,31 @@ contains
 
          !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
          !$OMP& PRIVATE(j)
-         do j = 1, numf
-            call mbs_emissivity(jmbs1(j, i), freqs(j), g, n1(i, :), B)
-            call mbs_emissivity(jmbs4(j, i), freqs(j), g, n4(i, :), B)
-            call mbs_emissivity(jmbs5(j, i), freqs(j), g, n5(i, :), B)
-            call mbs_emissivity(jmbs6(j, i), freqs(j), g, n6(i, :), B)
-            call mbs_absorption(ambs1(j, i), freqs(j), g, n1(i, :), B)
-            call mbs_absorption(ambs4(j, i), freqs(j), g, n4(i, :), B)
-            call mbs_absorption(ambs5(j, i), freqs(j), g, n5(i, :), B)
-            call mbs_absorption(ambs6(j, i), freqs(j), g, n6(i, :), B)
-         end do
+         !do j = 1, numf
+      !      call mbs_emissivity(jmbs1(j, i), freqs(j), g, n1(i, :), B)
+      !      call mbs_emissivity(jmbs4(j, i), freqs(j), g, n4(i, :), B)
+      !      call mbs_emissivity(jmbs5(j, i), freqs(j), g, n5(i, :), B)
+      !      call mbs_emissivity(jmbs6(j, i), freqs(j), g, n6(i, :), B)
+      !      call mbs_absorption(ambs1(j, i), freqs(j), g, n1(i, :), B)
+      !      call mbs_absorption(ambs4(j, i), freqs(j), g, n4(i, :), B)
+      !      call mbs_absorption(ambs5(j, i), freqs(j), g, n5(i, :), B)
+      !      call mbs_absorption(ambs6(j, i), freqs(j), g, n6(i, :), B)
+      !   end do
          !$OMP END PARALLEL DO
 
-         call RadTrans_blob(Inu1, R, jmbs4(:, i), ambs1(:, i))
-         call RadTrans_blob(Inu4, R, jmbs4(:, i), ambs4(:, i))
-         call RadTrans_blob(Inu5, R, jmbs4(:, i), ambs5(:, i))
-         call RadTrans_blob(Inu6, R, jmbs6(:, i), ambs6(:, i))
+      !   call RadTrans_blob(Inu1, R, jmbs4(:, i), ambs1(:, i))
+      !   call RadTrans_blob(Inu4, R, jmbs4(:, i), ambs4(:, i))
+      !   call RadTrans_blob(Inu5, R, jmbs4(:, i), ambs5(:, i))
+      !   call RadTrans_blob(Inu6, R, jmbs6(:, i), ambs6(:, i))
 
          !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
          !$OMP& PRIVATE(j)
-         do j = 1, numf
-            call IC_iso_powlaw(jssc1(j, i), freqs(j), freqs, Inu1, n1(i, :), g)
-            call IC_iso_powlaw(jssc4(j, i), freqs(j), freqs, Inu4, n4(i, :), g)
-            call IC_iso_powlaw(jssc5(j, i), freqs(j), freqs, Inu5, n5(i, :), g)
-            call IC_iso_powlaw(jssc6(j, i), freqs(j), freqs, Inu6, n6(i, :), g)
-         end do
+      !   do j = 1, numf
+      !      call IC_iso_powlaw(jssc1(j, i), freqs(j), freqs, Inu1, n1(i, :), g)
+      !      call IC_iso_powlaw(jssc4(j, i), freqs(j), freqs, Inu4, n4(i, :), g)
+      !      call IC_iso_powlaw(jssc5(j, i), freqs(j), freqs, Inu5, n5(i, :), g)
+      !      call IC_iso_powlaw(jssc6(j, i), freqs(j), freqs, Inu6, n6(i, :), g)
+      !   end do
          !$OMP END PARALLEL DO
 
       end do time_loop
@@ -178,18 +178,18 @@ contains
       call h5io_wdble2(file_id, 'dist4', n4(1:, :), herror)
       call h5io_wdble2(file_id, 'dist5', n5(1:, :), herror)
       call h5io_wdble2(file_id, 'dist6', n6(1:, :), herror)
-      call h5io_wdble2(file_id, 'jsyn1', jmbs1, herror)
-      call h5io_wdble2(file_id, 'jsyn4', jmbs4, herror)
-      call h5io_wdble2(file_id, 'jsyn5', jmbs5, herror)
-      call h5io_wdble2(file_id, 'jsyn6', jmbs6, herror)
-      call h5io_wdble2(file_id, 'asyn1', ambs1, herror)
-      call h5io_wdble2(file_id, 'asyn4', ambs4, herror)
-      call h5io_wdble2(file_id, 'asyn5', ambs5, herror)
-      call h5io_wdble2(file_id, 'asyn6', ambs6, herror)
-      call h5io_wdble2(file_id, 'jssc1', jssc1, herror)
-      call h5io_wdble2(file_id, 'jssc4', jssc4, herror)
-      call h5io_wdble2(file_id, 'jssc5', jssc5, herror)
-      call h5io_wdble2(file_id, 'jssc6', jssc6, herror)
+    !  call h5io_wdble2(file_id, 'jsyn1', jmbs1, herror)
+    !  call h5io_wdble2(file_id, 'jsyn4', jmbs4, herror)
+    !  call h5io_wdble2(file_id, 'jsyn5', jmbs5, herror)
+    !  call h5io_wdble2(file_id, 'jsyn6', jmbs6, herror)
+    !  call h5io_wdble2(file_id, 'asyn1', ambs1, herror)
+    !  call h5io_wdble2(file_id, 'asyn4', ambs4, herror)
+    !  call h5io_wdble2(file_id, 'asyn5', ambs5, herror)
+    !  call h5io_wdble2(file_id, 'asyn6', ambs6, herror)
+    !  call h5io_wdble2(file_id, 'jssc1', jssc1, herror)
+    !  call h5io_wdble2(file_id, 'jssc4', jssc4, herror)
+    !  call h5io_wdble2(file_id, 'jssc5', jssc5, herror)
+    !  call h5io_wdble2(file_id, 'jssc6', jssc6, herror)
       call h5io_wdble1(file_id, 'Ntot1', Ntot1, herror)
       call h5io_wdble1(file_id, 'Ntot2', Ntot2, herror)
       call h5io_wdble1(file_id, 'Ntot3', Ntot3, herror)
