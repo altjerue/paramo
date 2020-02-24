@@ -3,14 +3,7 @@
 !--looked it up still don't know time to ask jesus
 program testszkd
   !add all dependencies
-  use data_types
-  use constants
-  use misc
-  use pwl_integ
-  use SRtoolkit
   use dist_evol
-  use K2
-  use hdf5
   use h5_inout
   !not sure what implicit is
   !---implicit none is to keep i,j,k,l,m,n to be assumed to be integeres
