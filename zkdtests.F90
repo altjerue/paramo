@@ -31,7 +31,7 @@ contains
     implicit none
     integer(HID_T) :: file_id
     integer :: i, k, numg, numt, herror, l
-    real(dp) :: g1, g2, gmin, gmax, tacc, qind, R, tmax, tstep, DynT, tesc, tescdyn
+    real(dp) :: g1, g2, gmin, gmax, tacc, qind, R, tmax, tstep, DynT, tesc
     real(dp), allocatable, dimension(:) :: t, g, dt, C0,D0, Q0, zero1, zero2,Diff
     real(dp), allocatable, dimension(:, :) :: n1,n2,n3
     !then initiallize all inputs taht are scalar
@@ -66,6 +66,8 @@ contains
     tesc=tacc
     D0 = 0.5d0 * pofg(g)**2 / tacc
     n1(0, :) = injection_pwl(1d0, tacc, g, g1, g2, qind, 1d0)
+    n2(0, :) = n1(0, :)
+    n3(0, :) =n1(0, :)
     dynT=R/cLight
 
     !D_t(0)=D0
@@ -73,15 +75,14 @@ contains
 
       t(i) = tstep * ( (tmax / tstep)**(dble(i - 1) / dble(numt - 1)) )
       dt(i) = t(i) - t(i - 1)
-      tescdyn=tesc*t(i)/dynT
       Diff = D0*t(i)/dynT
       !Q0 = injection_pwl(t(i), tacc, g, g1, g2, qind, 1d0)
       !--- learn how for loops and if statements work in fortran
       !--looks like you can name for loops adn if you do you end with end do NAME
       call FP_FinDif_difu(dt(i), g, n1(i - 1, :), n1(i, :), C0 * pofg(g)**2, Diff, zero2, 1d200, R / cLight)
-      call FP_FinDif_difu(dt(i), g, n2(i - 1, :), n2(i, :), C0 * pofg(g)**2, zero1, zero2, tescdyn, R / cLight)
-      call FP_FinDif_difu(dt(i), g, n3(i - 1, :), n3(i, :), C0 * pofg(g)**2, Diff, zero2, tescdyn, R / cLight)
-
+      call FP_FinDif_difu(dt(i), g, n2(i - 1, :), n2(i, :), (t(i)/dynT)*C0 * pofg(g)**2, zero1, zero2, 1d200, R / cLight)
+      call FP_FinDif_difu(dt(i), g, n3(i - 1, :), n3(i, :), (t(i)/dynT)*C0 * pofg(g)**2, Diff, zero2, 1d200, R / cLight)
+      write(*,*) n3(i,100)
     end do time_loop
 
     call h5open_f(herror)
