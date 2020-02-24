@@ -1,6 +1,7 @@
 #!/bin/bash
 echo -e "Commit?"
 read com
+git pull
 git add -A
 git status
 git commit -m "$com"
