@@ -1,9 +1,10 @@
 !some sudo code
 !gram looks like a name to call the program by so make this.
   !--looked it up still don't know time to ask jesus
-gram testszkd
+program testszkd
 !add all dependencies
 use hdf5
+use h5_inout
 !not sure what implicit is
   !---implicit none is to keep i,j,k,l,m,n to be assumed to be integeres
   !--- implicit none should always be used
