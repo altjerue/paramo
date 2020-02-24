@@ -11,7 +11,7 @@ use h5_inout
 implicit none
 
 !add subroutine to do are calculation:
-call steadysh_state
+call steadyish_state
 !write finised ie learn how write function works
 write(*,*) '===== Finished ====== '
 !create the functrion you called earlier to do the calculation
@@ -29,6 +29,6 @@ contains
 !learn how for loops and if statements work in fortran
   !--looks like you can name for loops adn if you do you end with end do NAME
 !end function and in theory feel proud
-  end subroutine steadysh_state
+  end subroutine steadyish_state
 
 end program testszkd

@@ -1,22 +1,31 @@
 # definitions
-
+ifeq ($(MPI),1)
+FC=h5pfc
+else  #####  MPI
+FC=h5fc
+endif #####  MPI
 # -----  executables  -----this creates the files names for the eventual compiled programs
 
 TESTS=xTestszkd
 
 
-# -----  dependencies  ----- gets everything from use in the F90.. idk why hdf5 isnt here maybe it apart of fortran
-TESTS_OBJ = h5_inout.o
+# -----  dependencies  ----- gets everything from use in the F90.slash represents inputs and output files. idk why hdf5 isnt here maybe it apart of fortran
+TESTS_OBJ = h5_inout.o \
+	zkdtests.o
 # -----  rules  ----- im not sure what this is yet ... this might be way of introducing short hand such as make all
 
 # objects this seems to further break down dependencies for other scripts you have
-
+##h5_inout.o
 # executables creating the programs from above
-$(TESTS): $(TESTS_OBJ) -o $@ $^
-	#-o $@ $^ saying create all .o files listed in the varible name I think?? ask jesus
-	#$(FC) something to with hdf5
-	#not sure what this is jesus $(LOPT)
+$(TESTS): $(TESTS_OBJ)
+	$(FC) -o $@ $^
 
+
+#-o $@ $^ saying create all .o files listed in the varible name I think?? ask jesus
+#$(FC) something to with hdf5
+#not sure what this is jesus $(LOPT)
+%.o: %.F90
+	$(FC) $(COPT) $< -o $@
 
 
 
