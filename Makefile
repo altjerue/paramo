@@ -1,9 +1,5 @@
-# definitions
-ifeq ($(MPI),1)
-FC=h5pfc
-else  #####  MPI
+# definitions Is this a compiler?
 FC=h5fc
-endif #####  MPI
 # -----  executables  -----this creates the files names for the eventual compiled programs
 
 TESTS=xTestszkd
