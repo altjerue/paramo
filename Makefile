@@ -20,7 +20,8 @@ $(TESTS): $(TESTS_OBJ)
 #-o $@ $^ saying create all .o files listed in the varible name I think?? ask jesus
 #$(FC) something to with hdf5
 #not sure what this is jesus $(LOPT)
-%.o: %.F90
+
+%.o: %.F90 #maybe all .0 outputs come from a corresponding .F90 input?
 	$(FC) $(COPT) $< -o $@
 
 
