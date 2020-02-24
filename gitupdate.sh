@@ -5,5 +5,5 @@ git add -A
 git status
 git commit -m "$com"
 git push origin paramozkd
-zkd
+echo "zkd\n"
 wmkwwk11
