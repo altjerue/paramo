@@ -4,6 +4,4 @@ read com
 git add -A
 git status
 git commit -m "$com"
-git push origin paramozkd
-echo "zkd\n"
-wmkwwk11
+git push origin https://zkd:wmkwwk11@github.rcac.purdue.edu/JesusReudaBecerrilGroup/Paramo.git
