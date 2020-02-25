@@ -29,16 +29,25 @@ contains
     real(dp), allocatable, dimension(:, :) :: n1,n2,n3
     !then initiallize all inputs taht are scalar
     !next initiallize all matrix and vectors
-    numg=128
-    numt=300
-    qind = 0d0
-    tstep = 1e0
-    tmax = 1e8
-    g1=1e1
-    g2=1e6
-    gmin = 1.01d0
-    gmax = 1.5d0 * g2
-    R = 1e16
+
+    !read in data
+
+    open(2,file='input.txt')
+
+    read(2,*) numg
+    read(2,*) numt
+    read(2,*) qind
+    read(2,*) tstep
+    read(2,*) tmax
+    read(2,*) g1
+    read(2,*) g2
+    read(2,*) gmin
+    read(2,*) gmax
+    read(2,*) R
+
+    close(2)
+    write(*,*) numg,numt,qind,tstep,tmax,g1,g2,gmin,gmax,R
+    gmax = gmax*g2
 
     allocate(g(numg),t(0:numt),dt(numt),Diff(numt),D0(numg), Q0(numg),C0(numg), zero1(numg), zero2(numg))
     allocate(n1(0:numt, numg),n2(0:numt, numg),n3(0:numt, numg))
@@ -87,6 +96,14 @@ contains
     call h5io_wdble2(file_id, 'dist3', n3(1:, :), herror)
     call h5io_closef(file_id, herror)
     call h5close_f(herror)
+
+    !just as an example I am going to write time to a file_id
+    open(1, file = 'testdata.txt')
+    do i=1, numt
+      write(1,*) t(i)
+    end do
+    close(1)
+
 
     !end function and in theory feel proud
   end subroutine steadyish_state
