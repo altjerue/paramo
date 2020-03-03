@@ -25,7 +25,7 @@ contains
     integer(HID_T) :: file_id
     integer :: i, k, numg, numt, herror, l
     real(dp) :: g1, g2, gmin, gmax, tacc, qind, R, tmax, tstep, DynT, tesc, th
-    real(dp), allocatable, dimension(:) :: t, g, dt, C0,D0, Q0, zero1, zero2,Diff
+    real(dp), allocatable, dimension(:) :: t, g, dt, C0,D0, Q0, zero1, zero2,Diff, gdotty
     real(dp), allocatable, dimension(:, :) :: n1,n2,n3
     !then initiallize all inputs taht are scalar
     !next initiallize all matrix and vectors
@@ -49,7 +49,7 @@ contains
     write(*,*) numg,numt,qind,tstep,tmax,g1,g2,gmin,gmax,R
     gmax = gmax*g2
 
-    allocate(g(numg),t(0:numt),dt(numt),Diff(numt),D0(numg), Q0(numg),C0(numg), zero1(numg), zero2(numg))
+    allocate(g(numg),t(0:numt),dt(numt),Diff(numt),D0(numg), Q0(numg),C0(numg), zero1(numg), zero2(numg), gdotty(numg))
     allocate(n1(0:numt, numg),n2(0:numt, numg),n3(0:numt, numg))
 
     !-- not sure what build_g is doing
@@ -57,7 +57,9 @@ contains
       g(k) = gmin * (gmax / gmin)**(dble(k - 1) / dble(numg - 1))
     end do build_g
 
-
+    build_gdotty: do k = 1, numg
+      gdotty(k) = (3d2*(-3) + g(k)*(-8) ) + g(k)*1.8 + ((g(k)**2)/(3d2*(4/(0.9*40)))) - 2*(1.8*g(k) + 1.8*((3d2)**2)/(g(k)))
+    end do build_gdotty
 
 
     t(0) = 0d0
@@ -78,11 +80,12 @@ contains
 
       t(i) = tstep * ( (tmax / tstep)**(dble(i - 1) / dble(numt - 1)) )
       dt(i) = t(i) - t(i - 1)
-      Diff = 1.8*pofg(g)**2 + 1.8*((3d2)**2)
+      Diff = 2*(1.8*pofg(g)**2 + 1.8*((3d2)**2))
+
       !Q0 = injection_pwl(t(i), tacc, g, g1, g2, qind, 1d0)
       !--- learn how for loops and if statements work in fortran
       !--looks like you can name for loops adn if you do you end with end do NAME
-      call FP_FinDif_difu(dt(i), g, n1(i - 1, :), n1(i, :), C0 * pofg(g)**2, Diff, zero2, 1d200, R / cLight)!what is r/clight???  tlc was added since old
+      call FP_FinDif_difu(dt(i), g, n1(i - 1, :), n1(i, :), gdotty, Diff, zero2, 1d200, R / cLight)!what is r/clight???  tlc was added since old
       !call FP_FinDif_difu(dt(i), gamma, distroin, distrout, gammadot, diffusion, Injection, escape, R / cLight)
       !call FP_FinDif_difu(dt(i), g, n2(i - 1, :), n2(i, :), (t(i)/dynT)*C0 * pofg(g)**2, zero1, zero2, 1d200, R / cLight)
       !call FP_FinDif_difu(dt(i), g, n3(i - 1, :), n3(i, :), (t(i)/dynT)*C0 * pofg(g)**2, Diff, zero2, 1d200, R / cLight)
