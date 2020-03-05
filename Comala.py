@@ -213,6 +213,57 @@ def PBSfile(jname, qname, xcmd, depen=None, nodes=None, cores=None, mail=None, h
     return sname
 
 
+#
+#  SLURM
+#
+def SlurmFile(jname, qname, xcmd, depen=None, nodes=None, cores=None, mail=None, htime=None):
+    '''This function generates the Slurm file to queue a simulation
+    '''
+    from datetime import timedelta as td
+
+    if htime is None:
+        t = str(td(hours=2.0))
+    else:
+        t = str(td(hours=htime))
+    sname = "{0}.sub".format(jname)
+
+    if nodes is None:
+        n = 1
+    else:
+        n = nodes
+
+    if (cores is None) or (qname == 'debug'):
+        c = 24
+    else:
+        c = cores
+
+    with open(sname, 'w') as f:
+        print("#!/bin/sh -l\n", file=f)
+        print("# FILENAME: {0}\n".format(sname), file=f)
+        print("#SBATCH -A {0}".format(qname), file=f)
+        print("#SBATCH -N {0:d}".format(n), file=f)
+        print("#SBATCH -n {0:d}".format(c), file=f)
+        print("#SBATCH --exclusive", file=f)
+        print("#SBATCH -t {0}".format(t), file=f)
+        print("#SBATCH --job-name={0}".format(jname), file=f)
+        print("#SBATCH -o /scratch/brown/jruedabe/joboutput/{0}.out".format(jname), file=f)
+        print("#SBATCH -e /scratch/brown/jruedabe/joboutput/{0}.err".format(jname), file=f)
+        if depen is not None:
+            print("#SBATCH --depend=afterok:{0}".format(depen), file=f)
+        if mail is not None:
+            print("#SBATCH --mail-user={0}".format(mail), file=f)
+            print("#SBATCH --mail-type=FAIL", file=f)
+        else:
+            print("#SBATCH --mail-type=NONE", file=f)        
+        print("Working at: {0}".format(os.getcwd()))
+        print("\ncd {0}".format(os.getcwd()), file=f)
+        if (c > 1) or not (qname == 'debug'):
+            print("export OMP_NUM_THREADS={0}".format(c), file=f)
+        print("\n# RUN", file=f)
+        print(xcmd, file=f)
+    return sname
+
+
 #  #####  #    # #    #
 #  #    # #    # ##   #
 #  #    # #    # # #  #
