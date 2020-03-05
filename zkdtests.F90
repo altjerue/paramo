@@ -24,7 +24,7 @@ contains
     implicit none
     integer(HID_T) :: file_id
     integer :: i, k, numg, numt, herror, l
-    real(dp) :: g1, g2, gmin, gmax, tacc, qind, R, tmax, tstep, DynT, tesc, th
+    real(dp) :: g1, g2, gmin, gmax, tacc, qind, R, tmax, tstep, DynT, tesc, th, sig, lva, tc, ll, va
     real(dp), allocatable, dimension(:) :: t, g, dt, C0,D0, Q0, zero1, zero2,Diff, gdotty
     real(dp), allocatable, dimension(:, :) :: n1,n2,n3
     !then initiallize all inputs taht are scalar
@@ -32,21 +32,25 @@ contains
 
     !read in data
 
-    open(2,file='input.txt')
 
     numg=128
     numt =300
     qind=0d0
-    tstep=1e0
-    tmax=1e8
+    tstep=1d0
+    tmax=5e4
     g1=1e1
-    g2=1e6
+    g2=1e5
     gmin=1.01d0
     gmax =1.5d0 * g2
     R=1e16
+    sig=9d-1
+    ll=4d2
+    va=cLight*((sig/(sig+1d0))**0.5)*1d-5
+    lva=l/va
+    tc=4*lva/sig
 
-    close(2)
-    write(*,*) numg,numt,qind,tstep,tmax,g1,g2,gmin,gmax,R
+    write(*,*) tc,cLight,sig
+    !write(*,*) numg,numt,qind,tstep,tmax,g1,g2,gmin,gmax,R
     gmax = gmax*g2
 
     allocate(g(numg),t(0:numt),dt(numt),Diff(numt),D0(numg), Q0(numg),C0(numg), zero1(numg), zero2(numg), gdotty(numg))
@@ -58,7 +62,7 @@ contains
     end do build_g
 
     build_gdotty: do k = 1, numg
-      gdotty(k) = (3d2*(-3) + g(k)*(-8) ) + g(k)*1.8 + ((g(k)**2)/(3d2*(4/(0.9*40)))) - 2*(1.8*g(k) + 1.8*((3d2)**2)/(g(k)))
+      gdotty(k) = (3d2*(-3d0) + g(k)*(-8d0) ) + g(k)*1.8 + ((g(k)**2)/(3d2*(tc))) - 2*(1.8*g(k) + 1.8*((3d2)**2)/(g(k)))
     end do build_gdotty
 
 
@@ -71,7 +75,7 @@ contains
     D0 = 0.5d0 * pofg(g)**2 / tacc
     th = 1d2
     n1(0, :) = RMaxwell_v(g,th)
-    !n2(0, :) = n1(0, :)
+    n2(0, :) = n1(0, :)
     !n3(0, :) =n1(0, :)
     dynT=R/cLight
 
@@ -80,23 +84,26 @@ contains
 
       t(i) = tstep * ( (tmax / tstep)**(dble(i - 1) / dble(numt - 1)) )
       dt(i) = t(i) - t(i - 1)
-      Diff = 2*(1.8*pofg(g)**2 + 1.8*((3d2)**2))
+      Diff = 2*(1.8*g**2 + 1.8*((3d2)**2))
 
       !Q0 = injection_pwl(t(i), tacc, g, g1, g2, qind, 1d0)
       !--- learn how for loops and if statements work in fortran
       !--looks like you can name for loops adn if you do you end with end do NAME
       call FP_FinDif_difu(dt(i), g, n1(i - 1, :), n1(i, :), gdotty, Diff, zero2, 1d200, R / cLight)!what is r/clight???  tlc was added since old
+      !call FP_FinDif_difu(dt(i), g, n1(i - 1, :), n1(i, :), zero2, zero2, zero2, 1d200, R / cLight)
       !call FP_FinDif_difu(dt(i), gamma, distroin, distrout, gammadot, diffusion, Injection, escape, R / cLight)
       !call FP_FinDif_difu(dt(i), g, n2(i - 1, :), n2(i, :), (t(i)/dynT)*C0 * pofg(g)**2, zero1, zero2, 1d200, R / cLight)
       !call FP_FinDif_difu(dt(i), g, n3(i - 1, :), n3(i, :), (t(i)/dynT)*C0 * pofg(g)**2, Diff, zero2, 1d200, R / cLight)
+
+      write(*,*) sum(n1(i,:)*g)
     end do time_loop
 
     call h5open_f(herror)
     call h5io_createf("SSsol_zkd.h5", file_id, herror)
     call h5io_wdble1(file_id, 'time', t(1:), herror)
     call h5io_wdble1(file_id, 'gamma', g, herror)
-    call h5io_wdble2(file_id, 'dist1', n1(1:, :), herror)
-  !  call h5io_wdble2(file_id, 'dist2', n2(1:, :), herror)
+    call h5io_wdble2(file_id, 'dist1', n1(:, :), herror)
+    !call h5io_wdble2(file_id, 'dist0', n2(1:, :), herror)
   !  call h5io_wdble2(file_id, 'dist3', n3(1:, :), herror)
     call h5io_closef(file_id, herror)
     call h5close_f(herror)
