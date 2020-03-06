@@ -48,7 +48,7 @@ contains
     va=cLight*((sig/(sig+1d0))**0.5)*1d-5
     lva=l/va
     tc=4*lva/sig
-
+!
     write(*,*) tc,cLight,sig
     !write(*,*) numg,numt,qind,tstep,tmax,g1,g2,gmin,gmax,R
     gmax = gmax*g2
