@@ -36,8 +36,8 @@ contains
     numg=128
     numt =300
     qind=0d0
-    tstep=1d0
-    tmax=5e4
+    tstep=1d-30
+    tmax=5e3
     g1=1e1
     g2=1e5
     gmin=1.01d0
