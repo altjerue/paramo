@@ -34,10 +34,9 @@ contains
 
 
     numg=128
-    numt =300
+    numt =100000
     qind=0d0
-    tstep=1d-30
-    tmax=5e3
+
     g1=1e1
     g2=1e5
     gmin=1.01d0
@@ -45,9 +44,11 @@ contains
     R=1e16
     sig=9d-1
     ll=4d2
-    va=cLight*((sig/(sig+1d0))**0.5)*1d-5
+    va=cLight*((sig/(sig+1d0))**0.5)
     lva=l/va
-    tc=4*lva/sig
+    tc=(5)*4*lva/sig
+    tmax=tc*100
+    tstep=tmax/numt
 !
     write(*,*) tc,cLight,sig
     !write(*,*) numg,numt,qind,tstep,tmax,g1,g2,gmin,gmax,R
@@ -82,8 +83,9 @@ contains
     !D_t(0)=D0
     time_loop: do i = 1, numt
 
-      t(i) = tstep * ( (tmax / tstep)**(dble(i - 1) / dble(numt - 1)) )
+      t(i) = tstep * dble(i)
       dt(i) = t(i) - t(i - 1)
+      write(*,*) dt(i)
       Diff = 2*(1.8*g**2 + 1.8*((3d2)**2))
 
       !Q0 = injection_pwl(t(i), tacc, g, g1, g2, qind, 1d0)
@@ -99,7 +101,7 @@ contains
     end do time_loop
 
     call h5open_f(herror)
-    call h5io_createf("SSsol_zkd.h5", file_id, herror)
+    call h5io_createf("/media/sf_vmshare/SSsol_zkd31.h5", file_id, herror)
     call h5io_wdble1(file_id, 'time', t(1:), herror)
     call h5io_wdble1(file_id, 'gamma', g, herror)
     call h5io_wdble2(file_id, 'dist1', n1(:, :), herror)
