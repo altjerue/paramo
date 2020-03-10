@@ -24,7 +24,8 @@ program tests
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! call steady_state
    ! call rad_procs
-   call BB_RadCool
+!   call BB_RadCool
+   call MaxwellDist
 
    ! write(*, *) '=======  FINISHED  ======='
    write(*, *) ''
@@ -237,5 +238,15 @@ contains
       end do
 
    end subroutine BB_RadCool
+
+   subroutine MaxwellDist
+      implicit none
+      integer :: i
+      real(dp), dimension(100) :: g
+      do i=1,100
+         g(i) = 1.001d0 * (1d4 / 1.001d0)**(dble(i - 1) / 100d0)
+         write(*,*) g(i), RMaxwell(g(i), 100d0)
+      end do
+   end subroutine MaxwellDist
 
 end program tests
