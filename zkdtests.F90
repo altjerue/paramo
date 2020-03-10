@@ -68,6 +68,10 @@ contains
 
 
     t(0) = 0d0
+    !!!!!QUESTION: What's all this? Try to keep your code clean by deleting or
+    !!!!!          commenting out those variables that you don't use. That will
+    !!!!!          save you time debugging. It will also help others to read/understand
+    !!!!!          your code
     zero1 = 1d-200
     zero2 = 0d0
     C0 = 3.48d-11 ! 4d0 * sigmaT * uB / (3d0 * mass_e * cLight)
@@ -84,8 +88,10 @@ contains
     time_loop: do i = 1, numt
 
       t(i) = tstep * dble(i)
-      dt(i) = t(i) - t(i - 1)
+      dt(i) = t(i) - t(i - 1) !!!NOTE: In this kind of time-step you're using, dt = tstep for all i
       write(*,*) dt(i)
+      !!!!!QUESTION: Diff depends on time? Otherwise there is no need to assign
+      !!!!!          this array every time step
       Diff = 2*(1.8*g**2 + 1.8*((3d2)**2))
 
       !Q0 = injection_pwl(t(i), tacc, g, g1, g2, qind, 1d0)
@@ -97,6 +103,10 @@ contains
       !call FP_FinDif_difu(dt(i), g, n2(i - 1, :), n2(i, :), (t(i)/dynT)*C0 * pofg(g)**2, zero1, zero2, 1d200, R / cLight)
       !call FP_FinDif_difu(dt(i), g, n3(i - 1, :), n3(i, :), (t(i)/dynT)*C0 * pofg(g)**2, Diff, zero2, 1d200, R / cLight)
 
+      !!!!!QUESTION: Are you sure this is the proper way of computing the total
+      !!!!!          number of particles? I'd suggest you have a look at
+      !!!!!          Simpson's and trapezoidal rules (e.g., Wikipedia) to get an
+      !!!!!          idea of how to perform an integral numerically
       write(*,*) sum(n1(i,:)*g)
     end do time_loop
 
