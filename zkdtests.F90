@@ -24,8 +24,9 @@ contains
     implicit none
     integer(HID_T) :: file_id
     integer :: i, k, numg, numt, herror, l
-    real(dp) :: g1, g2, gmin, gmax, tacc, qind, R, tmax, tstep, DynT, tesc, th, sig, lva, tc, ll, va
-    real(dp), allocatable, dimension(:) :: t, g, dt, C0,D0, Q0, zero1, zero2,Diff, gdotty
+    real(dp) :: g1, g2, gmin, gmax, tacc, qind, R, tmax, tstep, DynT, tesc, th, sig, lva, tc, ll, va, rho ,Gammah,Gammaa,&
+     Gamma0,Gamma2, gam0
+    real(dp), allocatable, dimension(:) :: t, g, dt, C0,D0, Q0, zero1, zero2,Diff, gdotty, dg, total, Ap, Dpp
     real(dp), allocatable, dimension(:, :) :: n1,n2,n3
     !then initiallize all inputs taht are scalar
     !next initiallize all matrix and vectors
@@ -34,37 +35,54 @@ contains
 
 
     numg=128
-    numt =100000
+    numt =300
     qind=0d0
 
     g1=1e1
     g2=1e5
-    gmin=1.01d0
+    gmin=1.0001d0
     gmax =1.5d0 * g2
     R=1e16
     sig=9d-1
-    ll=4d2
-    va=cLight*((sig/(sig+1d0))**0.5)
-    lva=l/va
-    tc=(5)*4*lva/sig
-    tmax=tc*100
+    gam0=3d2
+    Gamma0=1.8d0
+    Gamma2=Gamma0
+    Gammah=-3d0
+    Gammaa=-8d0
+    rho=1d0
+    ll=4d2*rho
+    va=cLight*((sig/(sig+1d0))**0.5d0)
+    lva=ll/va
+    tc=(1d0)*4d0*lva/sig
+    tmax=tc*1d2
     tstep=tmax/numt
+
+
 !
     write(*,*) tc,cLight,sig
     !write(*,*) numg,numt,qind,tstep,tmax,g1,g2,gmin,gmax,R
     gmax = gmax*g2
 
-    allocate(g(numg),t(0:numt),dt(numt),Diff(numt),D0(numg), Q0(numg),C0(numg), zero1(numg), zero2(numg), gdotty(numg))
+    allocate(g(numg),t(0:numt),dt(numt),Diff(numg),D0(numg), Q0(numg),C0(numg), zero1(numg), zero2(numg), gdotty(numg), dg(numg),&
+     total(numg), Ap(numg), Dpp(numg))
     allocate(n1(0:numt, numg),n2(0:numt, numg),n3(0:numt, numg))
 
     !-- not sure what build_g is doing
     build_g: do k = 1, numg
       g(k) = gmin * (gmax / gmin)**(dble(k - 1) / dble(numg - 1))
+      if(k>1) then
+        dg(k-1)=g(k)-g(k-1)
+      end if
+      !write(*,*) dg(k-1)
     end do build_g
 
-    build_gdotty: do k = 1, numg
-      gdotty(k) = (3d2*(-3d0) + g(k)*(-8d0) ) + g(k)*1.8 + ((g(k)**2)/(3d2*(tc))) - 2*(1.8*g(k) + 1.8*((3d2)**2)/(g(k)))
-    end do build_gdotty
+    Ap=Gammah*gam0 + Gammaa*g
+    Dpp=Gamma0*(gam0**2) + Gamma2*(g**2)
+
+    !build_gdotty: do k = 1, numg
+      !gdotty(k) = Ap + 2*Gamma2*g(k) + D
+    !end do build_gdotty
+    gdotty= Ap + 2*Gamma2*g + 2*Dpp/g - (g**2)/(gam0*tc)
 
 
     t(0) = 0d0
@@ -75,29 +93,28 @@ contains
     zero1 = 1d-200
     zero2 = 0d0
     C0 = 3.48d-11 ! 4d0 * sigmaT * uB / (3d0 * mass_e * cLight)
-    tacc = 1d0 / (C0(1) * 10d0**4.5d0) !tesc
-    tesc=tacc
-    D0 = 0.5d0 * pofg(g)**2 / tacc
+  !  tacc = 1d0 / (C0(1) * 10d0**4.5d0) !tesc
+  !  tesc=tacc
+  !  D0 = 0.5d0 * pofg(g)**2 / tacc
     th = 1d2
     n1(0, :) = RMaxwell_v(g,th)
-    n2(0, :) = n1(0, :)
+  !  n2(0, :) = n1(0, :)
     !n3(0, :) =n1(0, :)
-    dynT=R/cLight
-
+    !dynT=R/cLight
+    Diff = 2*Dpp
+    !total_part=0
     !D_t(0)=D0
     time_loop: do i = 1, numt
 
       t(i) = tstep * dble(i)
-      dt(i) = t(i) - t(i - 1) !!!NOTE: In this kind of time-step you're using, dt = tstep for all i
-      write(*,*) dt(i)
-      !!!!!QUESTION: Diff depends on time? Otherwise there is no need to assign
-      !!!!!          this array every time step
-      Diff = 2*(1.8*g**2 + 1.8*((3d2)**2))
+      !dt(i) = t(i) - t(i - 1) !!!NOTE: In this kind of time-step you're using, dt = tstep for all i
+      !write(*,*) dt(i)
+
 
       !Q0 = injection_pwl(t(i), tacc, g, g1, g2, qind, 1d0)
       !--- learn how for loops and if statements work in fortran
       !--looks like you can name for loops adn if you do you end with end do NAME
-      call FP_FinDif_difu(dt(i), g, n1(i - 1, :), n1(i, :), gdotty, Diff, zero2, 1d200, R / cLight)!what is r/clight???  tlc was added since old
+      call FP_FinDif_difu(tstep, g, n1(i - 1, :), n1(i, :), gdotty, Diff, zero2, 1d200, ll / cLight)!what is r/clight???  tlc was added since old
       !call FP_FinDif_difu(dt(i), g, n1(i - 1, :), n1(i, :), zero2, zero2, zero2, 1d200, R / cLight)
       !call FP_FinDif_difu(dt(i), gamma, distroin, distrout, gammadot, diffusion, Injection, escape, R / cLight)
       !call FP_FinDif_difu(dt(i), g, n2(i - 1, :), n2(i, :), (t(i)/dynT)*C0 * pofg(g)**2, zero1, zero2, 1d200, R / cLight)
@@ -107,7 +124,15 @@ contains
       !!!!!          number of particles? I'd suggest you have a look at
       !!!!!          Simpson's and trapezoidal rules (e.g., Wikipedia) to get an
       !!!!!          idea of how to perform an integral numerically
-      write(*,*) sum(n1(i,:)*g)
+      do l=2, numg
+        !write(*,*) (n1(i,l-1)+n1(i,l))*dg(l-1)
+        !write(*,*) dg(l)
+
+        total(l-1) = (n1(i,l-1)+n1(i,l))*dg(l-1)/2d0
+        !write(*,*) total(l-1)
+      end do
+      write(*,*) sum(total)
+      !total_part=0
     end do time_loop
 
     call h5open_f(herror)
