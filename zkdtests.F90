@@ -39,8 +39,8 @@ contains
     qind=0d0
 
     g1=1e1
-    g2=1e5
-    gmin=1.0001d0
+    g2=1e7
+    gmin=1.00001d0
     gmax =1.5d0 * g2
     R=1e16
     sig=9d-1
@@ -53,8 +53,9 @@ contains
     ll=4d2*rho
     va=cLight*((sig/(sig+1d0))**0.5d0)
     lva=ll/va
-    tc=(1d0)*4d0*lva/sig
-    tmax=tc*1d2
+    !tc=(1d0)*4d0*lva/sig
+    tc=2.33d0
+    tmax=tc*2d0
     tstep=tmax/numt
 
 
@@ -76,13 +77,13 @@ contains
       !write(*,*) dg(k-1)
     end do build_g
 
-    Ap=Gammah*gam0 + Gammaa*g
-    Dpp=Gamma0*(gam0**2) + Gamma2*(g**2)
+    Ap=(Gammah*gam0 + Gammaa*g)/tc
+    Dpp=(Gamma0*(gam0**2) + Gamma2*(g**2))/tc
 
     !build_gdotty: do k = 1, numg
       !gdotty(k) = Ap + 2*Gamma2*g(k) + D
     !end do build_gdotty
-    gdotty= Ap + 2*Gamma2*g + 2*Dpp/g - (g**2)/(gam0*2.5d3*tc)
+    gdotty= (-1)*(Ap + (-1)*2*Gamma2*g + 2*Dpp/g - (g**2)/(gam0*tc))
 
 
     t(0) = 0d0
