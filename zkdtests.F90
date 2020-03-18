@@ -39,8 +39,8 @@ contains
     qind=0d0
 
     g1=1e1
-    g2=1e15
-    gmin=1.00001d0
+    g2=1e20
+    gmin=1.01d0
     gmax =1.5d0 * g2
     R=1e16
     sig=9d-1
@@ -54,8 +54,8 @@ contains
     va=cLight*((sig/(sig+1d0))**0.5d0)
     lva=ll/va
     !tc=(1d0)*4d0*lva/sig
-    tc=1.3d0
-    tmax=tc*2d0
+    tc=1.25d0
+    tmax=2d2
     tstep=tmax/numt
 
 
@@ -78,12 +78,13 @@ contains
     end do build_g
 
     Ap=(Gammah*gam0 + Gammaa*g)/tc
+    !Ap=(Gammaa*g)/tc
     Dpp=(Gamma0*(gam0**2) + Gamma2*(g**2))/tc
 
     !build_gdotty: do k = 1, numg
       !gdotty(k) = Ap + 2*Gamma2*g(k) + D
     !end do build_gdotty
-    gdotty= (-1d0)*(Ap + (-1d0)*2d0*Gamma2*g + 2d0*Dpp/g - (g**2)/(gam0*tc))
+    gdotty= (-1d0)*(Ap + (-1)*2d0*Gamma2*g + 2d0*Dpp/g - (g**2)/(gam0*tc))
 
 
     t(0) = 0d0
@@ -92,13 +93,14 @@ contains
     !!!!!          save you time debugging. It will also help others to read/understand
     !!!!!          your code
     zero1 = 1d-200
-    zero2 = 0d0
+    !zero2 = 0d0
     C0 = 3.48d-11 ! 4d0 * sigmaT * uB / (3d0 * mass_e * cLight)
   !  tacc = 1d0 / (C0(1) * 10d0**4.5d0) !tesc
   !  tesc=tacc
   !  D0 = 0.5d0 * pofg(g)**2 / tacc
     th = 1d2
     n1(0, :) = RMaxwell_v(g,th)
+
   !  n2(0, :) = n1(0, :)
     !n3(0, :) =n1(0, :)
     !dynT=R/cLight
@@ -110,7 +112,7 @@ contains
       t(i) = tstep * dble(i)
       !dt(i) = t(i) - t(i - 1) !!!NOTE: In this kind of time-step you're using, dt = tstep for all i
       !write(*,*) dt(i)
-
+      !zero2=-1.8*gam0*n1(i-1,:)/tc
 
       !Q0 = injection_pwl(t(i), tacc, g, g1, g2, qind, 1d0)
       !--- learn how for loops and if statements work in fortran
