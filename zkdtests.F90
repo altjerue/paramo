@@ -84,7 +84,7 @@ contains
     !build_gdotty: do k = 1, numg
       !gdotty(k) = Ap + 2*Gamma2*g(k) + D
     !end do build_gdotty
-    gdotty= (-1d0)*(Ap + (-1)*2d0*Gamma2*g/tc + 2d0*Dpp/g - (g**2)/(gam0*tc))
+    gdotty= (-1d0)*(Ap + (1)*2d0*Gamma2*g/tc + 2d0*Dpp/g - (g**2)/(gam0*tc))
 
 
     t(0) = 0d0
