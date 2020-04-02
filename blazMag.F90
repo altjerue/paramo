@@ -96,7 +96,7 @@ subroutine blazMag(params_file, output_file, cool_withKN, with_abs)
 
    ! ----->    Magnetic field
    L_B = sigma * L_jet / (1d0 + sigma)
-   uB = L_B / (pi * cLight * beta_bulk * (gamma_bulk * R)**2) ! B**2 / (8d0 * pi)
+   uB = L_B / (2d0 * pi * cLight * beta_bulk * (gamma_bulk * R)**2) ! B**2 / (8d0 * pi)
    B = dsqrt(uB * 8d0 * pi)
 
    ! ----->   Injection of particles
@@ -197,7 +197,7 @@ subroutine blazMag(params_file, output_file, cool_withKN, with_abs)
             &             tlc)
 
       Qinj(:, i) = injection_pwl(t(i), tinj, gg, g1, g2, pind, Qnth)
-      Ddiff(:, i) = 1d-200!4.3d-3 * pofg(gg)**(5d0 / 3d0) * (mass_e * cLight**2)**(-1d0 / 3d0)
+      Ddiff(:, i) = 1d-200
 
 
       !  #####    ##   #####  #   ##   ##### #  ####  #    #
