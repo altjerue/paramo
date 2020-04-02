@@ -6,8 +6,8 @@ TESTS=xTestszkd
 
 
 # -----  dependencies  ----- gets everything from use in the F90.slash represents inputs and output files. idk why hdf5 isnt here maybe it apart of fortran
-TESTS_OBJ = data_types.o h5_inout.o dist_evol.o zkdtests.o constants.o misc.o \
-	pwl_integ.o SRtoolkit.o K2.o
+TESTS_OBJ = data_types.o h5_inout.o dist_evol.o zkdtests0.o constants.o misc.o \
+	pwl_integ.o SRtoolkit.o K2.o radiation.o anaFormulae.o
 # -----  rules  ----- im not sure what this is yet ... this might be way of introducing short hand such as make all
 
 # objects this seems to further break down dependencies for other scripts you have
