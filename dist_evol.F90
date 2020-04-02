@@ -180,9 +180,9 @@ contains
       CCp2(Ng) = 0.25d0 * DD(Ng)
       CCm2(1) = 0.25d0 * DD(1)
 
-      BBp2(:Ng1) = -0.5d0 * ((DD(2:) - DD(:Ng1)) / dxp2(:Ng1) - (gdot(2:) + gdot(:Ng1)))
-      BBm2(2:) = -0.5d0 * ((DD(2:) - DD(:Ng1)) / dxm2(2:) - (gdot(2:) + gdot(:Ng1)))
-      BBp2(Ng) = -0.5d0 * ((DD(Ng) - DD(Ng1)) / dxp2(Ng) - (gdot(Ng) + gdot(Ng1)))
+      BBp2(:Ng1) = 0.5d0 * ((DD(2:) - DD(:Ng1)) / dxp2(:Ng1) + (gdot(2:) + gdot(:Ng1)))
+      BBm2(2:) = 0.5d0 * ((DD(2:) - DD(:Ng1)) / dxm2(2:) + (gdot(2:) + gdot(:Ng1)))
+      BBp2(Ng) = 0.5d0 * ((DD(Ng) - DD(Ng1)) / dxp2(Ng) + (gdot(Ng) + gdot(Ng1)))
       call polint(g(2:), BBm2(2:), g(1), BBm2(1), dBB)
 
       WWp2 = dxp2 * BBp2 / CCp2
