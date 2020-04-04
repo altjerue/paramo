@@ -5,6 +5,8 @@ program testszkd
   !add all dependencies
   use dist_evol
   use h5_inout
+  use radiation
+  use anaFormulae
   !not sure what implicit is
   !---implicit none is to keep i,j,k,l,m,n to be assumed to be integeres
   !--- implicit none should always be used
@@ -75,16 +77,20 @@ contains
     allocate(n1(0:numt, numg),n2(0:numt, numg),n3(0:numt, numg),jmbs(0:numt,numf))
 
     u_e = 1d0
-    ke = u_e * pwl_norm(mass_e * cLight**2, p - 1d0, g1, g2)
+    write(*,*) "test"
+    !ke = u_e * pwl_norm(mass_e * cLight**2, p - 1d0, g1, g2)
     !-- not sure what build_g is doing
     build_g: do k = 1, numg
+
       g(k) = gmin * (gmax / gmin)**(dble(k - 1) / dble(numg - 1))
       !n(k) = ke * powlaw_dis(g(k), g1, g2, p)
       if(k>1) then
         dg(k-1)=g(k)-g(k-1)
+
       end if
       !write(*,*) dg(k-1)
     end do build_g
+
 
     Ap=(Gammah*gam0 + Gammaa*g)/tc
     !Ap=(Gammaa*g)/tc
@@ -116,6 +122,7 @@ contains
     Diff = 2*Dpp
     !total_part=0
     !D_t(0)=D0
+
     time_loop: do i = 1, numt
 
       t(i) = tstep * dble(i)
@@ -132,9 +139,11 @@ contains
       !call FP_FinDif_difu(dt(i), g, n2(i - 1, :), n2(i, :), (t(i)/dynT)*C0 * pofg(g)**2, zero1, zero2, 1d200, R / cLight)
       !call FP_FinDif_difu(dt(i), g, n3(i - 1, :), n3(i, :), (t(i)/dynT)*C0 * pofg(g)**2, Diff, zero2, 1d200, R / cLight)
 
-      do j = 1, numg
+      do j = 1, numf
+
          nuj(j) = numin * ( (numax / numin)**(dble(j - 1) / dble(numf - 1)) )
-         call mbs_emissivity(jmbs(i,j),nuj(j), g, n1(j,:), B)
+
+         call mbs_emissivity(jmbs(i,j),nuj(j), g, n1(i,:), B)
       end do
 
       do l=2, numg
@@ -144,7 +153,7 @@ contains
         total(l-1) = (n1(i,l-1)+n1(i,l))*dg(l-1)/2d0
         !write(*,*) total(l-1)
       end do
-      write(*,*) sum(total)
+      write(*,*) sum(total),"iteration: ",i
       !total_part=0
     end do time_loop
 
@@ -152,7 +161,9 @@ contains
     call h5io_createf("/media/sf_vmshare/SSsol_zkd31.h5", file_id, herror)
     call h5io_wdble1(file_id, 'time', t(1:), herror)
     call h5io_wdble1(file_id, 'gamma', g, herror)
+    call h5io_wdble1(file_id, 'nu', nuj, herror)
     call h5io_wdble2(file_id, 'dist1', n1(:, :), herror)
+    call h5io_wdble2(file_id, 'sync1', jmbs(:, :), herror)
     !call h5io_wdble2(file_id, 'dist0', n2(1:, :), herror)
   !  call h5io_wdble2(file_id, 'dist3', n3(1:, :), herror)
     call h5io_closef(file_id, herror)
