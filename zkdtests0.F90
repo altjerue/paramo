@@ -29,7 +29,7 @@ contains
     real(dp) :: g1, g2, gmin, gmax, tacc, qind, R, tmax, tstep, DynT, tesc, th, sig, lva, tc, ll, va, rho ,Gammah,Gammaa,&
      Gamma0,Gamma2, gam0, u_e,B,p,numin,numax
     real(dp), allocatable, dimension(:) :: t, g, dt, C0,D0, Q0, zero1, zero2,Diff, gdotty, dg, total, Ap, Dpp,&
-      n,ke,nuj
+      n,ke,nuj,tempg,Mgam
     real(dp), allocatable, dimension(:, :) :: n1,n2,n3,jmbs
     !then initiallize all inputs taht are scalar
     !next initiallize all matrix and vectors
@@ -72,7 +72,7 @@ contains
     gmax = gmax*g2
 
     allocate(n(numg), g(numg),t(0:numt),dt(numt),Diff(numg),D0(numg), Q0(numg),C0(numg), zero1(numg), zero2(numg),&
-     gdotty(numg), dg(numg),total(numg), Ap(numg), Dpp(numg),nuj(numf))
+     gdotty(numg), dg(numg),total(numg), Ap(numg), Dpp(numg),nuj(numf),tempg(numg),Mgam(0:numt))
 
     allocate(n1(0:numt, numg),n2(0:numt, numg),n3(0:numt, numg),jmbs(0:numt,numf))
 
@@ -138,7 +138,14 @@ contains
       !call FP_FinDif_difu(dt(i), gamma, distroin, distrout, gammadot, diffusion, Injection, escape, R / cLight)
       !call FP_FinDif_difu(dt(i), g, n2(i - 1, :), n2(i, :), (t(i)/dynT)*C0 * pofg(g)**2, zero1, zero2, 1d200, R / cLight)
       !call FP_FinDif_difu(dt(i), g, n3(i - 1, :), n3(i, :), (t(i)/dynT)*C0 * pofg(g)**2, Diff, zero2, 1d200, R / cLight)
+      do l=2, numg
+        tempg(l-1) = (g(l-1)*n1(i,l-1)+n1(i,l)*g(l))*dg(l-1)/2d0
+      end do
+      Mgam(i)=sum(tempg)
+      tempg=0
+      B=Mgam(i)*((16*Pi*sig*(1)*Mgam(i)*mass_e*(cLight**2)/3))**0.5
 
+      write(*,*) B
       do j = 1, numf
 
          nuj(j) = numin * ( (numax / numin)**(dble(j - 1) / dble(numf - 1)) )
