@@ -143,9 +143,9 @@ contains
       end do
       Mgam(i)=sum(tempg)
       tempg=0
-      B=Mgam(i)*((16*Pi*sig*(1)*Mgam(i)*mass_e*(cLight**2)/3))**0.5
+      B=(((16*Pi*sig*(1)*Mgam(i)*mass_e*(cLight**2)/3))**0.5)/Mgam(i)
 
-      write(*,*) B
+      write(*,*) B,"Mgam ", Mgam(i)
       do j = 1, numf
 
          nuj(j) = numin * ( (numax / numin)**(dble(j - 1) / dble(numf - 1)) )
