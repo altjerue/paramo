@@ -286,7 +286,6 @@ class Runner(object):
         if clean:
             comp.cleanup()
         comp.compile()
-        os.system("sleep 5")
         run_cmd = '{0}xTests'.format(comp.compile_dir)
         print("\n--> Running:\n  ", run_cmd, "\n")
         os.system(run_cmd)
@@ -310,7 +309,6 @@ class Runner(object):
         if clean:
             comp.cleanup()
         comp.compile()
-        os.system("sleep 3")
         outfile = self.flabel + '.jp.h5'
 
         if pream is None:
@@ -340,7 +338,6 @@ class Runner(object):
         if clean:
             comp.cleanup()
         comp.compile()
-        os.system("sleep 3")
         outfile = self.flabel + '.jp.h5'
         if pream is None:
             run_cmd = '{0}xAglow {1} {2} {3} {4} {5} {6} {7}'.format(comp.compile_dir, self.par.params_file, wCool, wAbs, wWind, flow_geom, wBlob, outfile)
