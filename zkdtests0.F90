@@ -27,9 +27,9 @@ contains
     integer(HID_T) :: file_id
     integer :: i, k, numg, numt, herror, l,numf,j
     real(dp) :: g1, g2, gmin, gmax, tacc, qind, R, tmax, tstep, DynT, tesc, th, sig, lva, tc, ll, va, rho ,Gammah,Gammaa,&
-     Gamma0,Gamma2, gam0, u_e,B,p,numin,numax
+     Gamma0,Gamma2, gam0, u_e,B,p,numin,numax, BB
     real(dp), allocatable, dimension(:) :: t, g, dt, C0,D0, Q0, zero1, zero2,Diff, gdotty, dg, total, Ap, Dpp,&
-      n,ke,nuj,tempg,Mgam
+      n,ke,nuj,tempg,Mgam,Rarray
     real(dp), allocatable, dimension(:, :) :: n1,n2,n3,jmbs
     !then initiallize all inputs taht are scalar
     !next initiallize all matrix and vectors
@@ -46,10 +46,10 @@ contains
     g2=1e10
     gmin=1.01d0
     gmax =1.5d0 * g2
-    R=1e16
-    sig=9d-1
+
+    sig=0.89d0
     gam0=3d2
-    Gamma0=1.8d0
+    Gamma0=1.8
     Gamma2=Gamma0
     Gammah=-3d0
     Gammaa=-8d0
@@ -58,12 +58,17 @@ contains
     va=cLight*((sig/(sig+1d0))**0.5d0)
     lva=ll/va
     !tc=(1d0)*4d0*lva/sig
-    tc=1.33d0
+    tc=(1/LOG(0.033)) +1
+
+    R=(1d0)*tc*sig*va/4
+
+    write(*,*) "Cooling time: ", tc
     tmax=1.5d0
     tstep=tmax/numt
-    B = 1d0
+    B = ((Pi/2)*(1)*mass_e*(cLight)*sig*va/(sigmaT*R*(75)))**5d-1
+    write(*,*) "Blab: ", B
     p = 2.2d0
-    numin = 1d8
+    numin = 1d5
     numax = 1d28
 
 !
@@ -72,9 +77,11 @@ contains
     gmax = gmax*g2
 
     allocate(n(numg), g(numg),t(0:numt),dt(numt),Diff(numg),D0(numg), Q0(numg),C0(numg), zero1(numg), zero2(numg),&
-     gdotty(numg), dg(numg),total(numg), Ap(numg), Dpp(numg),nuj(numf),tempg(numg),Mgam(0:numt))
+     gdotty(numg), dg(numg),total(numg), Ap(numg), Dpp(numg),nuj(numf),tempg(numg),Mgam(0:numt),Rarray(1))
 
     allocate(n1(0:numt, numg),n2(0:numt, numg),n3(0:numt, numg),jmbs(0:numt,numf))
+
+    Rarray(1)=R
 
     u_e = 1d0
     write(*,*) "test"
@@ -109,7 +116,7 @@ contains
     !!!!!          your code
     zero1 = 1d-200
     !zero2 = 0d0
-    C0 = 3.48d-11 ! 4d0 * sigmaT * uB / (3d0 * mass_e * cLight)
+    !C0 = 3.48d-11 ! 4d0 * sigmaT * uB / (3d0 * mass_e * cLight)
   !  tacc = 1d0 / (C0(1) * 10d0**4.5d0) !tesc
   !  tesc=tacc
   !  D0 = 0.5d0 * pofg(g)**2 / tacc
@@ -133,7 +140,7 @@ contains
       !Q0 = injection_pwl(t(i), tacc, g, g1, g2, qind, 1d0)
       !--- learn how for loops and if statements work in fortran
       !--looks like you can name for loops adn if you do you end with end do NAME
-      call FP_FinDif_difu(tstep, g, n1(i - 1, :), n1(i, :), gdotty, Diff, zero2, 1d200, ll / cLight)!what is r/clight???  tlc was added since old
+      call FP_FinDif_difu(tstep, g, n1(i - 1, :), n1(i, :), gdotty, Diff, zero2, 1d200, R / cLight)!what is r/clight???  tlc was added since old
       !call FP_FinDif_difu(dt(i), g, n1(i - 1, :), n1(i, :), zero2, zero2, zero2, 1d200, R / cLight)
       !call FP_FinDif_difu(dt(i), gamma, distroin, distrout, gammadot, diffusion, Injection, escape, R / cLight)
       !call FP_FinDif_difu(dt(i), g, n2(i - 1, :), n2(i, :), (t(i)/dynT)*C0 * pofg(g)**2, zero1, zero2, 1d200, R / cLight)
@@ -143,9 +150,10 @@ contains
       end do
       Mgam(i)=sum(tempg)
       tempg=0
-      B=(((16*Pi*sig*(1)*Mgam(i)*mass_e*(cLight**2)/3))**0.5)/Mgam(i)
-
-      write(*,*) B,"Mgam ", Mgam(i)
+      !B=(((16*Pi*sig*(1)*Mgam(i)*mass_e*(cLight**2)/3))**0.5)/Mgam(i)
+      BB=B/Mgam(i)
+      write(*,*) "B: ", BB
+      write(*,*) BB,"Mgam ", Mgam(i)
       do j = 1, numf
 
          nuj(j) = numin * ( (numax / numin)**(dble(j - 1) / dble(numf - 1)) )
@@ -165,8 +173,10 @@ contains
     end do time_loop
 
     call h5open_f(herror)
-    call h5io_createf("/media/sf_vmshare/SSsol_zkd31.h5", file_id, herror)
+    call h5io_createf("/media/sf_vmshare/3SSsol_fig17mT_100.h5", file_id, herror)
+    call h5io_wdble1(file_id, 'R', Rarray, herror)
     call h5io_wdble1(file_id, 'time', t(1:), herror)
+    call h5io_wdble1(file_id, 'Mgam', Mgam, herror)
     call h5io_wdble1(file_id, 'gamma', g, herror)
     call h5io_wdble1(file_id, 'nu', nuj, herror)
     call h5io_wdble2(file_id, 'dist1', n1(:, :), herror)
