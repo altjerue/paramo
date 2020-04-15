@@ -2,7 +2,7 @@
 FC=h5fc #if not using h5c this would be gfortran
 # -----  executables  -----this creates the files names for the eventual compiled programs
 
-TESTS=xTestszkd
+TESTS=xturbulentemission
 
 OPTIMIZATION=-O3 -ftree-vectorize -funroll-all-loops -ffree-form \
 	-ffree-line-length-none -fbacktrace
@@ -11,7 +11,7 @@ COPT=-c $(OPTIMIZATION)
 
 # -----  dependencies  ----- gets everything from use in the F90.slash represents inputs and output files. idk why hdf5 isnt here maybe it apart of fortran
 TESTS_OBJ =misc.o data_types.o h5_inout.o dist_evol.o constants.o\
-	pwl_integ.o SRtoolkit.o K2.o anaFormulae.o radiation.o zkdtests0.o
+	pwl_integ.o SRtoolkit.o K2.o anaFormulae.o radiation.o turbulentemission.o
 # -----  rules  ----- im not sure what this is yet ... this might be way of introducing short hand such as make all
 all: $(TESTS)
 # objects this seems to further break down dependencies for other scripts you have

@@ -90,12 +90,10 @@ contains
     build_g: do k = 1, numg
 
       g(k) = gmin * (gmax / gmin)**(dble(k - 1) / dble(numg - 1))
-      !n(k) = ke * powlaw_dis(g(k), g1, g2, p)
       if(k>1) then
         dg(k-1)=g(k)-g(k-1)
 
       end if
-      !write(*,*) dg(k-1)
     end do build_g
 
 
@@ -115,7 +113,7 @@ contains
     !!!!!          save you time debugging. It will also help others to read/understand
     !!!!!          your code
     zero1 = 1d-200
-    !zero2 = 0d0
+    zero2 = 0d0
     !C0 = 3.48d-11 ! 4d0 * sigmaT * uB / (3d0 * mass_e * cLight)
   !  tacc = 1d0 / (C0(1) * 10d0**4.5d0) !tesc
   !  tesc=tacc

@@ -1,3 +1,3 @@
 make clean
-make xTestszkd
-./xTestszkd
+make xturbulentemission
+./xturbulentemission
