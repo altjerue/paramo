@@ -24,9 +24,7 @@ contains
     real(dp), allocatable, dimension(:, :) :: n1, jmbs
 
 
-    allocate(g(numg),t(0:numt),dt(numt), zero1(numg), zero2(numg), Diff(numg), gdotty(numg), dg(numg),total(numg), Ap(numg), Dpp(numg),nuj(numf),tempg(numg),Mgam(0:numt),Rarray(1))
 
-    allocate(n1(0:numt, numg), jmbs(0:numt,numf))
 
     numg=128
     numt =300
@@ -34,15 +32,30 @@ contains
 
     gmin=1.01d0
     gmax =1.5d10
-    t(0) = 0d0
     tmax = 1.5d0
-    tstep = 1d0
+    tstep = 1d-2
+
+
+    allocate(g(numg),t(0:numt),dt(numt), zero1(numg), zero2(numg), Diff(numg), gdotty(numg), dg(numg),total(numg), Ap(numg), Dpp(numg),nuj(numf),tempg(numg),Mgam(0:numt),Rarray(1))
+
+    allocate(n1(0:numt, numg), jmbs(0:numt,numf))
+
+    build_g: do k = 1, numg
+
+      g(k) = gmin * (gmax / gmin)**(dble(k - 1) / dble(numg - 1))
+      if(k>1) then
+        dg(k-1)=g(k)-g(k-1)
+
+      end if
+    end do build_g
+
+
     zero1 = 1d-200
     zero2 = 0d0
-
+    t(0) = 0
     !zhdankin parameters
     th = 1d2
-    thss=75
+    thss=75d0
     kk=0.033
     sig=0.89d0
     gam0=3d2
@@ -66,18 +79,10 @@ contains
     !distribution parameters
     gdotty= (-1d0)*(Ap + (1)*2d0*Gamma2*g/tc + 2d0*Dpp/g - (g**2)/(gam0*tc))
     Diff = 2*Dpp
-
     n1(0, :) = RMaxwell_v(g,th)
 
 
-    build_g: do k = 1, numg
 
-      g(k) = gmin * (gmax / gmin)**(dble(k - 1) / dble(numg - 1))
-      if(k>1) then
-        dg(k-1)=g(k)-g(k-1)
-
-      end if
-    end do build_g
 
     write(*,*) "tmax: ", tmax, "sig: ", sig,"tc: ",tc,"R: ",R,"B_lab: ", B_lab, "Theta: ", Th
 
@@ -87,7 +92,7 @@ contains
       dt(i) = t(i) - t(i - 1)
 
       call FP_FinDif_difu(dt(i), g, n1(i - 1, :), n1(i, :), gdotty, Diff, zero2, 1d200, R / cLight)
-      write(*,*) "test4"
+
       do l=2, numg
         total(l-1) = (n1(i,l-1)+n1(i,l))*dg(l-1)/2d0
         tempg(l-1) = (g(l-1)*n1(i,l-1)+n1(i,l)*g(l))*dg(l-1)/2d0
