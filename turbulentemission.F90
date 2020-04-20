@@ -19,7 +19,7 @@ contains
 
     integer(HID_T) :: file_id
     integer :: numg, numt, numf, i, k, j, l, herror
-    real(dp) :: tstep, tmax, numin, numax, gmin, gmax, sig, gam0, Gamma0, Gamma2, Gammah, Gammaa, va, Rva, kk, tc, R, B_lab, B_co, th, thss
+    real(dp) :: tstep, tmax, numin, numax, gmin, gmax, sig, gam0, Gamma0, Gamma2, Gammah, Gammaa, va, Rva, kk, tc, R, B_lab, B_co, th, thss, n0, Bulk_lorentz, l_rho, rho
     real(dp), allocatable, dimension(:) :: t, dt, Ap, Dpp, Diff, gdotty, g, dg, total, nuj, tempg, Rarray, Mgam, zero1, zero2
     real(dp), allocatable, dimension(:, :) :: n1, jmbs
 
@@ -53,28 +53,35 @@ contains
     zero1 = 1d-200
     zero2 = 0d0
     t(0) = 0
+    n0=1
+    Bulk_lorentz=10
+
     !zhdankin parameters
+    l_rho = 60.4
     th = 1d2
     thss=75d0
     kk=0.033
-    sig=0.89d0
+    sig=0.9d0
     gam0=3d2
-    Gamma0=1.8
+    Gamma0=1.8d0
     Gamma2=Gamma0
     Gammah=-3d0
     Gammaa=-8d0
     va=cLight*((sig/(sig+1d0))**0.5d0)
     tc=(1/LOG(kk)) +1
-    R=(1d0)*tc*sig*va/4
+    !R=(1d0)*tc*sig*va/4
+    B_lab = dsqrt(sig*16*Pi*n0*gam0*mass_e*(cLight**2)/3)
+    rho=gam0*mass_e*(cLight**2)/(eCharge*B_lab)
+    R=l_rho*rho*2*Pi
     Rva=R/va
     Rarray(1)=R
-    B_lab = ((Pi/2)*(1)*mass_e*(cLight)*sig*va/(sigmaT*R*(thss)))**5d-1
     Ap=(Gammah*gam0 + Gammaa*g)/tc
     Dpp=(Gamma0*(gam0**2) + Gamma2*(g**2))/tc
 
+
     !emission parameters
-    numin = 1d9
-    numax = 1d28
+    numin = 1d5
+    numax = 1d20
 
     !distribution parameters
     gdotty= (-1d0)*(Ap + (1)*2d0*Gamma2*g/tc + 2d0*Dpp/g - (g**2)/(gam0*tc))
@@ -100,7 +107,7 @@ contains
 
       Mgam(i)=sum(tempg)
       tempg=0
-      B_co=B_lab/Mgam(i)
+      B_co=B_lab/Bulk_lorentz
 
       do j = 1, numf
 
@@ -116,7 +123,7 @@ contains
     end do time_loop
 
     call h5open_f(herror)
-    call h5io_createf("/media/sf_vmshare/turbulentemission_fig17mT_100.h5", file_id, herror)
+    call h5io_createf("/media/sf_vmshare/n0_1_turbulentemission_fig17mT_100.h5", file_id, herror)
     call h5io_wdble1(file_id, 'R', Rarray, herror)
     call h5io_wdble1(file_id, 'time', t(1:), herror)
     call h5io_wdble1(file_id, 'Mgam', Mgam, herror)
