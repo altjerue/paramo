@@ -4,8 +4,14 @@ FC=h5fc #if not using h5c this would be gfortran
 
 TESTS=xturbulentemission
 
+ifeq ($(OPENMP),1)
+OMP=-gopenmp
+endif #####  OPENMP
+
 OPTIMIZATION=-O3 -ftree-vectorize -funroll-all-loops -ffree-form \
-	-ffree-line-length-none -fbacktrace
+	-ffree-line-length-none -fbacktrace -fopenmp
+
+
 
 COPT=-c $(OPTIMIZATION)
 
@@ -24,7 +30,7 @@ radiation.o: data_types.o constants.o misc.o pwl_integ.o SRtoolkit.o \
 # executables creating the programs from above
 $(TESTS): $(TESTS_OBJ)
 	echo "compiling $@ with these objects: $^"
-	$(FC) -o $@ $^
+	$(FC)  $(COPT) -o $@ $^
 
 
 #-o $@ $^ saying create all .o files listed in the varible name I think?? ask jesus

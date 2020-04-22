@@ -107,7 +107,11 @@ contains
 
       Mgam(i)=sum(tempg)
       tempg=0
-      B_co=B_lab/Bulk_lorentz
+      B_co=B_lab*Bulk_lorentz
+
+
+    !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
+    !$OMP& PRIVATE(j)
 
       do j = 1, numf
 
@@ -116,7 +120,7 @@ contains
          call mbs_emissivity(jmbs(i,j),nuj(j), g, n1(i,:), B_co)
 
       end do
-
+    !$OMP END PARALLEL DO
       write(*,*) "# of particles ",sum(total),"iteration: ",i,"B_co ", B_co, "Mgam ",Mgam(i)
 
 

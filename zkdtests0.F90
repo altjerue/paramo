@@ -149,7 +149,7 @@ contains
       Mgam(i)=sum(tempg)
       tempg=0
       !B=(((16*Pi*sig*(1)*Mgam(i)*mass_e*(cLight**2)/3))**0.5)/Mgam(i)
-      BB=B/Mgam(i)
+      BB=B*Mgam(i)
       write(*,*) "B: ", BB
       write(*,*) BB,"Mgam ", Mgam(i)
       do j = 1, numf
