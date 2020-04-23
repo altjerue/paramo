@@ -2,7 +2,6 @@
 FC=h5fc #if not using h5c this would be gfortran
 # -----  executables  -----this creates the files names for the eventual compiled programs
 
-TESTS=xturbulentemission
 
 ifeq ($(OPENMP),1)
 OMP=-gopenmp
@@ -14,6 +13,10 @@ OPTIMIZATION=-O3 -ftree-vectorize -funroll-all-loops -ffree-form \
 
 
 COPT=-c $(OPTIMIZATION)
+
+TESTS=xturbulentemission
+
+
 
 # -----  dependencies  ----- gets everything from use in the F90.slash represents inputs and output files. idk why hdf5 isnt here maybe it apart of fortran
 TESTS_OBJ =misc.o data_types.o h5_inout.o dist_evol.o constants.o\
@@ -30,7 +33,7 @@ radiation.o: data_types.o constants.o misc.o pwl_integ.o SRtoolkit.o \
 # executables creating the programs from above
 $(TESTS): $(TESTS_OBJ)
 	echo "compiling $@ with these objects: $^"
-	$(FC)  $(COPT) -o $@ $^
+	$(FC)  $(OPTIMIZATION) -o $@ $^
 
 
 #-o $@ $^ saying create all .o files listed in the varible name I think?? ask jesus

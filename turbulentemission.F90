@@ -19,9 +19,9 @@ contains
 
     integer(HID_T) :: file_id
     integer :: numg, numt, numf, i, k, j, l, herror
-    real(dp) :: tstep, tmax, numin, numax, gmin, gmax, sig, gam0, Gamma0, Gamma2, Gammah, Gammaa, va, Rva, kk, tc, R, B_lab, B_co, th, thss, n0, Bulk_lorentz, l_rho, rho
-    real(dp), allocatable, dimension(:) :: t, dt, Ap, Dpp, Diff, gdotty, g, dg, total, nuj, tempg, Rarray, Mgam, zero1, zero2
-    real(dp), allocatable, dimension(:, :) :: n1, jmbs
+    real(dp) :: tstep, tmax, numin, numax, gmin, gmax, sig, gam0, Gamma0, Gamma2, Gammah, Gammaa, va, Rva, kk, tc, R, B_lab, B_co, th, thss, n0, Bulk_lorentz, l_rho, rho, nuext,Uph,Uph_co
+    real(dp), allocatable, dimension(:) :: t, dt, Ap, Dpp, Diff, gdotty, g, dg, total, nuj, dnuj, tempg,tempnu, Rarray, Mgam, zero1, zero2,U
+    real(dp), allocatable, dimension(:, :) :: n1, jmbs, jic
 
 
 
@@ -36,9 +36,9 @@ contains
     tstep = 1d-2
 
 
-    allocate(g(numg),t(0:numt),dt(numt), zero1(numg), zero2(numg), Diff(numg), gdotty(numg), dg(numg),total(numg), Ap(numg), Dpp(numg),nuj(numf),tempg(numg),Mgam(0:numt),Rarray(1))
+    allocate(g(numg),t(0:numt),dt(numt), zero1(numg), zero2(numg), Diff(numg), gdotty(numg), dg(numg),total(numg), Ap(numg), Dpp(numg),nuj(numf), dnuj(numf), tempnu(numf), tempg(numg),Mgam(0:numt),Rarray(1),U(numt))
 
-    allocate(n1(0:numt, numg), jmbs(0:numt,numf))
+    allocate(n1(0:numt, numg), jmbs(0:numt,numf),jic(0:numt,numf))
 
     build_g: do k = 1, numg
 
@@ -48,6 +48,19 @@ contains
 
       end if
     end do build_g
+
+
+    !emission parameters
+    numin = 1d5
+    numax = 1d25
+    nuext=1d14
+    build_nuj: do j=1, numf
+      nuj(j) = numin * ( (numax / numin)**(dble(j - 1) / dble(numf - 1)) )
+      if(j>=1) then
+        dnuj(j)=nuj(j)-nuj(j-1)
+
+      end if
+    end do build_nuj
 
 
     zero1 = 1d-200
@@ -77,11 +90,7 @@ contains
     Rarray(1)=R
     Ap=(Gammah*gam0 + Gammaa*g)/tc
     Dpp=(Gamma0*(gam0**2) + Gamma2*(g**2))/tc
-
-
-    !emission parameters
-    numin = 1d5
-    numax = 1d20
+    Uph=(0.75d0)*(B_lab**2)*va/(8d0*Pi*(gam0**2)*sigmaT*n0*R*cLight)
 
     !distribution parameters
     gdotty= (-1d0)*(Ap + (1)*2d0*Gamma2*g/tc + 2d0*Dpp/g - (g**2)/(gam0*tc))
@@ -91,50 +100,62 @@ contains
 
 
 
-    write(*,*) "tmax: ", tmax, "sig: ", sig,"tc: ",tc,"R: ",R,"B_lab: ", B_lab, "Theta: ", Th
+    write(*,*) "tmax: ", tmax, "sig: ", sig,"tc: ",tc,"R: ",R,"B_lab: ", B_lab, "Theta: ", Th,"va: ",va,"sigmaT",sigmaT
 
     time_loop: do i = 1, numt
 
       t(i) = tstep * ( (tmax / tstep)**(dble(i - 1) / dble(numt - 1)) )
       dt(i) = t(i) - t(i - 1)
-
+      write(*,*) "test1"
       call FP_FinDif_difu(dt(i), g, n1(i - 1, :), n1(i, :), gdotty, Diff, zero2, 1d200, R / cLight)
 
       do l=2, numg
         total(l-1) = (n1(i,l-1)+n1(i,l))*dg(l-1)/2d0
-        tempg(l-1) = (g(l-1)*n1(i,l-1)+n1(i,l)*g(l))*dg(l-1)/2d0
+        tempg(l-1) = (g(l-1)*n1(i,l-1)+n1(i,l)*g(l))*dnuj(l-1)/2d0
       end do
 
       Mgam(i)=sum(tempg)
       tempg=0
-      B_co=B_lab*Bulk_lorentz
-
-
-    !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
-    !$OMP& PRIVATE(j)
+      B_co=B_lab/Bulk_lorentz
+      Uph_co=Uph/(Bulk_lorentz**2)
+      write(*,*) "test2"
+      !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
+      !$OMP& PRIVATE(j)
 
       do j = 1, numf
 
-         nuj(j) = numin * ( (numax / numin)**(dble(j - 1) / dble(numf - 1)) )
 
          call mbs_emissivity(jmbs(i,j),nuj(j), g, n1(i,:), B_co)
+         call IC_iso_monochrom(jic(i,j), nuj(j), Uph, nuext, n1(i,:), g)
+
 
       end do
-    !$OMP END PARALLEL DO
-      write(*,*) "# of particles ",sum(total),"iteration: ",i,"B_co ", B_co, "Mgam ",Mgam(i)
+      !$OMP END PARALLEL DO
+      write(*,*) "test3"
+
+      do j = 2, numf
+          tempnu(j-1) = (jmbs(i,j-1)+jmbs(i,j))*dnuj(j-1)/2d0
+      end do
+        !!!!!energy density
+      U(i)=(sum(tempnu)/(nuj(numf)-nuj(1)))*(4/3)*Pi*(R**3)*(R/cLight)
+
+
+      write(*,*) "# of particles ",sum(total),"iteration: ",i,"B_co ", B_co, "Mgam ",Mgam(i), " Energy Density: ",U(i),"Magnetic Energy Density: ",((B_co)**2)/(8*Pi),"Uph ",Uph_co
 
 
     end do time_loop
 
     call h5open_f(herror)
-    call h5io_createf("/media/sf_vmshare/n0_1_turbulentemission_fig17mT_100.h5", file_id, herror)
+    call h5io_createf("/media/sf_vmshare/n0_1_ufrompaper_turbulentemission_fig17mT_100.h5", file_id, herror)
     call h5io_wdble1(file_id, 'R', Rarray, herror)
     call h5io_wdble1(file_id, 'time', t(1:), herror)
     call h5io_wdble1(file_id, 'Mgam', Mgam, herror)
     call h5io_wdble1(file_id, 'gamma', g, herror)
     call h5io_wdble1(file_id, 'nu', nuj, herror)
+    call h5io_wdble1(file_id, 'energydensity', U, herror)
     call h5io_wdble2(file_id, 'dist1', n1(:, :), herror)
     call h5io_wdble2(file_id, 'sync1', jmbs(:, :), herror)
+    call h5io_wdble2(file_id, 'IC1', jic(:, :), herror)
     call h5io_closef(file_id, herror)
     call h5close_f(herror)
 
