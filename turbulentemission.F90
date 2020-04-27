@@ -20,8 +20,8 @@ contains
     integer(HID_T) :: file_id
     integer :: numg, numt, numf, i, k, j, l, herror
     real(dp) :: tstep, tmax, numin, numax, gmin, gmax, sig, gam0, Gamma0, Gamma2, Gammah, Gammaa, va, Rva, kk, tc, R, B_lab, B_co, th, thss, n0, Bulk_lorentz, l_rho, rho, nuext,Uph,Uph_co
-    real(dp), allocatable, dimension(:) :: t, dt, Ap, Dpp, Diff, gdotty, g, dg, total, nuj, dnuj, tempg,tempnu, Rarray, Mgam, zero1, zero2,U
-    real(dp), allocatable, dimension(:, :) :: n1, jmbs, jic
+    real(dp), allocatable, dimension(:) :: t, dt, Ap, Dpp, Diff, gdotty, g, dg, total, nuj, dnuj, tempg,tempnu, Rarray, Mgam, zero1, zero2,U, Inu
+    real(dp), allocatable, dimension(:, :) :: n1, jmbs, jic, ambs,jssc
 
 
 
@@ -36,9 +36,9 @@ contains
     tstep = 1d-2
 
 
-    allocate(g(numg),t(0:numt),dt(numt), zero1(numg), zero2(numg), Diff(numg), gdotty(numg), dg(numg),total(numg), Ap(numg), Dpp(numg),nuj(numf), dnuj(numf), tempnu(numf), tempg(numg),Mgam(0:numt),Rarray(1),U(numt))
+    allocate(g(numg),t(0:numt),dt(numt), zero1(numg), zero2(numg), Diff(numg), gdotty(numg), dg(numg),total(numg), Ap(numg), Dpp(numg),nuj(numf), dnuj(numf), tempnu(numf), tempg(numg),Mgam(0:numt),Rarray(1),U(numt), Inu(numf))
 
-    allocate(n1(0:numt, numg), jmbs(0:numt,numf),jic(0:numt,numf))
+    allocate(n1(0:numt, numg), jmbs(0:numt,numf),jic(0:numt,numf),jssc(0:numt,numf),ambs(0:numt,numf))
 
     build_g: do k = 1, numg
 
@@ -53,7 +53,7 @@ contains
     !emission parameters
     numin = 1d5
     numax = 1d25
-    nuext=1d14
+    nuext=1d15
     build_nuj: do j=1, numf
       nuj(j) = numin * ( (numax / numin)**(dble(j - 1) / dble(numf - 1)) )
       if(j>=1) then
@@ -85,12 +85,12 @@ contains
     !R=(1d0)*tc*sig*va/4
     B_lab = dsqrt(sig*16*Pi*n0*gam0*mass_e*(cLight**2)/3)
     rho=gam0*mass_e*(cLight**2)/(eCharge*B_lab)
-    R=l_rho*rho*2*Pi
+    R=l_rho*rho*2*Pi !!stay ar
     Rva=R/va
     Rarray(1)=R
     Ap=(Gammah*gam0 + Gammaa*g)/tc
     Dpp=(Gamma0*(gam0**2) + Gamma2*(g**2))/tc
-    Uph=(0.75d0)*(B_lab**2)*va/(8d0*Pi*(gam0**2)*sigmaT*n0*R*cLight)
+    Uph=mass_e*cLight*sig*va/(16d0*sigmaT*(75d0)*R)
 
     !distribution parameters
     gdotty= (-1d0)*(Ap + (1)*2d0*Gamma2*g/tc + 2d0*Dpp/g - (g**2)/(gam0*tc))
@@ -104,6 +104,8 @@ contains
 
     time_loop: do i = 1, numt
 
+      ambs(i,:)=0d0 !!no absorption
+
       t(i) = tstep * ( (tmax / tstep)**(dble(i - 1) / dble(numt - 1)) )
       dt(i) = t(i) - t(i - 1)
       write(*,*) "test1"
@@ -116,8 +118,8 @@ contains
 
       Mgam(i)=sum(tempg)
       tempg=0
-      B_co=B_lab/Bulk_lorentz
-      Uph_co=Uph/(Bulk_lorentz**2)
+      B_co=B_lab!*Bulk_lorentz
+      Uph_co=Uph!*(Bulk_lorentz**2)
       write(*,*) "test2"
       !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
       !$OMP& PRIVATE(j)
@@ -126,12 +128,27 @@ contains
 
 
          call mbs_emissivity(jmbs(i,j),nuj(j), g, n1(i,:), B_co)
-         call IC_iso_monochrom(jic(i,j), nuj(j), Uph, nuext, n1(i,:), g)
+         !!ssc needs to be in a seperate loop
+         call mbs_absorption(ambs(i,j),nuj(j), g, n1(i,:), B_co)
+
 
 
       end do
       !$OMP END PARALLEL DO
       write(*,*) "test3"
+
+
+      !radiation transfer
+      call RadTrans_blob(Inu, R, jmbs(i, :), ambs(i, :))
+
+
+      !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
+      !$OMP& PRIVATE(j)
+      do j = 1, numf
+        call IC_iso_powlaw(jssc(i,j),nuj(j), nuj,Inu, n1(i,:), g)
+        !call IC_iso_monochrom(jic(i,j), nuj(j), Uph, nuext, n1(i,:), g)
+      end do
+    ! $OMP END PARALLEL DO
 
       do j = 2, numf
           tempnu(j-1) = (jmbs(i,j-1)+jmbs(i,j))*dnuj(j-1)/2d0
@@ -146,7 +163,7 @@ contains
     end do time_loop
 
     call h5open_f(herror)
-    call h5io_createf("/media/sf_vmshare/n0_1_ufrompaper_turbulentemission_fig17mT_100.h5", file_id, herror)
+    call h5io_createf("/media/sf_vmshare/n0_1_sscwabs_turbulentemission_fig17m.h5", file_id, herror)
     call h5io_wdble1(file_id, 'R', Rarray, herror)
     call h5io_wdble1(file_id, 'time', t(1:), herror)
     call h5io_wdble1(file_id, 'Mgam', Mgam, herror)
@@ -156,6 +173,8 @@ contains
     call h5io_wdble2(file_id, 'dist1', n1(:, :), herror)
     call h5io_wdble2(file_id, 'sync1', jmbs(:, :), herror)
     call h5io_wdble2(file_id, 'IC1', jic(:, :), herror)
+    call h5io_wdble2(file_id, 'ssc', jssc(:, :), herror)
+    call h5io_wdble2(file_id, 'abs', ambs(:, :), herror)
     call h5io_closef(file_id, herror)
     call h5close_f(herror)
 
