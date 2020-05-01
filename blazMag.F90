@@ -119,11 +119,11 @@ subroutine blazMag(params_file, output_file, cool_withKN, with_abs)
    tesc = f_esc * tlc
    tinj = 2d0 * tlc
 
-   Qnth = f_rec * L_B * pwl_norm(volume * mass_e * cLight**2, pind - 1d0, g1, g2)
+   Qnth = f_rec * L_B * pwl_norm(1.5d0 * beta_bulk * gamma_bulk**2 * volume * mass_e * cLight**2, pind - 1d0, g1, g2)
    ! Qnth = eps_e * (L_j - L_B) * pwl_norm(volume * mass_e * cLight**2, pind - 1d0, g1, g2)
 
    write(*, "('--> Simulation setup')")
-   write(*, "('theta_obs =', ES15.7)") theta_obs
+   write(*, "('theta_obs =', ES15.7)") par_theta_obs
    write(*, "('Doppler   =', ES15.7)") D
    write(*, "('gamma_1   =', ES15.7)") g1
    write(*, "('gamma_2   =', ES15.7)") g2
@@ -282,7 +282,7 @@ subroutine blazMag(params_file, output_file, cool_withKN, with_abs)
    call h5io_wdble0(group_id, 'redshift', z, herror)
    call h5io_wdble0(group_id, 'Gamma_bulk', gamma_bulk, herror)
    call h5io_wdble0(group_id, 'sigma', sigma, herror)
-   call h5io_wdble0(group_id, 'theta_obs', theta_obs, herror)
+   call h5io_wdble0(group_id, 'theta_obs', par_theta_obs, herror)
    call h5io_wdble0(group_id, 'gamma_min', gmin, herror)
    call h5io_wdble0(group_id, 'gamma_max', gmax, herror)
    call h5io_wdble0(group_id, 'gamma_1', g1, herror)
