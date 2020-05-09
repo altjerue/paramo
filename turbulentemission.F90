@@ -20,12 +20,12 @@ contains
     integer(HID_T) :: file_id
     integer :: numg, numt, numf, i, k, j, l, herror, case
     real(dp) :: tstep, tmax, numin, numax, gmin, gmax, sig, gam0, Gamma0, Gamma2, Gammah, Gammaa, va, Rva, kk, tc, R, B_lab, B_co, th, thss, n0, Bulk_lorentz, l_rho, rho, nuext,Uph,Uph_co,tcm,t2,&
-      tcorg
+      tcorg,mfp
     real(dp), allocatable, dimension(:) :: t, dt, Ap, Dpp, Diff, gdotty, g, dg, total, nuj, dnuj, tempg,tempnu, Rarray, Mgam, zero1, zero2,U, Inu
     real(dp), allocatable, dimension(:, :) :: n1, jmbs, jic, ambs,jssc
 
 
-
+    mfp=1.5d0!1.85d0
 
     numg=128
     numt =300
@@ -73,7 +73,7 @@ contains
     Bulk_lorentz=10
 
     !zhdankin parameters
-  case=3
+  case=1
 
     if ( case==1 ) then
       l_rho = 28.3d0!m
@@ -118,7 +118,7 @@ contains
     R=l_rho*rho*2*Pi !!stay ar
     Rva=R/va
 
-    t2=(((dsqrt(2d0)/3d0)*((1d0-((va/cLight)**2d0))**-1d0)*((va/cLight)**2d0)*(cLight/(1.85d0*R)))**(-1))
+    t2=(((dsqrt(2d0)/3d0)*((1d0-((va/cLight)**2d0))**-1d0)*((va/cLight)**2d0)*(cLight/(mfp*R)))**(-1))
     !tc=(1/LOG(kk)) +1
     tc=4d0*R/(sig*va)
     tc=tc
@@ -205,7 +205,7 @@ contains
     write(*,*)"T2: ",t2
 
     call h5open_f(herror)
-    call h5io_createf("/media/sf_vmshare/diffusionparamofig17b2.h5", file_id, herror)
+    call h5io_createf("/media/sf_vmshare/diffusionparamofig17m3.h5", file_id, herror)
     call h5io_wdble1(file_id, 'R', Rarray, herror)
     call h5io_wdble1(file_id, 'time', t(1:), herror)
     call h5io_wdble1(file_id, 'Mgam', Mgam, herror)
