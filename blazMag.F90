@@ -84,7 +84,7 @@ subroutine blazMag(params_file, output_file, cool_withKN, with_abs)
    mu_mag = gamma_bulk * (sigma + 1d0)
 
    beta_bulk = bofg(gamma_bulk)
-   theta_obs = par_theta_obs * pi / 180d0!1d0 / gamma_bulk!
+   theta_obs = par_theta_obs * pi / 180d0
    mu_obs = dcos(theta_obs)
    D = Doppler(gamma_bulk, mu_obs)
    R = par_R
@@ -96,7 +96,7 @@ subroutine blazMag(params_file, output_file, cool_withKN, with_abs)
 
    ! ----->    Magnetic field
    L_B = sigma * L_jet / (1d0 + sigma)
-   uB = L_B / (2d0 * pi * cLight * beta_bulk * (gamma_bulk * R)**2) ! B**2 / (8d0 * pi)
+   uB = L_B / (2d0 * pi * cLight * beta_bulk * (gamma_bulk * R)**2)
    B = dsqrt(uB * 8d0 * pi)
 
    ! ----->   Injection of particles
@@ -119,7 +119,8 @@ subroutine blazMag(params_file, output_file, cool_withKN, with_abs)
    tesc = f_esc * tlc
    tinj = 2d0 * tlc
 
-   Qnth = f_rec * L_B * pwl_norm(1.5d0 * beta_bulk * gamma_bulk**2 * volume * mass_e * cLight**2, pind - 1d0, g1, g2)
+   Qnth = f_rec * uB * pwl_norm(tlc * mass_e * cLight**2, pind - 1d0, g1, g2)
+   ! Qnth = f_rec * L_B * pwl_norm(1.5d0 * beta_bulk * gamma_bulk**2 * volume * mass_e * cLight**2, pind - 1d0, g1, g2)
    ! Qnth = eps_e * (L_j - L_B) * pwl_norm(volume * mass_e * cLight**2, pind - 1d0, g1, g2)
 
    write(*, "('--> Simulation setup')")
@@ -223,11 +224,9 @@ subroutine blazMag(params_file, output_file, cool_withKN, with_abs)
          call IC_iso_monochrom(jeic(j, i), freqs(j), uext, nu_ext, nn(:, i), gg)
          jnut(j, i) = jmbs(j, i) + jssc(j, i) + jeic(j, i)
          anut(j, i) = ambs(j, i)
-
          ! Fmbs(j, i) = D**4 * volume * freqs(j) * jmbs(j, i) * opt_depth_blob(anut(j, i), R) / (4d0 * pi * d_lum**2)
          ! Fssc(j, i) = D**4 * volume * freqs(j) * jssc(j, i) * opt_depth_blob(anut(j, i), R) / (4d0 * pi * d_lum**2)
          ! Feic(j, i) = D**4 * volume * freqs(j) * jeic(j, i) * opt_depth_blob(anut(j, i), R) / (4d0 * pi * d_lum**2)
-         !
          ! Fnut(j, i) = Fmbs(j, i) + Fssc(j, i) + Feic(j, i)
       end do
       !$OMP END PARALLEL DO
