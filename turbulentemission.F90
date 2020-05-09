@@ -18,8 +18,9 @@ contains
     implicit none
 
     integer(HID_T) :: file_id
-    integer :: numg, numt, numf, i, k, j, l, herror
-    real(dp) :: tstep, tmax, numin, numax, gmin, gmax, sig, gam0, Gamma0, Gamma2, Gammah, Gammaa, va, Rva, kk, tc, R, B_lab, B_co, th, thss, n0, Bulk_lorentz, l_rho, rho, nuext,Uph,Uph_co
+    integer :: numg, numt, numf, i, k, j, l, herror, case
+    real(dp) :: tstep, tmax, numin, numax, gmin, gmax, sig, gam0, Gamma0, Gamma2, Gammah, Gammaa, va, Rva, kk, tc, R, B_lab, B_co, th, thss, n0, Bulk_lorentz, l_rho, rho, nuext,Uph,Uph_co,tcm,t2,&
+      tcorg
     real(dp), allocatable, dimension(:) :: t, dt, Ap, Dpp, Diff, gdotty, g, dg, total, nuj, dnuj, tempg,tempnu, Rarray, Mgam, zero1, zero2,U, Inu
     real(dp), allocatable, dimension(:, :) :: n1, jmbs, jic, ambs,jssc
 
@@ -30,10 +31,12 @@ contains
     numt =300
     numf = 256
 
+
+    tcm=1d0
     gmin=1.01d0
     gmax =1.5d10
-    tmax = 1.5d0
-    tstep = 1d-2
+    tmax = tcm*1.5d0*(0.9d-1)
+    tstep = (1/tcm)*1d-2
 
 
     allocate(g(numg),t(0:numt),dt(numt), zero1(numg), zero2(numg), Diff(numg), gdotty(numg), dg(numg),total(numg), Ap(numg), Dpp(numg),nuj(numf), dnuj(numf), tempnu(numf), tempg(numg),Mgam(0:numt),Rarray(1),U(numt), Inu(numf))
@@ -70,30 +73,67 @@ contains
     Bulk_lorentz=10
 
     !zhdankin parameters
-    l_rho = 60.4
+  case=3
+
+    if ( case==1 ) then
+      l_rho = 28.3d0!m
+      kk=0.033d0
+      sig=0.9d0
+      Gamma0=1.8d0
+      Gammah=-3d0
+      Gammaa=-8d0
+      tcorg=0.64364707632293250
+    end if
+
+    if ( case==2 ) then
+      l_rho = 29.6d0!t
+      kk=0.014d0
+      sig=0.2d0
+      Gamma0=3d0
+      Gammah=-1d0
+      Gammaa=-20d0
+      tcorg=10.834077215078819
+    end if
+
+    if ( case==3 ) then
+      !l_rho = 38.9d0!b
+      l_rho=39.1d0
+      kk=0.058d0
+      sig=3.4d0
+      Gamma0=1.4d0
+      Gammah=-5d0
+      Gammaa=-3.5d0
+      tcorg=9.4823251949348333E-002
+    end if
+
     th = 1d2
     thss=75d0
-    kk=0.033
-    sig=0.9d0
     gam0=3d2
-    Gamma0=1.8d0
     Gamma2=Gamma0
-    Gammah=-3d0
-    Gammaa=-8d0
     va=cLight*((sig/(sig+1d0))**0.5d0)
-    tc=(1/LOG(kk)) +1
+
     !R=(1d0)*tc*sig*va/4
-    B_lab = dsqrt(sig*16*Pi*n0*gam0*mass_e*(cLight**2)/3)
+    B_lab = dsqrt(sig*16*Pi*n0*gam0*mass_e*(cLight**2)/3)*(0.5)
     rho=gam0*mass_e*(cLight**2)/(eCharge*B_lab)
     R=l_rho*rho*2*Pi !!stay ar
     Rva=R/va
+
+    t2=(((dsqrt(2d0)/3d0)*((1d0-((va/cLight)**2d0))**-1d0)*((va/cLight)**2d0)*(cLight/(1.85d0*R)))**(-1))
+    !tc=(1/LOG(kk)) +1
+    tc=4d0*R/(sig*va)
+    tc=tc
+    t2=t2
+
     Rarray(1)=R
     Ap=(Gammah*gam0 + Gammaa*g)/tc
-    Dpp=(Gamma0*(gam0**2) + Gamma2*(g**2))/tc
+    !Dpp=(Gamma0*(gam0**2) + Gamma2*(g**2))/tc
     Uph=mass_e*cLight*sig*va/(16d0*sigmaT*(75d0)*R)
 
+    Dpp=((g**2d0)/t2)+((gam0**2d0)/t2)
+
     !distribution parameters
-    gdotty= (-1d0)*(Ap + (1)*2d0*Gamma2*g/tc + 2d0*Dpp/g - (g**2)/(gam0*tc))
+    !gdotty= (-1d0)*(Ap + (1)*2d0*Gamma2*g/tc + 2d0*Dpp/g - (g**2)/(gam0*tc))
+    gdotty= (-1d0)*(Ap + (1)*2d0*g/t2 + 2d0*Dpp/g - (g**2)/(gam0*tc))
     Diff = 2*Dpp
     n1(0, :) = RMaxwell_v(g,th)
 
@@ -113,7 +153,7 @@ contains
 
       do l=2, numg
         total(l-1) = (n1(i,l-1)+n1(i,l))*dg(l-1)/2d0
-        tempg(l-1) = (g(l-1)*n1(i,l-1)+n1(i,l)*g(l))*dnuj(l-1)/2d0
+        tempg(l-1) = (g(l-1)*n1(i,l-1)+n1(i,l)*g(l))*dg(l-1)/2d0
       end do
 
       Mgam(i)=sum(tempg)
@@ -127,9 +167,9 @@ contains
       do j = 1, numf
 
 
-         call mbs_emissivity(jmbs(i,j),nuj(j), g, n1(i,:), B_co)
+         !call mbs_emissivity(jmbs(i,j),nuj(j), g, n1(i,:), B_co)
          !!ssc needs to be in a seperate loop
-         call mbs_absorption(ambs(i,j),nuj(j), g, n1(i,:), B_co)
+         !call mbs_absorption(ambs(i,j),nuj(j), g, n1(i,:), B_co)
 
 
 
@@ -139,13 +179,13 @@ contains
 
 
       !radiation transfer
-      call RadTrans_blob(Inu, R, jmbs(i, :), ambs(i, :))
+    !call RadTrans_blob(Inu, R, jmbs(i, :), ambs(i, :))
 
 
       !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
       !$OMP& PRIVATE(j)
       do j = 1, numf
-        call IC_iso_powlaw(jssc(i,j),nuj(j), nuj,Inu, n1(i,:), g)
+        !call IC_iso_powlaw(jssc(i,j),nuj(j), nuj,Inu, n1(i,:), g)
         !call IC_iso_monochrom(jic(i,j), nuj(j), Uph, nuext, n1(i,:), g)
       end do
     ! $OMP END PARALLEL DO
@@ -161,9 +201,11 @@ contains
 
 
     end do time_loop
+    write(*,*)"TC: ",tc
+    write(*,*)"T2: ",t2
 
     call h5open_f(herror)
-    call h5io_createf("/media/sf_vmshare/n0_1_sscwabs_turbulentemission_fig17m.h5", file_id, herror)
+    call h5io_createf("/media/sf_vmshare/diffusionparamofig17b2.h5", file_id, herror)
     call h5io_wdble1(file_id, 'R', Rarray, herror)
     call h5io_wdble1(file_id, 'time', t(1:), herror)
     call h5io_wdble1(file_id, 'Mgam', Mgam, herror)
