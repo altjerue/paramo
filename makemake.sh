@@ -1,3 +1,3 @@
 make clean
-make xturbulentemission
-./xturbulentemission
+make xcommissorecreation
+./xcommissorecreation

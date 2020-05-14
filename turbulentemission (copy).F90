@@ -27,16 +27,16 @@ contains
 
     mfp=1.5d0!1.85d0
 
-    numg=128*2
+    numg=128
     numt =300
-    numf = 500
+    numf = 256
 
 
     tcm=1d0
     gmin=1.01d0
-    gmax =1.5d10*(1d25)
-    tmax = tcm*1.5d0 * (1d2)
-    tstep = (1/tcm)*1d-2*(1d-6)
+    gmax =1.5d10*(1d10)
+    tmax = tcm*1.5d0 * (9d0)
+    tstep = (1/tcm)*1d-2!*(1d-4)
 
 
     allocate(g(numg),t(0:numt),dt(numt), zero1(numg), zero2(numg), Diff(numg), gdotty(numg), dg(numg),total(numg), Ap(numg), Dpp(numg),nuj(numf), dnuj(numf), tempnu(numf), tempg(numg),Mgam(0:numt),Rarray(1),U(numt), Inu(numf))
@@ -158,13 +158,6 @@ contains
       t(i) = tstep * ( (tmax / tstep)**(dble(i - 1) / dble(numt - 1)) )
       dt(i) = t(i) - t(i - 1)
       write(*,*) "test1"
-
-      if(t(i)>= tc*1.5d0)  then
-        write(*,*) "COOLING"
-        Diff=zero1
-        gdotty=((g**2)/(gam0*tc))+((2/3)*g/Rva)
-      end if
-
       call FP_FinDif_difu(dt(i), g, n1(i - 1, :), n1(i, :), gdotty, Diff, zero2, 1d200, R / cLight)
 
       do l=2, numg
@@ -183,7 +176,7 @@ contains
       do j = 1, numf
 
 
-         call mbs_emissivity(jmbs(i,j),nuj(j), g, n1(i,:), B_co)
+         !call mbs_emissivity(jmbs(i,j),nuj(j), g, n1(i,:), B_co)
          !!ssc needs to be in a seperate loop
          !call mbs_absorption(ambs(i,j),nuj(j), g, n1(i,:), B_co)
 
@@ -221,7 +214,7 @@ contains
     write(*,*)"T2: ",t2
 
     call h5open_f(herror)
-    call h5io_createf("/media/sf_vmshare/fig17mtcooling.h5", file_id, herror)
+    call h5io_createf("/media/sf_vmshare/test.h5", file_id, herror)
     call h5io_wdble1(file_id, 'R', Rarray, herror)
     call h5io_wdble1(file_id, 'time', t(1:), herror)
     call h5io_wdble1(file_id, 'Mgam', Mgam, herror)
