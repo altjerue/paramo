@@ -21,10 +21,10 @@ contains
 
     integer(HID_T) :: file_id
     integer :: numg, numt, numf, i, k, j, l, herror, case
-    real(dp) :: tstep, tmax, numin, numax, gmin, gmax, sig, gam0, va, Rva, R, B_lab, B_co, th, thss, n0, Bulk_lorentz, l_de0, rho, nuext,Uph,Uph_co,tcm,t2,&
-      tcorg,mfp,de0,delB0_B0,sigma0,th0,gamth0,w0,wp0,K3
+    real(dp) :: tstep, tmax, numin, numax, gmin, gmax, sig, gam0, va, Lva, LL, B_lab, B_co, th, thss, n0, Bulk_lorentz, L_de0, nuext,Uph,Uph_co,tcm,&
+      tcorg,mfp,de0,delB0_B0,sigma0,th0,gamth0,w0,wp0,K3,N
     real(dp), allocatable, dimension(:) :: t, dt, Dpp, Diff, gdotty, g, dg, total, nuj, dnuj, tempg,tempnu, Rarray, Mgam, zero1, zero2,U, Inu,&
-      wpprime,vparprime, wp, vpar
+      wpprime,vparprime, wp, vpar, rho, t2
     real(dp), allocatable, dimension(:, :) :: n1, jmbs, jic, ambs,jssc
 
 
@@ -37,12 +37,12 @@ contains
 
 
     tcm=1d0
-    gmin=1.01d0
-    gmax =1.5d5
+    gmin=1.0001d0
+    gmax =1.5d15
 
 
     allocate(g(numg),t(0:numt),dt(numt), zero1(numg), zero2(numg), Diff(numg), gdotty(numg), dg(numg),total(numg), Dpp(numg),nuj(numf), dnuj(numf), tempnu(numf), tempg(numg),Mgam(0:numt),Rarray(1),U(numt),&
-     Inu(numf),wp(numg),vpar(numg),wpprime(numg),vparprime(numg))
+     Inu(numf),wp(numg),vpar(numg),wpprime(numg),vparprime(numg),rho(numg),t2(numg))
 
     allocate(n1(0:numt, numg), jmbs(0:numt,numf),jic(0:numt,numf),jssc(0:numt,numf),ambs(0:numt,numf))
 
@@ -70,11 +70,11 @@ contains
     end do build_nuj
 
     !comisso parameters
-    l_de0=820
+    L_de0=820
     sigma0=10
     delB0_B0=1
     th0=3d-1
-
+    N=4
 
     zero1 = 1d-200
     zero2 = 0d0
@@ -89,33 +89,35 @@ contains
     gamth0=w0-th0
     wp0=dsqrt(4*Pi*n0*(eCharge**2)/(gamth0*mass_e))
     B_lab = dsqrt(sig*4*Pi*w0*mass_e*(cLight**2))
-    !rho=gamth0*mass_e*(cLight**2)/(eCharge*B_lab)
+    rho=g*mass_e*(cLight**2)/(eCharge*B_lab)
     de0=cLight/wp0
-    R=l_de0*de0
-    Rva=R/va
-    Rarray(1)=R
+    LL=L_de0*de0
+    Lva=LL/va
+    Rarray(1)=LL
     vpar=cLight*dsqrt(1-(1/(g**2)))
     wp=dsqrt(4*Pi*n0*(eCharge**2)/(g*mass_e))
     wpprime=dsqrt(4*Pi*n0*(eCharge**2)/(mass_e))*(-0.5d0*(g**(-1.5d0)))
     vparprime=2*(cLight**2)/(vpar*(g**3))
 
 
-    tmax = tcm*10d0*R/cLight
+    tmax = tcm*12d0*LL/cLight
     tstep = (1/tcm)*1d-2
 
     !distribution parameters
-    t2=(((1d0/3d0)*((1d0-((va/cLight)**2d0))**-1d0)*((va/cLight)**2d0)*(cLight/(mfp*2*Pi)))**(-1))
+    t2=(((1d0/3d0)*((1d0-((va/cLight)**2d0))**-1d0)*((va/cLight)**2d0)*(cLight*N/(mfp*rho)))**(-1))
     !Dpp=(g**2)*wp/(t2*vpar)
-    Dpp=0.1d0*(sig*(cLight/R)*(g**2))
+    !Dpp=0.1d0*(sig*(cLight/R)*(g**2))
+    Dpp=(g**2)/t2
     !gdotty= (-1d0)*(2d0*g*wp/(t2*vpar) + ((g**2)/t2)*((wpprime/vpar) - wp*vparprime/(vpar**2)) + 2d0*Dpp/g)
-    gdotty=(-1d0)*(2d0*Dpp/g + 0.1d0*(sig*(cLight/R)*(g*2d0)))/mfp
-    Diff = 2*Dpp/mfp
+    !gdotty=(-1d0)*(2d0*Dpp/g + 0.1d0*(sig*(cLight/R)*(g*2d0)))/mfp
+    gdotty= (-1d0)*(1d0/t2 + 2d0*Dpp/g)
+    Diff = 2*Dpp!/mfp
     n1(0, :) = n0*RMaxwell_v(g,th0)
 
 
 
 
-    write(*,*) "tmax: ", tmax, "sig: ", sig,"R: ",R,"B_lab: ", B_lab, "Theta: ", Th,"va: ",va,"sigmaT",sigmaT
+    write(*,*) "tmax: ", tmax, "sig: ", sig,"L: ",LL,"B_lab: ", B_lab, "Theta: ", Th,"va: ",va,"sigmaT",sigmaT
 
     time_loop: do i = 1, numt
 
@@ -130,7 +132,7 @@ contains
     !    gdotty=((g**2)/(gam0*tc))+((2/3)*g/Rva)
     !  end if
 
-      call FP_FinDif_difu(dt(i), g, n1(i - 1, :), n1(i, :), gdotty, Diff, zero2, 1d200, R / cLight)
+      call FP_FinDif_difu(dt(i), g, n1(i - 1, :), n1(i, :), gdotty, Diff, zero2, 1d200, LL / cLight)
 
       do l=2, numg
         total(l-1) = (n1(i,l-1)+n1(i,l))*dg(l-1)/2d0
@@ -173,7 +175,7 @@ contains
           tempnu(j-1) = (jmbs(i,j-1)+jmbs(i,j))*dnuj(j-1)/2d0
       end do
         !!!!!energy density
-      U(i)=(sum(tempnu)/(nuj(numf)-nuj(1)))*(4/3)*Pi*(R**3)*(R/cLight)
+      U(i)=(sum(tempnu)/(nuj(numf)-nuj(1)))*(4/3)*Pi*(LL**3)*(LL/cLight)
 
 
       write(*,*) "# of particles ",sum(total),"iteration: ",i,"B_co ", B_co, "Mgam ",Mgam(i), " Energy Density: ",U(i),"Magnetic Energy Density: ",((B_co)**2)/(8*Pi),"Uph ",Uph_co
