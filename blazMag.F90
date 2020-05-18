@@ -25,7 +25,8 @@ subroutine blazMag(params_file, output_file, cool_withKN, with_abs)
    real(dp) :: uB, uext, R, gmin, gmax, numin, numax, pind, B, D, g1, g2, &
       tstep, Qnth, tmax, d_lum, z, tinj, gamma_bulk, theta_obs, Rdis, &
       mu_obs, nu_ext, tesc, tlc, mu_mag, L_jet, volume, sigma, beta_bulk, L_B, &
-      eps_B, f_rec, urad_const, f_esc, eps_acc, L_e
+      eps_B, f_rec, urad_const, f_esc, eps_acc
+   real(dp) :: L_e, Qnth2, Qnth3
    real(dp), allocatable, dimension(:) :: freqs, t, Ntot, Inu, gg, dt, nu_obs, &
       t_obs, dg, urad
    real(dp), allocatable, dimension(:,:) :: dotg, nn, jnut, jmbs, jssc, jeic, &
@@ -112,7 +113,7 @@ subroutine blazMag(params_file, output_file, cool_withKN, with_abs)
    else
       g1 = par_g1
       g2 = par_g2
-      ! g2 = dsqrt(6d0 * pi * eCharge * 1d-3 / (sigmaT * B))
+!       g2 = dsqrt(6d0 * pi * eCharge * 1d-3 / (sigmaT * B))
    end if
 
    volume = 4d0 * pi * R**3 / 3d0
@@ -121,9 +122,10 @@ subroutine blazMag(params_file, output_file, cool_withKN, with_abs)
    tinj = tlc
 
    L_e = f_rec * L_B / (1.5d0 * beta_bulk * gamma_bulk * (gamma_bulk - 1d0))
-   Qnth = f_rec * uB * pwl_norm(tlc * energy_e, pind - 1d0, g1, g2)
-   ! Qnth = f_rec * L_B * pwl_norm(1.5d0 * beta_bulk * gamma_bulk * (gamma_bulk - 1d0) * volume * energy_e, pind - 1d0, g1, g2)
-
+!   Qnth = f_rec * uB * pwl_norm(tlc * energy_e, pind - 1d0, g1, g2)
+   Qnth = f_rec * L_B * pwl_norm(1.5d0 * beta_bulk * gamma_bulk * (gamma_bulk - 1d0) * volume * energy_e, pind - 1d0, g1, g2)
+   Qnth2 = f_rec * L_B * pwl_norm(volume * energy_e, pind - 1d0, g1, g2)
+   Qnth3 = f_rec * L_B / ( (g1**(2d0 - pind) * Pinteg(g2 / g1, pind - 1d0, 1d-6) - g1**(1d0 - pind) * Pinteg(g2 / g1, pind, 1d-6)) * 1.5d0 * beta_bulk * gamma_bulk * (gamma_bulk - 1d0) * volume * energy_e )
 
    ! ----->   Output with initial setup
    write(*, "('--> Simulation setup')")
@@ -135,9 +137,10 @@ subroutine blazMag(params_file, output_file, cool_withKN, with_abs)
    write(*, "('L_B       =', ES15.7)") L_B
    write(*, "('L_e       =', ES15.7)") L_e
    write(*, "('L_e,2     =', ES15.7)") Qnth * volume * energy_e
+   write(*, "('L_e,3     =', ES15.7)") Qnth2 * volume * energy_e
    write(*, "('Q_nth     =', ES15.7)") Qnth
-!   write(*, "('Q_nth_alt =', ES15.7)") f_rec * L_B * pwl_norm(1.5d0 * beta_bulk * gamma_bulk * (gamma_bulk - 1d0) * volume * energy_e, pind - 1d0, g1, g2)
-   write(*, "('Q_nth_alt =', ES15.7)") f_rec * L_B / ( (g1**(2d0 - pind) * Pinteg(g2 / g1, pind - 1d0, 1d-6) - g1**(1d0 - pind) * Pinteg(g2 / g1, pind, 1d-6)) * 1.5d0 * beta_bulk * gamma_bulk * (gamma_bulk - 1d0) * volume * energy_e )
+   write(*, "('Q_nth_old =', ES15.7)") Qnth2
+   write(*, "('Q_nth_alt =', ES15.7)") Qnth3
    write(*, "('u_B       =', ES15.7)") uB
    write(*, "('B         =', ES15.7)") B
    write(*, "('u_ext     =', ES15.7)") par_uext
@@ -150,7 +153,7 @@ subroutine blazMag(params_file, output_file, cool_withKN, with_abs)
    write(*, "('t_inj     =', ES15.7)") tinj
    write(*, "('R_b       =', ES15.7)") R
 
-   build_f: do j=1,numdf
+   build_f: do j=1, numdf
       nu_obs(j) = numin * ( (numax / numin)**(dble(j - 1) / dble(numdf - 1)) )
       freqs(j) = nu_com_f(nu_obs(j), z, D)
    end do build_f
@@ -165,7 +168,8 @@ subroutine blazMag(params_file, output_file, cool_withKN, with_abs)
    t(0) = 0d0
    dotg(:, 0) = urad_const * (uB + uext) * pofg(gg)**2
    Ddiff(:, 0) = 1d-200
-   Qinj(:, 0) = injection_pwl(0d0, tinj, gg, g1, g2, pind, Qnth)
+
+   Qinj(:, 0) = injection_pwl(0d0, tinj, gg, g1, g2, pind, Qnth3)
    nn(:, 0) = Qinj(:, 0)
 
    write(*, "('--> Calculating the emission')")
@@ -288,7 +292,7 @@ subroutine blazMag(params_file, output_file, cool_withKN, with_abs)
    call h5io_wdble0(group_id, 'redshift', z, herror)
    call h5io_wdble0(group_id, 'Gamma_bulk', gamma_bulk, herror)
    call h5io_wdble0(group_id, 'sigma', sigma, herror)
-   call h5io_wdble0(group_id, 'theta_obs', par_theta_obs, herror)
+   call h5io_wdble0(group_id, 'theta_obs_deg', par_theta_obs, herror)
    call h5io_wdble0(group_id, 'gamma_min', gmin, herror)
    call h5io_wdble0(group_id, 'gamma_max', gmax, herror)
    call h5io_wdble0(group_id, 'gamma_1', g1, herror)
@@ -304,8 +308,18 @@ subroutine blazMag(params_file, output_file, cool_withKN, with_abs)
    !----->   Saving data
    call h5io_wdble0(file_id, 't_inj', tinj, herror)
    call h5io_wdble0(file_id, 't_esc', tesc, herror)
-   call h5io_wdble0(file_id, 'Bfield', B, herror)
-   call h5io_wdble0(file_id, 'Q_nth', Qnth, herror)
+
+   call h5io_createg(file_id, "electrons-energy", group_id, herror)
+   call h5io_wdble0(group_id, 'Bfield', B, herror)
+   call h5io_wdble0(group_id, 'L_B', L_B, herror)          ! Eq. (8)
+   call h5io_wdble0(group_id, 'uB', uB, herror)            ! Eq. (9)
+   call h5io_wdble0(group_id, 'L_e', L_e, herror)          ! Eq. (10)
+   call h5io_wdble0(group_id, 'L_e2', f_rec * L_B, herror) ! old, wrong L_e
+   call h5io_wdble0(group_id, 'Q_nth', Qnth, herror)       ! Eq. (13)
+   call h5io_wdble0(group_id, 'Q_nth2', Qnth2, herror)     ! old, wrong Q0
+   call h5io_wdble0(group_id, 'Q_nth3', Qnth3, herror)     ! from full expresion of Eq. (12)
+   call h5io_closeg(group_id, herror)
+   
    call h5io_wdble1(file_id, 'time', t(1:), herror)
    call h5io_wdble1(file_id, 't_obs', t_obs, herror)
    call h5io_wdble1(file_id, 'nu', freqs, herror)
