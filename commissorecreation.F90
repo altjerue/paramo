@@ -29,16 +29,16 @@ contains
 
 
     !mfp=1.5d0!1.85d0
-    mfp=1d0
+    mfp=1d5
 
     numg=128
     numt =300
     numf = 300
 
 
-    tcm=1d0
+    tcm=1d1
     gmin=1.0001d0
-    gmax =1.5d15
+    gmax =1.5d5
 
 
     allocate(g(numg),t(0:numt),dt(numt), zero1(numg), zero2(numg), Diff(numg), gdotty(numg), dg(numg),total(numg), Dpp(numg),nuj(numf), dnuj(numf), tempnu(numf), tempg(numg),Mgam(0:numt),Rarray(1),U(numt),&
@@ -104,13 +104,13 @@ contains
     tstep = (1/tcm)*1d-2
 
     !distribution parameters
-    t2=(((1d0/3d0)*((1d0-((va/cLight)**2d0))**-1d0)*((va/cLight)**2d0)*(cLight*N/(mfp*rho)))**(-1))
+    t2=(((1d0/3d0)*((1d0-((va/cLight)**2d0))**-1d0)*((va/cLight)**2d0)*(cLight/(mfp*((rho)))))**(-1))
     !Dpp=(g**2)*wp/(t2*vpar)
-    !Dpp=0.1d0*(sig*(cLight/R)*(g**2))
-    Dpp=(g**2)/t2
+    !Dpp=1d-1*(sig*(cLight*N/LL)*(g**2))
+    Dpp=(1d0)*(g**3)/t2
     !gdotty= (-1d0)*(2d0*g*wp/(t2*vpar) + ((g**2)/t2)*((wpprime/vpar) - wp*vparprime/(vpar**2)) + 2d0*Dpp/g)
-    !gdotty=(-1d0)*(2d0*Dpp/g + 0.1d0*(sig*(cLight/R)*(g*2d0)))/mfp
-    gdotty= (-1d0)*(1d0/t2 + 2d0*Dpp/g)
+    !gdotty=(-1d0)*(2d0*Dpp/g + (1d-1*sig*(cLight*N/LL)*(g*2d0)))!/mfp
+    gdotty= (-1d0)*(2d0*g/t2 + 2d0*Dpp/g)
     Diff = 2*Dpp!/mfp
     n1(0, :) = n0*RMaxwell_v(g,th0)
 

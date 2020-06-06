@@ -1,4 +1,4 @@
-    program turbulentemission
+program turbulentemission
 
   use dist_evol
   use h5_inout
@@ -21,25 +21,25 @@ contains
     integer :: numg, numt, numf, i, k, j, l, herror, case
     real(dp) :: tstep, tmax, numin, numax, gmin, gmax, sig, gam0, Gamma0, Gamma2, Gammah, Gammaa, va, Rva, kk, tc, R, B_lab, B_co, th, thss, n0, Bulk_lorentz, l_rho, rho, nuext,Uph,Uph_co,tcm,t2,&
       tcorg,mfp
-    real(dp), allocatable, dimension(:) :: t, dt, Ap, Dpp, Diff, gdotty, g, dg, total, nuj, dnuj, tempg,tempnu, Rarray, Mgam, zero1, zero2,U, Inu
+    real(dp), allocatable, dimension(:) :: t, dt,Q0, Ap, Dpp, Diff, gdotty, g, dg, total, nuj, dnuj, tempg,tempnu, Rarray, Mgam, zero1, zero2,U, Inu
     real(dp), allocatable, dimension(:, :) :: n1, jmbs, jic, ambs,jssc
 
 
     mfp=1.5d0!1.85d0
+    mfp=4d0
 
-    numg=128*2
+    numg=128
     numt =300
-    numf = 500
+    numf = 256
 
 
     tcm=1d0
-    gmin=1.01d0
-    gmax =1.5d10*(1d25)
-    tmax = tcm*1.5d0 * (1d1)
-    tstep = (1/tcm)*1d-2*(1d-6)
+    gmin=1.0001d0
+    gmax =1.5d10*(1d10)
 
 
-    allocate(g(numg),t(0:numt),dt(numt), zero1(numg), zero2(numg), Diff(numg), gdotty(numg), dg(numg),total(numg), Ap(numg), Dpp(numg),nuj(numf), dnuj(numf), tempnu(numf), tempg(numg),Mgam(0:numt),Rarray(1),U(numt), Inu(numf))
+
+    allocate(g(numg),t(0:numt),Q0(numg),dt(numt), zero1(numg), zero2(numg), Diff(numg), gdotty(numg), dg(numg),total(numg), Ap(numg), Dpp(numg),nuj(numf), dnuj(numf), tempnu(numf), tempg(numg),Mgam(0:numt),Rarray(1),U(numt), Inu(numf))
 
     allocate(n1(0:numt, numg), jmbs(0:numt,numf),jic(0:numt,numf),jssc(0:numt,numf),ambs(0:numt,numf))
 
@@ -73,7 +73,7 @@ contains
     Bulk_lorentz=10
 
     !zhdankin parameters
-  case=3
+  case=1
     if ( case==1 ) then
       l_rho = 28.3d0!m
       kk=0.033d0
@@ -124,7 +124,8 @@ contains
     tc=4d0*R/(sig*va)
 
 
-
+    tmax = tcm*1d0 *tc
+    tstep = (1/tcm)*1d-2!*(1d-4)
 
 
 
@@ -134,15 +135,28 @@ contains
     t2=t2
 
     Rarray(1)=R
-    Ap=(Gammah*gam0 + Gammaa*g)/tc
-    Dpp=(Gamma0*(gam0**2) + Gamma2*(g**2))/tc
+    !p=(Gammah*gam0 + Gammaa*g)/tc
+    !Dpp=(Gamma0*(gam0**2) + Gamma2*(g**2))/tc
+    !Gammah=-1.39d0*dlog(sig)-3.26d0
+    !Gammah=-6.5d0*((va/cLight)**2d0)
+    !Gammaa=-7.35d0*(sig**-0.6d0)
+    !Gammaa=(-1d0)*(9.8593d0)*((tc/t2)**1d0) + 10.25d0
+    !Gammah=(-1d0)*(10.5d0)*((t2/tc)**2d0)
+    !Gammaa=5.7987d0*dlog(sig) -9.4074
+    !Ap=(Gammah*gam0 + Gammaa*g)/tc
+    !Ap=(Gammaa*g)/tc
+    Ap=0d0
+
     Uph=mass_e*cLight*sig*va/(16d0*sigmaT*(thss)*R)
 
-    !Dpp=((g**2d0)/t2)+((gam0**2d0)/t2)
+    !Ap=(-1d-8)*(gam0 + g)*va/rho
+
+    Dpp=((g**2d0)/t2)+((gam0**2d0)/t2)
 
     !distribution parameters
-    gdotty= (-1d0)*(Ap + (1)*2d0*Gamma2*g/tc + 2d0*Dpp/g - (g**2)/(gam0*tc))
-    !gdotty= (-1d0)*(Ap + (1)*2d0*g/t2 + 2d0*Dpp/g - (g**2)/(gam0*tc))
+    !gdotty= (-1d0)*(Ap + (1)*2d0*Gamma2*g/tc + 2d0*Dpp/g - (g**2)/(gam0*tc))
+
+    gdotty= (-1d0)*(Ap + (1)*2d0*g/t2 + 2d0*Dpp/g - (g**2)/(gam0*tc))
     Diff = 2*Dpp
     n1(0, :) = RMaxwell_v(g,th)
 
@@ -159,17 +173,9 @@ contains
       dt(i) = t(i) - t(i - 1)
       write(*,*) "test1"
 
-      if(t(i)>= tc*1.5d0)  then
-        write(*,*) "COOLING"
-        Diff=Diff*((Rva/t(i))**(1d-3))
-        gdotty=(-1d0)*(Ap + (Diff-Diff*((t(i)/t(i-1))**1d-3))/dt(i) + Diff/(g) - (g**2)/(gam0*tc))
-        if(sum(n1(i-1,:))<1d-100) then
-          Diff=1d-200
-          gdotty=1d-200
-        end if
-      end if
-
-      call FP_FinDif_difu(dt(i), g, n1(i - 1, :), n1(i, :), gdotty, Diff, zero2, 1d200, R / cLight)
+      !Q0 = injection_pwl(t(i), 1d0*R/clight, g, g(numg-50), g(numg -1), abs((n1(i,numg-50) - n1(i,numg -1)) / (g(numg-50) - g(numg-1))), n0)
+      Q0=n1(i-1, :)*cLight/R
+      call FP_FinDif_difu(dt(i), g, n1(i - 1, :), n1(i, :), gdotty, Diff, Q0, R/cLight, R / cLight)
 
       do l=2, numg
         total(l-1) = (n1(i,l-1)+n1(i,l))*dg(l-1)/2d0
@@ -187,7 +193,7 @@ contains
       do j = 1, numf
 
 
-         call mbs_emissivity(jmbs(i,j),nuj(j), g, n1(i,:), B_co)
+         !call mbs_emissivity(jmbs(i,j),nuj(j), g, n1(i,:), B_co)
          !!ssc needs to be in a seperate loop
          !call mbs_absorption(ambs(i,j),nuj(j), g, n1(i,:), B_co)
 
@@ -221,11 +227,12 @@ contains
 
 
     end do time_loop
+    write(*,*) "Gyration time: ", 2d0*Pi*rho/(cLight*(dsqrt(1-(1/(gam0**2)))))
     write(*,*)"TC: ",tc
     write(*,*)"T2: ",t2
 
     call h5open_f(herror)
-    call h5io_createf("/media/sf_vmshare/turbulentemissioncoolingP_2b.h5", file_id, herror)
+    call h5io_createf("/media/sf_vmshare/test.h5", file_id, herror)
     call h5io_wdble1(file_id, 'R', Rarray, herror)
     call h5io_wdble1(file_id, 'time', t(1:), herror)
     call h5io_wdble1(file_id, 'Mgam', Mgam, herror)
