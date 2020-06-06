@@ -14,7 +14,7 @@ OPTIMIZATION=-O3 -ftree-vectorize -funroll-all-loops -ffree-form \
 
 COPT=-c $(OPTIMIZATION)
 
-TESTS=xcommissorecreation
+TESTS=xrun
 
 
 

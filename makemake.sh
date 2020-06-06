@@ -1,3 +1,3 @@
 make clean
-make xcommissorecreation
-./xcommissorecreation
+make xrun
+./xrun

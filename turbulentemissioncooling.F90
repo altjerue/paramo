@@ -19,7 +19,7 @@ contains
 
     integer(HID_T) :: file_id
     integer :: numg, numt, numf, i, k, j, l, herror, case
-    real(dp) :: tstep, tmax, numin, numax, gmin, gmax, sig, gam0, Gamma0, Gamma2, Gammah, Gammaa, va, Rva, kk, tc, R, B_lab, B_co, th, thss, n0, Bulk_lorentz, l_rho, rho, nuext,Uph,Uph_co,tcm,t2,&
+    real(dp) :: p,tstep, tmax, numin, numax, gmin, gmax, sig, gam0, Gamma0, Gamma2, Gammah, Gammaa, va, Rva, kk, tc, R, B_lab, B_co, th, thss, n0, Bulk_lorentz, l_rho, rho, nuext,Uph,Uph_co,tcm,t2,&
       tcorg,mfp
     real(dp), allocatable, dimension(:) :: t, dt, Ap, Dpp, Diff, gdotty, g, dg, total, nuj, dnuj, tempg,tempnu, Rarray, Mgam, zero1, zero2,U, Inu
     real(dp), allocatable, dimension(:, :) :: n1, jmbs, jic, ambs,jssc
@@ -33,7 +33,7 @@ contains
 
 
     tcm=1d0
-    gmin=1.01d0
+    gmin=1.000001d0
     gmax =1.5d10*(1d25)
     tmax = tcm*1.5d0 * (1d1)
     tstep = (1/tcm)*1d-2*(1d-6)
@@ -73,7 +73,7 @@ contains
     Bulk_lorentz=10
 
     !zhdankin parameters
-  case=3
+  case=1
     if ( case==1 ) then
       l_rho = 28.3d0!m
       kk=0.033d0
@@ -93,6 +93,7 @@ contains
       Gammah=-1d0
       Gammaa=-20d0
       tcorg=7.6608494666808964
+      tmax=tmax*1d1
     end if
 
     if ( case==3 ) then
@@ -147,7 +148,7 @@ contains
     n1(0, :) = RMaxwell_v(g,th)
 
 
-
+    p=0.5d0
 
     write(*,*) "tmax: ", tmax, "sig: ", sig,"tc: ",tc,"R: ",R,"B_lab: ", B_lab, "Theta: ", Th,"va: ",va,"sigmaT",sigmaT
 
@@ -161,9 +162,9 @@ contains
 
       if(t(i)>= tc*1.5d0)  then
         write(*,*) "COOLING"
-        Diff=Diff*((Rva/t(i))**(1d-3))
-        gdotty=(-1d0)*(Ap + (Diff-Diff*((t(i)/t(i-1))**1d-3))/dt(i) + Diff/(g) - (g**2)/(gam0*tc))
-        if(sum(n1(i-1,:))<1d-100) then
+        Diff=2*((Gamma0*(gam0**2) + Gamma2*(g**2))/tc)*((tc*1.5d0/t(i))**(p))
+        gdotty=(-1d0)*(Ap + 2*g*((tc*1.5d0/t(i))**(p))/tc + Diff/(g) - (g**2)/(gam0*tc))
+        if(sum(n1(i-1,:))<1d-10) then
           Diff=1d-200
           gdotty=1d-200
         end if
@@ -225,7 +226,7 @@ contains
     write(*,*)"T2: ",t2
 
     call h5open_f(herror)
-    call h5io_createf("/media/sf_vmshare/turbulentemissioncoolingP_2b.h5", file_id, herror)
+    call h5io_createf("/mnt/c/Users/zachk/Documents/Ubuntu/DataFiles/TEcoolingP_0_5m.h5", file_id, herror)
     call h5io_wdble1(file_id, 'R', Rarray, herror)
     call h5io_wdble1(file_id, 'time', t(1:), herror)
     call h5io_wdble1(file_id, 'Mgam', Mgam, herror)
