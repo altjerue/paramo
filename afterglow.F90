@@ -1,5 +1,4 @@
-subroutine afterglow(params_file, output_file, cool_withKN, ssa_boiler, &
-      with_wind, flow_kind, blob)
+subroutine afterglow(params_file, output_file, cool_withKN, ssa_boiler, with_wind, flow_kind, blob)
    use data_types
    use constants
    use params
