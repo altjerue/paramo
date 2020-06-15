@@ -346,11 +346,16 @@ contains
       read(c, *) d
    end function char2double
 
-   function zeros1D(n) result(a)
+   function zeros1D(n, small) result(a)
       implicit none
       integer, intent(in) :: n
+      logical, intent(in) :: small
       real(dp), dimension(n) :: a
-      a = 0d0
+      if (small) then
+         a = 1d-200
+      else
+         a = 0d0
+      end if
    end function zeros1D
 
 #if 0

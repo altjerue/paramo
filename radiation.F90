@@ -669,7 +669,7 @@ contains
       integer :: Nf
       real(dp), dimension(size(nu)) :: b, r, zero
       Nf = size(nu)
-      zero = zeros1D(Nf)
+      zero = zeros1D(Nf,.true.)
       r = nin + dt * QQ
       b = 1d0 + dt * (Loss + 1d0 / tesc)
       call tridag_ser(zero(2:), b, zero(2:), r, nout)
@@ -684,7 +684,7 @@ contains
       integer :: Nf
       real(dp), dimension(size(nu)) :: b, r, zero
       Nf = size(nu)
-      zero = zeros1D(Nf)
+      zero = zeros1D(Nf,.true.)
       b = 1d0 + dt * anu * cLight
       r = Iin + dt * jnu * cLight
       call tridag_ser(zero(2:), b, zero(2:), r, Iout)

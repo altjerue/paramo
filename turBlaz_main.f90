@@ -44,9 +44,3 @@ program turBlaz_main
     call turBlaz(trim(params_file), trim(output_file), with_cool, with_abs)
  
  end program turBlaz_main
- 
- 
- ! arguments:
- !
- !   - full_ssc_cooling
- !   - ssa_boiler

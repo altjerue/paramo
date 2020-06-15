@@ -52,6 +52,7 @@ program turbulentemission
    build_nuj: do j=1,numf
       nuj(j)=numin*( (numax/numin)**(dble(j-1)/dble(numf-1)) )
       if(j >= 1) dnuj(j)=nuj(j)-nuj(j-1)
+      !!!!!WARNING: Redundand conditional. Your're not skipping any case. Besides, I don't understand what is this line actually doing for the case j=1 since you don't define dnuj from 0.
    end do build_nuj
 
 
