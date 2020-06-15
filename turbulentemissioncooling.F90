@@ -29,8 +29,8 @@ program turbulentemission
    tmax=tcm*1.5d0*1d1
    tstep=(1d0/tcm)*1d-2*1d-6
 
-   !!!! NOTE: check GM notes for all values
-   !!!! NOTE: check GM notes for how tc is changed
+   !!!!!NOTE: check GM notes for all values
+   !!!!!NOTE: check GM notes for how tc is changed
 
 
    allocate(g(numg),t(0:numt),dt(numt),zero1(numg),zero2(numg),Diff(numg),&
@@ -119,12 +119,13 @@ program turbulentemission
 
    Rva=R/va ! <--- Alfven corssing time
 
-   !   ---> Eq. (A10) in Zhdankin et al. (2020). NOTE: they assume eta_inj=1
+   !   ---> Eq. (A10) in Zhdankin et al. (2020).
+   !!!!!NOTE: they assume eta_inj=1
    tc=4d0*R/(sig*va)
 
 
    !   ---> Following Eq. (39) from Comisso & Sironi (2019)
-   !!!!! FIXME
+   !!!!!FIXME
    t2=3d0*(mfp*cLight/R)/(gofb(va/cLight)*va/cLight)**2
    ! t2=(((dsqrt(2d0)/3d0)*((1d0-((va/cLight)**2d0))**-1d0)*((va/cLight)**2d0)*(cLight/(mfp*R)))**(-1))
 
@@ -238,6 +239,4 @@ program turbulentemission
    call h5io_closef(file_id,herror)
    call h5close_f(herror)
 
-
-   ! end subroutine distributionEmission
 end program turbulentemission
