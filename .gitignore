@@ -15,3 +15,5 @@ __pycache__
 *__genmod*
 *.xcodeproj
 *.xcworkspace
+.idea
+*.txt
