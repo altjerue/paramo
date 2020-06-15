@@ -626,8 +626,7 @@ contains
             uxi(k, j) = uu(j) * xi_c * gg(k)
          end do
       end do
-      !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
-      !$OMP& PRIVATE(k, j, uind, xi_rat, usum)
+      !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) PRIVATE(k,j,uind,xi_rat,usum)
       do k = 1, Ng
          usum = 0d0
          freqloop: do j = 1, Nf - 1

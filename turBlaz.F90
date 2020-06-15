@@ -24,8 +24,8 @@ subroutine turBlaz(params_file,output_file,cool_withKN,with_abs)
    integer :: i,j,k,numbins,numdf,numdt,time_grid,herror
    integer :: l,mtb_case
    real(dp) :: uB,uext,R,gmin,gmax,numin,numax,pind,D,g1,g2,tstep,Qnth,tmax,&
-         d_lum,z,tinj,gamma_bulk,theta_obs,Rdis,mu_obs,nu_ext,tesc,tlc,mu_mag,&
-         L_jet,volume,sigma,beta_bulk,L_B,urad_const,L_e
+         d_lum,z,tinj,gamma_bulk,theta_obs,Rdis,mu_obs,nu_ext,tesc,tlc,&
+         L_jet,volume,beta_bulk,urad_const
    real(dp) :: B_0,B_rms,gam0,Gamma0,Gamma2,Gammaa,Gammah,kk,l_rho,mfp,n0,p,&
          rho,Rva,sig,t2,tcm,tcorg,th,thss,uph,va,zero1,zero2,tc
    real(dp),allocatable,dimension(:) :: freqs,t,Ntot,Inu,g,dt,dg,urad,dfreq
@@ -101,7 +101,6 @@ subroutine turBlaz(params_file,output_file,cool_withKN,with_abs)
    theta_obs=par_theta_obs*pi/180d0 ! Observer viewing angle
    mu_obs=dcos(theta_obs)
    D=Doppler(gamma_bulk,mu_obs)        ! Doppler factor
-   R=par_R                              ! Radius of the blob
 
    ! ------------   zhdankin parameters   ------------
    !    Middle (1),top (2),bottom (3) panels in Fig. 17 from Zhdankin et al. (2020)
@@ -200,7 +199,7 @@ subroutine turBlaz(params_file,output_file,cool_withKN,with_abs)
    !gdotty= (-1d0)*(Ap+(1)*2d0*g/t2+2d0*Dpp/g-(g**2)/(gam0*tc))
    Diff(:,0)=2d0*Dpp
 
-   n1(:,0)=RMaxwell_v(g,th)
+   n1(:,0)=RMaxwell(g,th)
    !!!!!WARNING: The following expression is not normalized
    ! n1(:,0)=n0*dexp(-g/th)/(8d0*pi*(th*mass_e*cLight)**3)
 
@@ -211,18 +210,11 @@ subroutine turBlaz(params_file,output_file,cool_withKN,with_abs)
    write(*,"('--> Simulation setup')")
    write(*,"('theta_obs =',ES15.7)") par_theta_obs
    write(*,"('Doppler   =',ES15.7)") D
-   write(*,"('gamma_1   =',ES15.7)") g1
-   write(*,"('gamma_2   =',ES15.7)") g2
    write(*,"('L_jet     =',ES15.7)") L_jet
-   write(*,"('L_B       =',ES15.7)") L_B
-   write(*,"('L_e       =',ES15.7)") L_e
    write(*,"('Q_nth     =',ES15.7)") Qnth
    write(*,"('u_B       =',ES15.7)") uB
    write(*,"('B         =',ES15.7)") B_0
-   write(*,"('u_ext     =',ES15.7)") par_uext
    write(*,"('nu_ext    =',ES15.7)") par_nu_ext
-   write(*,"('sigma     =',ES15.7)") sigma
-   write(*,"('mu        =',ES15.7)") mu_mag
    write(*,"('Gamma     =',ES15.7)") gamma_bulk
    write(*,"('t_dyn     =',ES15.7)") tlc
    write(*,"('t_esc     =',ES15.7)") tesc
@@ -301,6 +293,9 @@ subroutine turBlaz(params_file,output_file,cool_withKN,with_abs)
       !$OMP END PARALLEL DO
 
       call RadTrans_blob(Inu,R,jmbs(:,i),ambs(:,i))
+      !---> energy density
+      call bolometric_integ(freqs,4d0*pi*Inu/cLight,ubol(i))
+      ! U(i)=(sum(tempnu)/(nuj(numdf)-nuj(1)))*(4/3)*Pi*(R**3)*(R/cLight)
 
       !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) PRIVATE(j)
       do j=1,numdf
@@ -314,9 +309,6 @@ subroutine turBlaz(params_file,output_file,cool_withKN,with_abs)
       do j=2,numdf
          tempnu(j-1)=(jmbs(j-1,i)+jmbs(j,i))*dfreq(j-1)/2d0
       end do
-      !!!!!energy density
-      ! U(i)=(sum(tempnu)/(nuj(numdf)-nuj(1)))*(4/3)*Pi*(R**3)*(R/cLight)
-      call bolometric_integ(freqs,jmbs(:,i)*dt(i),ubol(i))
 
    
       !   ####   ####   ####  #      # #    #  ####
@@ -339,7 +331,7 @@ subroutine turBlaz(params_file,output_file,cool_withKN,with_abs)
       Ntot(i)=sum((n1(:,i)+n1(:,i-1))*dg*0.5d0)!,mask=n1(:,i)>1d-200)
 
       if (mod(i,nmod)==0.or.i==1) &
-            write(*,on_screen) i,t(i),dt(i),Ntot(i)/Ntot(0),Ntot(i)
+            write(*,on_screen) i,t(i),ubol(i),Ntot(i)/Ntot(0),Ntot(i)
 
    end do time_loop
 
@@ -366,19 +358,18 @@ subroutine turBlaz(params_file,output_file,cool_withKN,with_abs)
    call h5io_wdble0(group_id,'d_lum',d_lum,herror)
    call h5io_wdble0(group_id,'redshift',z,herror)
    call h5io_wdble0(group_id,'Gamma_bulk',gamma_bulk,herror)
-   call h5io_wdble0(group_id,'sigma',sigma,herror)
+   call h5io_wdble0(group_id,'sigma',sig,herror)
    call h5io_wdble0(group_id,'theta_obs_deg',par_theta_obs,herror)
    call h5io_wdble0(group_id,'gamma_min',gmin,herror)
    call h5io_wdble0(group_id,'gamma_max',gmax,herror)
    call h5io_wdble0(group_id,'gamma_1',g1,herror)
    call h5io_wdble0(group_id,'gamma_2',g2,herror)
    call h5io_wdble0(group_id,'pwl-index',pind,herror)
-   call h5io_wdble0(group_id,'u_ext',par_uext,herror)
+   call h5io_wdble0(group_id,'u_ext',uph,herror)
    call h5io_wdble0(group_id,'nu_ext',par_nu_ext,herror)
    call h5io_wdble0(group_id,'L_jet',L_jet,herror)
    call h5io_wdble0(group_id,'nu_min',numin,herror)
    call h5io_wdble0(group_id,'nu_max',numax,herror)
-   call h5io_wdble0(group_id,'mu_mag',mu_mag,herror)
    call h5io_closeg(group_id,herror)
    !----->   Saving data
    call h5io_wdble0(file_id,'tc',tc,herror)

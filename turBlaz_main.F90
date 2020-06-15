@@ -3,11 +3,11 @@ program turBlaz_main
     use misc
     implicit none
     character(len=*), parameter :: args_error = "Usage:"//new_line('A')//&
-       '  xBlazMasg params_file KN-cool SSA-boiler with-wind flow-geom blob output-name'//new_line('A')//&
+       '  xTurBlaz params_file KN-cool SSAbs with-wind flow-geom blob output-name'//new_line('A')//&
        'Options:'//new_line('A')//&
        '  params_file     Parameters file'//new_line('A')//&
        '  KN-cool         Klein-Nishina cooling: T/F (True/False)'//new_line('A')//&
-       '  SSA heating     with self-absorption heating: T/F (True/False)'//new_line('A')//&
+       '  SSAbs           Synchrotron Self-Absorption: T/F (True/False)'//new_line('A')//&
        '  output-name     Name of the output file'//new_line('A')
     integer :: numArgs
     character(len=256) :: program_name, params_file, output_file, wCool, wAbs
