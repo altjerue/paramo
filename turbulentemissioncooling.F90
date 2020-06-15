@@ -212,7 +212,7 @@ program turbulentemission
          tempnu(j-1)=(jmbs(i,j-1)+jmbs(i,j))*dnuj(j-1)/2d0
       end do
       !!!!!energy density
-      U(i)=(sum(tempnu)/(nuj(numf)-nuj(1)))*(4/3)*Pi*(R**3)*(R/cLight)
+      U(i)=(sum(tempnu)/(nuj(numf)-nuj(1)))*(4d0/3d0)*Pi*(R**3)*(R/cLight)
 
 
       write(*,*) "# of particles ",sum(total),"iteration: ",i,"Mgam ",Mgam(i)," Energy Density: ",U(i),"Magnetic Energy Density: ",((B_0)**2)/(8*Pi),"Uph ",Uph_co

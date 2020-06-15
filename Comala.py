@@ -352,3 +352,37 @@ class Runner(object):
             print("\n--> Running:\n  ", run_cmd, "\n")
             os.system(run_cmd)
             print("\n--> Finished")
+
+    #
+    # ----->   turBlaz compilation and run
+    #
+    def run_turBlaz(self, cmd_args=(None, None), pream=None, clean=False, cl=False):
+        if cmd_args[0] is None or cmd_args[0] is False:
+            wCool = False
+        else:
+            wCool = True
+        if cmd_args[1] is None or cmd_args[1] is False:
+            wAbs = False
+        else:
+            wAbs = True
+
+        comp = compiler(rules='xTurBlaz', **self.comp_kw)
+
+        if clean:
+            comp.cleanup()
+        comp.compile()
+        outfile = self.flabel + '.jp.h5'
+
+        if pream is None:
+            run_cmd = '{0}xTurBlaz {1} {2} {3} {4}'.format(comp.compile_dir, self.par.params_file, wCool, wAbs, outfile)
+        else:
+            run_cmd = '{0} {1}xTurBlaz {2} {3} {4} {5}'.format(pream, comp.compile_dir, self.par.params_file, wCool, wAbs, outfile)
+        print("\n--> Parameters:")
+        os.system("cat -n " + self.par.params_file)
+        if cl:
+            print("\n--> Running:\n  ", run_cmd, "\n")
+            return run_cmd
+        else:
+            print("\n--> Running:\n  ", run_cmd, "\n")
+            os.system(run_cmd)
+            print("\n--> Finished")

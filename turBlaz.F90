@@ -23,7 +23,7 @@ subroutine turBlaz(params_file,output_file,cool_withKN,with_abs)
    integer(HID_T) :: file_id,group_id
    integer :: i,j,k,numbins,numdf,numdt,time_grid,herror
    integer :: l,mtb_case
-   real(dp) :: uB,uext,R,gmin,gmax,numin,numax,pind,B,D,g1,g2,tstep,Qnth,tmax,&
+   real(dp) :: uB,uext,R,gmin,gmax,numin,numax,pind,D,g1,g2,tstep,Qnth,tmax,&
          d_lum,z,tinj,gamma_bulk,theta_obs,Rdis,mu_obs,nu_ext,tesc,tlc,mu_mag,&
          L_jet,volume,sigma,beta_bulk,L_B,urad_const,L_e
    real(dp) :: B_0,B_rms,gam0,Gamma0,Gamma2,Gammaa,Gammah,kk,l_rho,mfp,n0,p,&
@@ -45,8 +45,8 @@ subroutine turBlaz(params_file,output_file,cool_withKN,with_abs)
    call read_params(params_file)
    d_lum=par_d_lum
    z=par_z
-   tstep=par_tstep
-   tmax=par_tmax
+   ! tstep=par_tstep
+   ! tmax=par_tmax
    L_jet=par_L_j
    gamma_bulk=par_gamma_bulk
    gmin=par_gmin
@@ -59,10 +59,11 @@ subroutine turBlaz(params_file,output_file,cool_withKN,with_abs)
    time_grid=par_time_grid
 
 
-   allocate(t(0:numdt),freqs(numdf),Ntot(numdt),Inu(numdf),dfreq(numdf),&
-         dt(numdt),dg(numbins),urad(numbins),tempg(numbins),tempnu(numdf),&
-         Ap(numbins),Dpp(numbins),total(numbins),Mgam(numbins),ubol(numdt))
-   allocate(n1(numbins,0:numdt),gdotty(numbins,0:numdt),g(numbins),&
+   allocate(t(0:numdt),freqs(numdf),Ntot(0:numdt),g(numbins),dfreq(numdf),&
+         dt(numdt),Inu(numdf),dg(numbins),urad(numbins))
+   allocate(tempg(numbins),tempnu(numdf),Ap(numbins),Dpp(numbins),ubol(numdt),&
+         total(numbins),Mgam(numdt))
+   allocate(n1(numbins,0:numdt),gdotty(numbins,0:numdt),&
          ambs(numdf,numdt),jmbs(numdf,numdt),jnut(numdf,numdt),&
          jssc(numdf,numdt),anut(numdf,numdt),jeic(numdf,numdt),&
          Qinj(numbins,numdt),Diff(numbins,0:numdt))
@@ -124,11 +125,11 @@ subroutine turBlaz(params_file,output_file,cool_withKN,with_abs)
       Gammah=-1d0
       Gammaa=-20d0
       tcorg=7.6608494666808964d0
-      tmax=tmax*1d1
+      ! tmax=tmax*1d1
       mtb_label="t"
    case(3)
-      !l_rho=38.9d0!b
-      l_rho=39.1d0
+      !l_rho=38.9d0
+      l_rho=39.1d0!b
       kk=0.058d0
       sig=3.4d0
       Gamma0=1.4d0
@@ -170,7 +171,8 @@ subroutine turBlaz(params_file,output_file,cool_withKN,with_abs)
    !   ---> Eq. (A10) in Zhdankin et al. (2020).
    !!!!!NOTE: they assume eta_inj=1
    tc=4d0*R/(sig*va)
-
+   tmax=tc*1d0
+   tstep=tc*1e-3
 
    !   ---> Following Eq. (39) from Comisso & Sironi (2019)
    !!!!!FIXME
@@ -186,7 +188,7 @@ subroutine turBlaz(params_file,output_file,cool_withKN,with_abs)
    ! Dpp=((g**2d0)/t2)+((gam0**2d0)/t2)
 
    !   ---> Following Eq. (7) in Zhdankin et al. (2020)
-   Uph=mass_e*cLight*sig*va/(16d0*sigmaT*thss *R)
+   uph=mass_e*cLight*sig*va/(16d0*sigmaT*thss *R)
    ! ----->    External radiation field
    nu_ext=par_nu_ext*gamma_bulk
    uext=par_uext*gamma_bulk**2*(1d0+beta_bulk**2/3d0) ! Eq. (5.25) Dermer & Menon (2009)
@@ -198,8 +200,9 @@ subroutine turBlaz(params_file,output_file,cool_withKN,with_abs)
    !gdotty= (-1d0)*(Ap+(1)*2d0*g/t2+2d0*Dpp/g-(g**2)/(gam0*tc))
    Diff(:,0)=2d0*Dpp
 
-   ! n1(0,:)=RMaxwell_v(g,th)
-   n1(0,:)=n0*dexp(-g/th)/( 8d0*pi*(th*mass_e*cLight)**3 )
+   n1(:,0)=RMaxwell_v(g,th)
+   !!!!!WARNING: The following expression is not normalized
+   ! n1(:,0)=n0*dexp(-g/th)/(8d0*pi*(th*mass_e*cLight)**3)
 
    p=0.5d0
 
@@ -215,7 +218,7 @@ subroutine turBlaz(params_file,output_file,cool_withKN,with_abs)
    write(*,"('L_e       =',ES15.7)") L_e
    write(*,"('Q_nth     =',ES15.7)") Qnth
    write(*,"('u_B       =',ES15.7)") uB
-   write(*,"('B         =',ES15.7)") B
+   write(*,"('B         =',ES15.7)") B_0
    write(*,"('u_ext     =',ES15.7)") par_uext
    write(*,"('nu_ext    =',ES15.7)") par_nu_ext
    write(*,"('sigma     =',ES15.7)") sigma
@@ -224,18 +227,23 @@ subroutine turBlaz(params_file,output_file,cool_withKN,with_abs)
    write(*,"('t_dyn     =',ES15.7)") tlc
    write(*,"('t_esc     =',ES15.7)") tesc
    write(*,"('t_inj     =',ES15.7)") tinj
-   !--------------------------------
+   ! -------------------------------
+   write(*,"('tc        =',ES15.7)") tc
+   write(*,"('tstep     =',ES15.7)") tstep
    write(*,"('tmax      =',ES15.7)") tmax
    write(*,"('sig       =',ES15.7)") sig
-   write(*,"('tc        =',ES15.7)") tc
    write(*,"('R         =',ES15.7)") R
    write(*,"('Theta     =',ES15.7)") Th
    write(*,"('va        =',ES15.7)") va
+   write(*,"('uph       =',ES15.7)") uph
+   Ntot(0)=sum(n1(:,0)*dg)!,mask=n1(:,i)>1d-200)
+   write(*,"('Ntot      =',ES15.7)") Ntot(0)
+
 
    write(*,"('--> Calculating the emission')")
    write(*,*) ''
    write(*,"('Using tstep =   ',F5.3)") tstep
-   write(*,"('Wrting data in: ',A)") trim(output_file)
+   write(*,"('Wrting data in: ',A)") trim(mtb_label)//trim(output_file)
    write(*,*) ''
    write(*,*) screan_head
 
@@ -269,15 +277,15 @@ subroutine turBlaz(params_file,output_file,cool_withKN,with_abs)
             &             tlc)
 
       do l=2,numbins
-         total(l-1)=(n1(i,l-1)+n1(i,l))*dg(l-1)/2d0
-         tempg(l-1)=(g(l-1)*n1(i,l-1)+n1(i,l)*g(l))*dg(l-1)/2d0
+         total(l-1)=(n1(l-1,i)+n1(l,i))*dg(l-1)/2d0
+         tempg(l-1)=(g(l-1)*n1(l-1,i)+n1(l,i)*g(l))*dg(l-1)/2d0
       end do
 
       Mgam(i)=sum(tempg)
       tempg=0
       ! B_co=B_lab!*Bulk_lorentz
       ! Uph_co=Uph!*(Bulk_lorentz**2)
-      
+
 
       !  #####    ##   #####  #   ##   ##### #  ####  #    #
       !  #    #  #  #  #    # #  #  #    #   # #    # ##   #
@@ -287,8 +295,8 @@ subroutine turBlaz(params_file,output_file,cool_withKN,with_abs)
       !  #    # #    # #####  # #    #   #   #  ####  #    #
       !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) PRIVATE(j)
       do j=1,numdf
-         call mbs_emissivity(jmbs(j,i),freqs(j),g,n1(:,i),B)
-         if (with_abs) call mbs_absorption(ambs(j,i),freqs(j),g,n1(:,i),B)
+         call mbs_emissivity(jmbs(j,i),freqs(j),g,n1(:,i),B_0)
+         if (with_abs) call mbs_absorption(ambs(j,i),freqs(j),g,n1(:,i),B_0)
       end do
       !$OMP END PARALLEL DO
 
@@ -308,30 +316,30 @@ subroutine turBlaz(params_file,output_file,cool_withKN,with_abs)
       end do
       !!!!!energy density
       ! U(i)=(sum(tempnu)/(nuj(numdf)-nuj(1)))*(4/3)*Pi*(R**3)*(R/cLight)
+      call bolometric_integ(freqs,jmbs(:,i)*dt(i),ubol(i))
 
-      call bolometric_integ(freqs,jmbs(:,i)*4d0*pi*R**3*dt(i)/3d0,ubol(i))
-
+   
       !   ####   ####   ####  #      # #    #  ####
       !  #    # #    # #    # #      # ##   # #    #
       !  #      #    # #    # #      # # #  # #
       !  #      #    # #    # #      # #  # # #  ###
       !  #    # #    # #    # #      # #   ## #    #
       !   ####   ####   ####  ###### # #    #  ####
-      gdotty(:,i)=0d0
-      if ( with_cool ) then
-         ! call bolometric_integ(freqs,4d0*pi*Inu/cLight,urad)
-         ! call RadTrans_blob(Inu,R,jssc(:,i)+jeic(:,i),anut(:,i))
-         call RadTrans_blob(Inu,R,jmbs(:,i),ambs(:,i))
-         call rad_cool(gdotty(:,i),g,freqs,4d0*pi*Inu/cLight,cool_withKN)
-      end if
-      gdotty(:,i)=gdotty(:,i)+urad_const*(uB+uext)*pofg(g)**2
+      ! gdotty(:,i)=0d0
+      ! if ( with_cool ) then
+      !    ! call bolometric_integ(freqs,4d0*pi*Inu/cLight,urad)
+      !    ! call RadTrans_blob(Inu,R,jssc(:,i)+jeic(:,i),anut(:,i))
+      !    call RadTrans_blob(Inu,R,jmbs(:,i),ambs(:,i))
+      !    call rad_cool(gdotty(:,i),g,freqs,4d0*pi*Inu/cLight,cool_withKN)
+      ! end if
+      gdotty(:,i)=gdotty(:,i)+urad_const*uB*pofg(g)**2
 
 
       ! ----->   N_tot
-      Ntot(i)=sum(n1(:,i)*dg,mask=n1(:,i) > 1d-200)
+      Ntot(i)=sum((n1(:,i)+n1(:,i-1))*dg*0.5d0)!,mask=n1(:,i)>1d-200)
 
-      if ( mod(i,nmod)==0 .or. i==1 ) &
-            write(*,on_screen) i,t(i),dt(i),gdotty(numbins,i),Ntot(i)
+      if (mod(i,nmod)==0.or.i==1) &
+            write(*,on_screen) i,t(i),dt(i),Ntot(i)/Ntot(0),Ntot(i)
 
    end do time_loop
 
@@ -345,7 +353,7 @@ subroutine turBlaz(params_file,output_file,cool_withKN,with_abs)
    write(*,*) "---> Saving"
    !----->   Opening output file
    call h5open_f(herror)
-   call h5io_createf(output_file,file_id,herror)
+   call h5io_createf(trim(mtb_label)//trim(output_file),file_id,herror)
    !----->   Saving initial parameters
    call h5io_createg(file_id,"Parameters",group_id,herror)
    call h5io_wint0(group_id,'numdt',numdt,herror)
@@ -373,14 +381,11 @@ subroutine turBlaz(params_file,output_file,cool_withKN,with_abs)
    call h5io_wdble0(group_id,'mu_mag',mu_mag,herror)
    call h5io_closeg(group_id,herror)
    !----->   Saving data
+   call h5io_wdble0(file_id,'tc',tc,herror)
    call h5io_wdble0(file_id,'t_inj',tinj,herror)
    call h5io_wdble0(file_id,'t_esc',tesc,herror)
    call h5io_wdble0(file_id,'Bfield',B_0,herror)
    call h5io_wdble0(file_id,'uB',uB,herror)            ! Eq. (9)
-   call h5io_wdble0(group_id,'L_e',L_e,herror)          ! Eq. (10)
-   call h5io_wdble0(group_id,'Q_nth',Qnth,herror)       ! Eq. (13)
-   call h5io_closeg(group_id,herror)
-   
    call h5io_wdble1(file_id,'time',t(1:),herror)
    call h5io_wdble1(file_id,'nu',freqs,herror)
    call h5io_wdble1(file_id,'gamma',g,herror)
