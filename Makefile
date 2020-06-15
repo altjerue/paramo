@@ -5,15 +5,13 @@ FC=h5fc
 endif #####  MPI
 
 
-# definitions
-
+# ----- definitions -----
 ifeq ($(BROWN),1)
 DEFS+=-DBRWN
 endif
 
 
-# optimization level
-
+# ----- optimization level -----
 ifeq ($(DBG),1)
 
 ifeq ($(IFORT),1)
@@ -75,23 +73,25 @@ endif #####  DBG
 COPT=-c $(OPTIMIZATION) $(DEFS) $(INCL)
 LOPT=$(OPTIMIZATION) $(DEFS) $(LIBS)
 
+
 # -----  executables  -----
 BLAZMAG=xBlazMag
 TESTS=xTests
 AFGLOW=xAglow
 TURBLAZ=xTurBlaz
-ZKD=xrun
+
 
 # -----  dependencies  -----
-BLAZMAG_OBJ=misc.o params.o pwl_integ.o h5_inout.o K1.o K2.o SRtoolkit.o \
-	anaFormulae.o radiation.o dist_evol.o blazMag.o blazMag_main.o
 TESTS_OBJ=misc.o params.o pwl_integ.o h5_inout.o K1.o K2.o SRtoolkit.o \
 	anaFormulae.o Aglow_models.o radiation.o dist_evol.o tests.o
+BLAZMAG_OBJ=misc.o params.o pwl_integ.o h5_inout.o K1.o K2.o SRtoolkit.o \
+	anaFormulae.o radiation.o dist_evol.o blazMag.o blazMag_main.o
 AFGLOW_OBJ=misc.o params.o pwl_integ.o h5_inout.o K1.o K2.o SRtoolkit.o \
 	anaFormulae.o radiation.o pairs.o dist_evol.o Aglow_models.o afterglow.o \
 	afterglow_main.o
 TURBLAZ_OBJ=misc.o params.o pwl_integ.o h5_inout.o K1.o K2.o SRtoolkit.o \
 	anaFormulae.o radiation.o dist_evol.o turBlaz.o turBlaz_main.o
+
 
 # -----  rules  -----
 all: $(BLAZMAG) $(TESTS) $(AFGLOW) $(TURBLAZ)
@@ -115,11 +115,11 @@ radiation.o: data_types.o constants.o misc.o pwl_integ.o SRtoolkit.o \
 dist_evol.o: data_types.o constants.o misc.o pwl_integ.o SRtoolkit.o K2.o
 tests.o: data_types.o constants.o misc.o pwl_integ.o h5_inout.o SRtoolkit.o \
 	anaFormulae.o Aglow_models.o radiation.o dist_evol.o K1.o K2.o
-afterglow.o: data_types.o constants.o misc.o pwl_integ.o \
-	h5_inout.o Aglow_models.o SRtoolkit.o anaFormulae.o radiation.o dist_evol.o \
-	K1.o K2.o
+afterglow.o: data_types.o constants.o misc.o pwl_integ.o K1.o K2.o\
+	h5_inout.o Aglow_models.o SRtoolkit.o anaFormulae.o radiation.o dist_evol.o
 
-# executables
+
+# ----- executables -----
 $(TESTS): data_types.o constants.o $(TESTS_OBJ)
 	$(FC) $(LOPT) -o $@ $^
 
@@ -133,8 +133,10 @@ $(TURBLAZ): data_types.o constants.o $(TURBLAZ_OBJ)
 	$(FC) $(LOPT) -o $@ $^
 
 
+# ----- objects -----
 %.o: %.F90
 	$(FC) $(COPT) $< -o $@
+
 
 # -----  PHONY things  -----
 .PHONY: clean

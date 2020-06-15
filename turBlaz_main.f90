@@ -41,7 +41,7 @@ program turBlaz_main
        call an_error(args_error)
     end if
  
-    call blazMag(trim(params_file), trim(output_file), with_cool, with_abs)
+    call turBlaz(trim(params_file), trim(output_file), with_cool, with_abs)
  
  end program turBlaz_main
  

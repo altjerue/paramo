@@ -23,14 +23,14 @@ subroutine blazMag(params_file, output_file, cool_withKN, with_abs)
    integer(HID_T) :: file_id, group_id
    integer :: i, j, k, numbins, numdf, numdt, time_grid, herror
    real(dp) :: uB, uext, R, gmin, gmax, numin, numax, pind, B, D, g1, g2, &
-      tstep, Qnth, tmax, d_lum, z, tinj, gamma_bulk, theta_obs, Rdis, &
-      mu_obs, nu_ext, tesc, tlc, mu_mag, L_jet, volume, sigma, beta_bulk, L_B, &
-      eps_B, f_rec, urad_const, f_esc, eps_acc
+         tstep, Qnth, tmax, d_lum, z, tinj, gamma_bulk, theta_obs, Rdis, &
+         mu_obs, nu_ext, tesc, tlc, mu_mag, L_jet, volume, sigma, beta_bulk, L_B, &
+         eps_B, f_rec, urad_const, f_esc, eps_acc
    real(dp) :: L_e, Qnth2, Qnth3
    real(dp), allocatable, dimension(:) :: freqs, t, Ntot, Inu, gg, dt, nu_obs, &
-      t_obs, dg, urad
+         t_obs, dg, urad
    real(dp), allocatable, dimension(:,:) :: dotg, nn, jnut, jmbs, jssc, jeic, &
-      ambs, anut, Qinj, Ddiff, Fmbs, Feic, Fssc, Fnut
+         ambs, anut, Qinj, Ddiff
    logical :: with_cool
 
 
