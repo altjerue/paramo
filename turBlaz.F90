@@ -29,7 +29,8 @@ subroutine turBlaz(params_file,output_file,cool_withKN,with_abs)
    real(dp) :: B_0,B_rms,gam0,Gamma0,Gamma2,Gammaa,Gammah,kk,l_rho,mfp,n0,p,&
          rho,Rva,sig,t2,tcm,tcorg,th,thss,uph,va,zero1,zero2,tc
    real(dp),allocatable,dimension(:) :: freqs,t,Ntot,Inu,g,dt,dg,urad,dfreq
-   real(dp),allocatable,dimension(:) :: tempg,tempnu,Ap,Dpp,total,Mgam,ubol
+   real(dp),allocatable,dimension(:) :: tempg,tempnu,Ap,Dpp,total,Mgam,ubol,&
+         dotgKN
    real(dp),allocatable,dimension(:,:) :: gdotty,n1,jnut,jmbs,jssc,jeic,&
       ambs,anut,Qinj,Diff
    character(len=256) :: mtb_label
@@ -62,7 +63,7 @@ subroutine turBlaz(params_file,output_file,cool_withKN,with_abs)
    allocate(t(0:numdt),freqs(numdf),Ntot(0:numdt),g(numbins),dfreq(numdf),&
          dt(numdt),Inu(numdf),dg(numbins),urad(numbins))
    allocate(tempg(numbins),tempnu(numdf),Ap(numbins),Dpp(numbins),ubol(numdt),&
-         total(numbins),Mgam(numdt))
+         total(numbins),Mgam(numdt),dotgKN(numbins))
    allocate(n1(numbins,0:numdt),gdotty(numbins,0:numdt),&
          ambs(numdf,numdt),jmbs(numdf,numdt),jnut(numdf,numdt),&
          jssc(numdf,numdt),anut(numdf,numdt),jeic(numdf,numdt),&
@@ -90,7 +91,7 @@ subroutine turBlaz(params_file,output_file,cool_withKN,with_abs)
    mfp=1.5d0!1.85d0 !<--- lambda_mfp multiplier
    tcm=1d0
 
-   with_cool=.false.
+   with_cool=.true.
 
    zero1=1d-200
    zero2=0d0
@@ -195,7 +196,7 @@ subroutine turBlaz(params_file,output_file,cool_withKN,with_abs)
 
    !distribution parameters
    ! gdotty(:,0)=urad_const*(uB+uext)*pofg(g)**2
-   gdotty(:,0)=(-1d0)*(Ap+(1)*2d0*Gamma2*g/tc+2d0*Dpp/g-(g**2)/(gam0*tc))
+   gdotty(:,0)=(-1d0)*(Ap+(1d0)*2d0*Gamma2*g/tc+2d0*Dpp/g-(g**2)/(gam0*tc))
    !gdotty= (-1d0)*(Ap+(1)*2d0*g/t2+2d0*Dpp/g-(g**2)/(gam0*tc))
    Diff(:,0)=2d0*Dpp
 
@@ -318,20 +319,19 @@ subroutine turBlaz(params_file,output_file,cool_withKN,with_abs)
       !  #    # #    # #    # #      # #   ## #    #
       !   ####   ####   ####  ###### # #    #  ####
       ! gdotty(:,i)=0d0
-      ! if ( with_cool ) then
-      !    ! call bolometric_integ(freqs,4d0*pi*Inu/cLight,urad)
-      !    ! call RadTrans_blob(Inu,R,jssc(:,i)+jeic(:,i),anut(:,i))
-      !    call RadTrans_blob(Inu,R,jmbs(:,i),ambs(:,i))
-      !    call rad_cool(gdotty(:,i),g,freqs,4d0*pi*Inu/cLight,cool_withKN)
-      ! end if
-      gdotty(:,i)=gdotty(:,i)+urad_const*uB*pofg(g)**2
-
+      if (with_cool) then
+         ! call bolometric_integ(freqs,4d0*pi*Inu/cLight,urad)
+         ! call RadTrans_blob(Inu,R,jssc(:,i)+jeic(:,i),anut(:,i))
+         call RadTrans_blob(Inu,R,jmbs(:,i),ambs(:,i))
+         call rad_cool(dotgKN,g,freqs,4d0*pi*Inu/cLight,cool_withKN)
+      end if
+      gdotty(:,i)=gdotty(:,0)+urad_const*uB*pofg(g)**2+dotgKN
 
       ! ----->   N_tot
       Ntot(i)=sum((n1(:,i)+n1(:,i-1))*dg*0.5d0)!,mask=n1(:,i)>1d-200)
 
       if (mod(i,nmod)==0.or.i==1) &
-            write(*,on_screen) i,t(i),ubol(i),Ntot(i)/Ntot(0),Ntot(i)
+            write(*,on_screen) i,t(i),ubol(i),maxval(dotgKN),Ntot(i)
 
    end do time_loop
 
