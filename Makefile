@@ -79,6 +79,7 @@ BLAZMAG=xBlazMag
 TESTS=xTests
 AFGLOW=xAglow
 TURBLAZ=xTurBlaz
+ZKD=xrun
 
 
 # -----  dependencies  -----
@@ -91,7 +92,9 @@ AFGLOW_OBJ=misc.o params.o pwl_integ.o h5_inout.o K1.o K2.o SRtoolkit.o \
 	afterglow_main.o
 TURBLAZ_OBJ=misc.o params.o pwl_integ.o h5_inout.o K1.o K2.o SRtoolkit.o \
 	anaFormulae.o radiation.o dist_evol.o turBlaz.o turBlaz_main.o
-
+ZKD_OBJ =misc.o data_types.o h5_inout.o dist_evol.o constants.o\
+	pwl_integ.o SRtoolkit.o K2.o anaFormulae.o radiation.o K1.o\
+	turbulentemissioncooling.o
 
 # -----  rules  -----
 all: $(BLAZMAG) $(TESTS) $(AFGLOW) $(TURBLAZ)
@@ -132,6 +135,9 @@ $(AFGLOW): data_types.o constants.o $(AFGLOW_OBJ)
 $(TURBLAZ): data_types.o constants.o $(TURBLAZ_OBJ)
 	$(FC) $(LOPT) -o $@ $^
 
+$(ZKD): $(ZKD_OBJ)
+	echo "compiling $@ with these objects: $^"
+	$(FC)  $(OPTIMIZATION) -o $@ $^
 
 # ----- objects -----
 %.o: %.F90

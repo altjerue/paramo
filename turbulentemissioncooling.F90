@@ -6,9 +6,13 @@
   use anaFormulae
 
   implicit none
+
+  integer :: m
+
   do m=1,216
     call distributionEmission(m)
   end do
+
   write(*,*) '===== Finished ====== '
 
 contains
@@ -18,10 +22,13 @@ contains
     implicit none
     integer, intent(in):: m
     integer(HID_T) :: file_id
-    integer :: numg, numt, numf, i, k, j, l,m, herror, case
-    real(dp) :: del_ph,L_jet,R_turb,p,tstep, tmax, numin, numax, gmin, gmax, sig, gam0, Gamma0, Gamma2, Gammah, Gammaa, va, Rva, kk, tc, R, B_rms, B0, th, thss, n0, Bulk_lorentz, l_rho, rho, nuext,Uph,Uph_co,tcm,t2,&
-      tcorg,mfp,ninj,cool,L_jetm,Rm,R_turbm,omega_j
-    real(dp), allocatable, dimension(:) :: t, dt, Ap, Dpp, Diff, gdotty, g, dg, total, nuj, dnuj, tempg,tempnu, Rarray, Mgam, zero1, zero2,U, Inu
+    integer :: numg, numt, numf, i, k, j, l, herror, case
+    real(dp) :: del_ph,L_jet,R_turb,p,tstep, tmax, numin, numax, gmin, gmax,&
+        sig, gam0, Gamma0, Gamma2, Gammah, Gammaa, va, Rva, kk, tc, R, B_rms,&
+        B0, th, thss, n0, Bulk_lorentz, l_rho, rho, nuext,Uph,Uph_co,tcm,t2,&
+        tcorg,mfp,ninj,cool,L_jetm,Rm,R_turbm,omega_j
+    real(dp), allocatable, dimension(:) :: t,dt,Ap,Dpp,Diff,gdotty,g,dg,total,&
+        nuj, dnuj, tempg,tempnu, Rarray, Mgam, zero1, zero2,U, Inu
     real(dp), allocatable, dimension(:, :) :: n1, jmbs, jic, ambs,jssc
     character(len=50) :: file_name
     character(len=10) :: file_idd
@@ -46,7 +53,10 @@ contains
       tstep = (1/tcm)*1d18
 
 
-      allocate(g(numg),t(0:numt),dt(numt), zero1(numg), zero2(numg), Diff(numg), gdotty(numg), dg(numg),total(numg), Ap(numg), Dpp(numg),nuj(numf), dnuj(numf), tempnu(numf), tempg(numg),Mgam(0:numt),Rarray(1),U(numt), Inu(numf))
+      allocate(g(numg),t(0:numt),dt(numt), zero1(numg), zero2(numg), Diff(numg),&
+          gdotty(numg), dg(numg),total(numg), Ap(numg), Dpp(numg),nuj(numf),&
+          dnuj(numf), tempnu(numf), tempg(numg),Mgam(0:numt),Rarray(1),U(numt),&
+          Inu(numf))
 
       allocate(n1(0:numt, numg), jmbs(0:numt,numf),jic(0:numt,numf),jssc(0:numt,numf),ambs(0:numt,numf))
 
@@ -87,7 +97,12 @@ contains
       !n0=1
       Bulk_lorentz=10
 
-    case=dat(1)
+    case=int(dat(1))
+    !!!!!WARNING:
+    !!!!!   * Try not to use variables with same name as intrinsic functions/subroutines/modules; e.g., case here.
+    !!!!!   * Try not to mix types of variables
+    !!!!!       * int:  converts a floating point/double into integer
+    !!!!!       * dble: converts a real/integer into double precision
     cool=dat(2)
     L_jetm=dat(3)
     Rm=dat(4)
@@ -206,8 +221,14 @@ contains
 
       file_name="TEfull"//trim(file_idd)//""
       open(1, file = '/mnt/c/Users/zachk/Documents/Ubuntu/Outputs/output'//trim(file_idd)//'.txt', status = 'new')
-      write(*,*) "n0: ", n0,"tmax: ", tmax, "sig: ", sig,"tc: ",tc,"R: ",R,"R_turb",R_turb,"B0: ", B0, "Thetass: ", thss,"gam0: ",gam0,"va: ",va,"Uph",Uph, "Th:",th,"L_jet:",L_jet,"del_ph:",del_ph,"ninj",ninj
-      write(1,*) "n0: ", n0,"tmax: ", tmax, "sig: ", sig,"tc: ",tc,"R: ",R,"R_turb",R_turb,"B0: ", B0, "Thetass: ", thss,"gam0: ",gam0,"va: ",va,"Uph",Uph, "Th:",th,"L_jet:",L_jet,"del_ph:",del_ph,"ninj",ninj
+      write(*,*) "n0: ", n0,"tmax: ", tmax, "sig: ", sig,"tc: ",tc,"R: ",R,&
+          "R_turb",R_turb,"B0: ", B0, "Thetass: ", thss,"gam0: ",gam0,&
+          "va: ",va,"Uph",Uph, "Th:",th,"L_jet:",L_jet,"del_ph:",del_ph,&
+          "ninj",ninj
+      write(1,*) "n0: ", n0,"tmax: ", tmax, "sig: ", sig,"tc: ",tc,"R: ",R,&
+          "R_turb",R_turb,"B0: ", B0, "Thetass: ", thss,"gam0: ",gam0,&
+          "va: ",va,"Uph",Uph, "Th:",th,"L_jet:",L_jet,"del_ph:",del_ph,&
+          "ninj",ninj
       time_loop: do i = 1, numt
 
         ambs(i,:)=0d0 !!no absorption
@@ -276,17 +297,22 @@ contains
             tempnu(j-1) = (jmbs(i,j-1)+jmbs(i,j))*dnuj(j-1)/2d0
         end do
           !!!!!energy density
-        U(i)=(sum(tempnu)/(nuj(numf)-nuj(1)))*(4/3)*Pi*(R**3)*(R/cLight)
+        U(i)=(sum(tempnu)/(nuj(numf)-nuj(1)))*(4d0/3d0)*Pi*(R**3)*(R/cLight)
 
 
-        write(*,*) "# of particles ",sum(total)/n0,"iteration: ",i,"B0 ", B0, "Mgam ",Mgam(i), " Energy Density: ",U(i),"Magnetic Energy Density: ",((B0)**2)/(8*Pi),"Uph ",Uph_co
+        write(*,*) "# of particles ",sum(total)/n0,"iteration: ",i,"B0 ", B0,&
+            "Mgam ",Mgam(i), " Energy Density: ",U(i),&
+            "Magnetic Energy Density: ",((B0)**2)/(8*Pi),"Uph ",Uph_co
 
 
       end do time_loop
       write(*,*)"TC: ",tc
       write(*,*)"T2: ",t2
 
-      write(1,*) "# of particles ",sum(total)/n0,"iteration: ",i,"coolingint:",int(tc*cool*1.5d0/tstep),"B0 ", B0, "Mgam ",Mgam(i), " Energy Density: ",U(i),"Magnetic Energy Density: ",((B0)**2)/(8*Pi),"Uph ",Uph_co,"TC: ",tc,"T2: ",t2
+      write(1,*) "# of particles ",sum(total)/n0,"iteration: ",i,&
+          "coolingint:",int(tc*cool*1.5d0/tstep),"B0 ", B0, "Mgam ",Mgam(i),&
+          " Energy Density: ",U(i),"Magnetic Energy Density: ",((B0)**2)/(8*Pi),&
+          "Uph ",Uph_co,"TC: ",tc,"T2: ",t2
       close(1)
       call h5open_f(herror)
       call h5io_createf("/mnt/c/Users/zachk/Documents/Ubuntu/DataFiles/"//trim(file_name)//".h5", file_id, herror)
