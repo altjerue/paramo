@@ -33,6 +33,7 @@ subroutine turBlaz(params_file,output_file,cool_withKN,with_abs)
          dotgKN
    real(dp),allocatable,dimension(:,:) :: gdotty,n1,jnut,jmbs,jssc,jeic,&
       ambs,anut,Qinj,Diff
+   real(dp),allocatable,dimension(:,:) :: dotg_temp
    character(len=256) :: mtb_label
    logical :: with_cool
 
@@ -68,6 +69,7 @@ subroutine turBlaz(params_file,output_file,cool_withKN,with_abs)
          ambs(numdf,numdt),jmbs(numdf,numdt),jnut(numdf,numdt),&
          jssc(numdf,numdt),anut(numdf,numdt),jeic(numdf,numdt),&
          Qinj(numbins,numdt),Diff(numbins,0:numdt))
+   allocate(dotg_temp(numbins,numdt))
 
    build_f: do j=1,numdf
       freqs(j)=numin*((numax/numin)**(dble(j-1)/dble(numdf-1)))
@@ -322,18 +324,41 @@ subroutine turBlaz(params_file,output_file,cool_withKN,with_abs)
       if (with_cool) then
          ! call bolometric_integ(freqs,4d0*pi*Inu/cLight,urad)
          ! call RadTrans_blob(Inu,R,jssc(:,i)+jeic(:,i),anut(:,i))
-         call RadTrans_blob(Inu,R,jmbs(:,i),ambs(:,i))
-         call rad_cool(dotgKN,g,freqs,4d0*pi*Inu/cLight,cool_withKN)
+         ! call RadTrans_blob(Inu,R,jmbs(:,i),ambs(:,i))
+         ! call rad_cool(dotgKN,g,freqs,4d0*pi*Inu/cLight,cool_withKN)
+         call rad_cool_mono(dotg_temp(:,i),g,nu_ext,uph,cool_withKN)
       end if
-      gdotty(:,i)=gdotty(:,0)+urad_const*uB*pofg(g)**2+dotgKN
+      gdotty(:,i)=gdotty(:,0)+dotg_temp(:,i)
 
       ! ----->   N_tot
       Ntot(i)=sum((n1(:,i)+n1(:,i-1))*dg*0.5d0)!,mask=n1(:,i)>1d-200)
 
       if (mod(i,nmod)==0.or.i==1) &
-            write(*,on_screen) i,t(i),ubol(i),maxval(dotgKN),Ntot(i)
+            write(*,on_screen) i,t(i),ubol(i),Ntot(i)/Ntot(0),Ntot(i)
+            ! write(*,on_screen) i,t(i),ubol(i),maxval(dotgKN),Ntot(i)
 
    end do time_loop
+
+   !!! use the final distribution at t=tc and use it as the injection term for a new evolution
+
+   ! Qinj = n1(:,numdt)
+   ! time_loop2: do i=1,numt2
+   !    !  ###### ###### #####
+   !    !  #      #      #    #
+   !    !  #####  #####  #    #
+   !    !  #      #      #    #
+   !    !  #      #      #    #
+   !    !  ###### ###### #####
+   !    call FP_FinDif_difu(dt(i),&
+   !    &             g,&
+   !    &             n1(:,i-1),&
+   !    &             n1(:,i),&
+   !    &             gdotty(:,0),&
+   !    &             zeros1D()!Diff(:,0),&
+   !    &             Qinj,&
+   !    &             tesc,&
+   !    &             tlc)
+   ! end do time_loop2
 
 
    !  ####    ##   #    # # #    #  ####
@@ -376,7 +401,8 @@ subroutine turBlaz(params_file,output_file,cool_withKN,with_abs)
    call h5io_wdble0(file_id,'t_inj',tinj,herror)
    call h5io_wdble0(file_id,'t_esc',tesc,herror)
    call h5io_wdble0(file_id,'Bfield',B_0,herror)
-   call h5io_wdble0(file_id,'uB',uB,herror)            ! Eq. (9)
+   call h5io_wdble0(file_id,'uB',uB,herror)
+   call h5io_wdble0(file_id,'uph',uB,herror)
    call h5io_wdble1(file_id,'time',t(1:),herror)
    call h5io_wdble1(file_id,'nu',freqs,herror)
    call h5io_wdble1(file_id,'gamma',g,herror)
@@ -388,6 +414,7 @@ subroutine turBlaz(params_file,output_file,cool_withKN,with_abs)
    call h5io_wdble2(file_id,'ambs',ambs,herror)
    call h5io_wdble2(file_id,'n_e',n1(:,1:),herror)
    call h5io_wdble2(file_id,'dgdt',gdotty(:,1:),herror)
+   call h5io_wdble2(file_id,'cool_coef',dotg_temp,herror)
    !----->   Closing output file
    call h5io_closef(file_id,herror)
    call h5close_f(herror)

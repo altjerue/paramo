@@ -590,9 +590,11 @@ contains
             if ( q2 > 8d0 ) q2 = 8d0
             if ( q2 < -8d0 ) q2 = -8d0
             contrib_if: if ( 0.25d0 <= w .and. w <= g(k)**2 .and. g(k) <= gmx_star ) then
-               emis = (w / gmx_star**2)**q2 * ( Pinteg((gmx_star / g(k))**2, -q1, eps) - (w / gmx_star**2) * Pinteg((gmx_star / g(k))**2, -q2, eps) )
-            else if ( g(k)**2 < w .and. w <= gmx_star**2 ) then
-               emis = (w / gmx_star**2)**q2 * ( Pinteg(gmx_star**2 / w, -q1, eps) - (w / gmx_star**2) * Pinteg(gmx_star**2 / w, -q2, eps) )
+               emis=(w/gmx_star**2)**q2*&
+                     ( Pinteg((gmx_star/g(k))**2,-q1,eps)-(w/gmx_star**2)*Pinteg((gmx_star/g(k))**2,-q2,eps) )
+            else if (g(k)**2<w.and.w<=gmx_star**2) then
+               emis=(w/gmx_star**2)**q2*&
+                     ( Pinteg(gmx_star**2/w,-q1,eps)-(w/gmx_star**2)*Pinteg(gmx_star**2/w,-q2,eps) )
             else
                emis = 0d0
             end if contrib_if
@@ -653,6 +655,20 @@ contains
       !$OMP END PARALLEL DO
    end subroutine rad_cool
 
+
+   subroutine rad_cool_mono(dotg, gg, nu0, u0, withKN)
+      implicit none
+      real(dp), intent(in) :: u0, nu0
+      real(dp), intent(in), dimension(:) :: gg
+      real(dp), intent(out), dimension(:) :: dotg
+      logical, intent(in) :: withKN
+      real(dp) :: urad_const, xi_c
+      real(dp), dimension(size(gg, dim=1)) :: xi0
+      urad_const = 4d0 * sigmaT * cLight / (3d0 * energy_e)
+      xi_c = 4d0 * hPlanck / energy_e
+      xi0 = 4d0 * gg * xi_c * nu0
+      dotg = urad_const * gg**2 * u0 * (0.5d0 * 9d0 * (dlog(xi0) - 11d0/6d0) / xi0**2)
+   end subroutine rad_cool_mono
 
    !  ###### #    #  ####  #      #    # ##### #  ####  #    #
    !  #      #    # #    # #      #    #   #   # #    # ##   #
