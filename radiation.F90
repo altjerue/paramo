@@ -610,13 +610,13 @@ contains
    !  #      #    # #    # #      # #  # # #  ###
    !  #    # #    # #    # #      # #   ## #    #
    !   ####   ####   ####  ###### # #    #  ####
-   subroutine rad_cool(dotg, gg, freqs, uu, withKN)
+   subroutine rad_cool_pwl(dotg, gg, freqs, uu, withKN)
       implicit none
       real(dp), intent(in), dimension(:) :: freqs, gg, uu
       real(dp), intent(out), dimension(:) :: dotg
       logical, intent(in) :: withKN
       integer :: j, k, Ng, Nf
-      real(dp) :: uind, urad_const, usum, xi_c, xi_rat
+      real(dp) :: uind, urad_const, usum, xi_c, xi_rat, ueval
       real(dp), dimension(size(gg, dim=1), size(freqs, dim=1)) :: xi, uxi
       urad_const = 4d0 * sigmaT * cLight / (3d0 * energy_e)
       xi_c = 4d0 * hPlanck / energy_e
@@ -631,45 +631,97 @@ contains
       !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) PRIVATE(k,j,uind,xi_rat,usum)
       do k = 1, Ng
          usum = 0d0
+         ueval = 0d0
          freqloop: do j = 1, Nf - 1
             if ( uxi(k, j + 1) > 1d-100 .and. uxi(k, j) > 1d-100 ) then
                xi_rat = xi(k, j + 1) / xi(k, j)
                uind = dlog(uxi(k, j + 1) / uxi(k, j)) / dlog(xi_rat)
                if ( uind > 8d0 ) uind = 8d0
                if ( uind < -8d0 ) uind = -8d0
-               if ( xi_c * gg(k) * freqs(j) > 1d0 .and. withKN ) then
-                  usum = usum + 4.5d0 * uxi(k, j) &
-                        * (Qinteg(xi_rat, uind + 2d0, 1d-6) &
-                        + (dlog(xi(k, j)) - (11d0 / 6d0)) &
-                        * Pinteg(xi_rat, uind + 2d0, 1d-6)) &
-                        / xi(k, j)
-               else if ( xi_c * gg(k) * freqs(j) > 1d0 .and. .not. withKN ) then
-                  cycle freqloop
+               if (withKN) then
+                  if (xi(k, j) >= 1d1) then
+                     ueval = 1.5d0 * uxi(k, j) &
+                           * (Qinteg(xi_rat, uind + 2d0, 1d-6) &
+                           + (dlog(xi(k, j)) - (11d0 / 6d0)) &
+                           * Pinteg(xi_rat, uind + 2d0, 1d-6)) &
+                           / xi(k, j)
+                  else if (xi(k, j) > 0.5d0 .and. xi(k, j) < 1d1) then
+                     ueval = qromb_w2arg(transKN, xi(k, j), xi(k, j + 1), uind) * uxi(k, j) * xi(k, j)**uind
+                  else
+                     ueval = uxi(k, j) * xi(k, j) * Pinteg(xi_rat, uind, 1d-6)
+                  end if
                else
-                  usum = usum + uxi(k, j) * xi(k, j) * Pinteg(xi_rat, uind, 1d-6)
+                  ueval = uxi(k, j) * xi(k, j) * Pinteg(xi_rat, uind, 1d-6)
                end if
             end if
+            usum = usum + ueval
          end do freqloop
          dotg(k) = urad_const * usum / xi_c**2
       end do
       !$OMP END PARALLEL DO
-   end subroutine rad_cool
 
+      contains
+
+      function transKN(x, p) result(integrando)
+         implicit none
+         real(dp), intent(in) :: p
+         real(dp), intent(in), dimension(:) :: x
+         real(dp), dimension(size(x, dim=1)) :: integrando
+         integrando = x**(-p) * (1d0 + x)**(-1.5d0)
+      end function transKN
+
+      ! subroutine trapzdKN(a, b, s, n, p)
+      !    implicit none
+      !    integer, intent(in) :: n
+      !    real(dp), intent(in) :: a, b, p
+      !    real(dp), intent(inout) :: s
+      !    integer :: it, i
+      !    real(dp) :: del, fsum, prog
+      !    if (n == 1) then
+      !       s = 0.5d0 * (b - a) * (transKN(a, p) + transKN(b, p))
+      !    else
+      !       it = 2**(n - 2)
+      !       del = (b - a) / it
+      !       fsum = 0d0
+      !       prog = a + 0.5d0 * del
+      !       do i=1,it
+      !          fsum = fsum + transKN(prog, p)
+      !          prog = prog + del
+      !       end do
+      !       s = 0.5d0 * (s + del * fsum)
+      !    end if
+      ! end subroutine trapzdKN
+
+   end subroutine rad_cool_pwl
 
    subroutine rad_cool_mono(dotg, gg, nu0, u0, withKN)
       implicit none
       real(dp), intent(in) :: u0, nu0
       real(dp), intent(in), dimension(:) :: gg
-      real(dp), intent(out), dimension(:) :: dotg
       logical, intent(in) :: withKN
-      real(dp) :: urad_const, xi_c
+      real(dp), intent(out), dimension(:) :: dotg
+      integer :: Ng,k
+      real(dp) :: urad_const
       real(dp), dimension(size(gg, dim=1)) :: xi0
+      Ng = size(gg, dim=1)
       urad_const = 4d0 * sigmaT * cLight / (3d0 * energy_e)
-      xi_c = 4d0 * hPlanck / energy_e
-      xi0 = 4d0 * gg * xi_c * nu0
-      dotg = urad_const * gg**2 * u0 * (0.5d0 * 9d0 * (dlog(xi0) - 11d0/6d0) / xi0**2)
+      xi0 = 4d0 * gg * nu0 * hPlanck / energy_e
+      do k=1,Ng
+         if (withKN) then
+            if (xi0(k) >= 1d1) then
+               dotg(k) = urad_const * gg(k)**2 * u0 * (4.5d0 * (dlog(xi0(k)) - 11d0/6d0) / xi0(k)**2)
+            else if (xi0(k) > 0.5 .and. xi0(k) < 1d1) then
+               dotg(k) = urad_const * gg(k)**2 * u0 * (1d0 + xi0(k))**(-1.5d0)
+            else
+               dotg(k) = urad_const * gg(k)**2 * u0
+            end if
+         else
+            dotg(k) = urad_const * gg(k)**2 * u0
+         end if
+      end do
    end subroutine rad_cool_mono
 
+   
    !  ###### #    #  ####  #      #    # ##### #  ####  #    #
    !  #      #    # #    # #      #    #   #   # #    # ##   #
    !  #####  #    # #    # #      #    #   #   # #    # # #  #

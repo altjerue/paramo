@@ -281,30 +281,63 @@ contains
    !
    !   -----{  Trapezoidal rule  }-----
    !
-   subroutine trapzd(func, a, b, s, n)
+   subroutine trapzd_w2arg(func,a,b,s,n,p)
       implicit none
       integer, intent(in) :: n
-      real(dp), intent(in) :: a, b
+      real(dp), intent(in) :: a,b,p
       real(dp), intent(inout) :: s
       interface
-         function func(x) result(res)
+         function func(x,p) result(res)
             use data_types
+            real(dp), intent(in) :: p
+            real(dp), dimension(:), intent(in) :: x
+            real(dp), dimension(size(x,dim=1)) :: res
+         end function func
+      end interface
+      integer :: it
+      real(dp) :: del,fsum
+      if (n==1) then
+         s=0.5d0*(b-a)*sum(func((/ a,b /), p))
+      else
+         it=2**(n-2)
+         del=(b-a)/it
+         fsum=sum(func(arth(a+0.5d0*del,del,it),p))
+         s=0.5d0*(s+del*fsum)
+      end if
+   end subroutine trapzd_w2arg
+
+   !
+   !   ----------{   Romberg integrator   }----------
+   !
+   function qromb_w2arg(func,a,b,p) result(qromb)
+      implicit none
+      real(dp), intent(in) :: a,b,p
+      real(dp) :: qromb
+      interface
+         function func(x,p) result(res)
+            use data_types
+            real(dp), intent(in) :: p
             real(dp), dimension(:), intent(in) :: x
             real(dp), dimension(size(x, dim=1)) :: res
          end function func
       end interface
-      real(dp) :: del, fsum
-      integer :: it
-      if (n == 1) then
-         s = 0.5d0 * (b - a) * sum( func((/ a, b /)) )
-      else
-         it = 2**(n - 2)
-         del = (b - a) / it
-         fsum = sum( func(arth(a + 0.5d0 * del, del, it)) )
-         s = 0.5d0 * (s + del * fsum)
-      end if
-   end subroutine trapzd
-
+      integer, parameter :: jmax=20,jmaxp=jmax+1,k=5,km=k-1
+      real(dp), parameter :: eps=1d-3
+      integer :: j
+      real(dp) :: dqromb
+      real(dp), dimension(jmaxp) :: h,s
+      h(1)=1d0
+      do j=1,jmax
+         call trapzd_w2arg(func,a,b,s(j),j,p)
+         if ( j >= k ) then
+            call polint(h(j-km:j),s(j-km:j),0.0d0,qromb,dqromb)
+            if (dabs(dqromb) <= eps*dabs(qromb)) return
+         end if
+         s(j+1)=s(j)
+         h(j+1)=0.25d0*h(j)
+      end do
+      call an_error('qromb: too many steps')
+   end function qromb_w2arg
 
    !
    !   -----{  checking equality of integers  }-----
