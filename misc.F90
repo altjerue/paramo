@@ -51,13 +51,11 @@ contains
       integer :: m, n, ns
       integer, dimension(1) :: iminloc
       real(dp), dimension(size(xa)) :: c, d, den, ho
-
       if ( size(xa) == size(ya) ) then
          n = size(xa)
       else
          stop 'polint: xa and ya have different size'
       end if
-
       c = ya
       d = ya
       ho = xa - x
@@ -65,7 +63,6 @@ contains
       ns = iminloc(1)
       y = ya(ns)
       ns = ns - 1
-
       do m = 1, n - 1
          den(1:n - m) = ho(1:n - m) - ho(1 + m:n)
          if ( any( dabs(den(1:n - m)) == 0d0 ) ) then !&
@@ -245,36 +242,29 @@ contains
    !
    !   -----{  Tridiagonal matrix solver  }-----
    !
-   subroutine tridag_ser(a, b, c, r, u)
+   subroutine tridag_ser(a,b,c,r,u)
       !  Description:
       !     Solver of a tridiagonal matrix. Based on the code in
       !     "Numberical Recipes".
-      !
       implicit none
-      real(dp), dimension(:), intent(in) :: a, b, c, r
-      real(dp), dimension(:), intent(out) :: u
-      real(dp), dimension(size(b)) :: gam
-      integer :: n, j
+      real(dp),dimension(:),intent(in) :: a,b,c,r
+      real(dp),dimension(:),intent(out) :: u
+      real(dp),dimension(size(b)) :: gam
+      integer :: n,j
       real(dp) :: bet
-
-      n = assert_eq((/ size(a) + 1, size(b), size(c) + 1, size(r), size(u) /), 'tridag_ser')
-      bet = b(1)
-
-      if ( bet == 0.0d0 ) call an_error('tridag_ser: error at code stage 1')
-
-      u(1) = r(1) / bet
-
-      do j = 2, n
-         gam(j) = c(j - 1) / bet
-         bet = b(j) - a(j - 1) * gam(j)
-         if ( bet == 0.0d0 ) call an_error('tridag_ser: error at code stage 2')
-         u(j) = (r(j) - a(j - 1) * u(j - 1)) / bet
+      n=assert_eq((/ size(a)+1,size(b),size(c)+1,size(r),size(u) /),'tridag_ser')
+      bet=b(1)
+      if (bet==0.0d0) call an_error('tridag_ser: error at code stage 1')
+      u(1)=r(1)/bet
+      do j=2,n
+         gam(j)=c(j-1)/bet
+         bet=b(j)-a(j-1)*gam(j)
+         if (bet==0.0d0) call an_error('tridag_ser: error at code stage 2')
+         u(j)=(r(j)-a(j-1)*u(j-1))/bet
       end do
-
-      do j = n - 1, 1, -1
-         u(j) = u(j) - gam(j + 1) * u(j + 1)
+      do j=n-1,1,-1
+         u(j)=u(j)-gam(j+1)*u(j+1)
       end do
-
    end subroutine tridag_ser
 
 
@@ -322,7 +312,7 @@ contains
          end function func
       end interface
       integer, parameter :: jmax=20,jmaxp=jmax+1,k=5,km=k-1
-      real(dp), parameter :: eps=1d-3
+      real(dp), parameter :: eps=1d-4
       integer :: j
       real(dp) :: dqromb
       real(dp), dimension(jmaxp) :: h,s

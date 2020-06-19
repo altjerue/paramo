@@ -24,7 +24,7 @@ subroutine turBlaz(params_file,output_file,cool_withKN,with_abs)
    integer(HID_T) :: file_id,group_id
    integer :: i,j,k,numbins,numdf,numdt,time_grid,herror
    integer :: l,mtb_case
-   real(dp) :: uB,uext,R,gmin,gmax,numin,numax,pind,D,g1,g2,tstep,Qnth,tmax,&
+   real(dp) :: uB,R,gmin,gmax,numin,numax,pind,D,g1,g2,tstep,Qnth,tmax,&
          d_lum,z,tinj,gamma_bulk,theta_obs,Rdis,mu_obs,nu_ext,tesc,tlc,&
          L_jet,volume,beta_bulk,urad_const,usyn
    real(dp) :: B_0,B_rms,gam0,Gamma0,Gamma2,Gammaa,Gammah,kk,l_rho,mfp,n0,p,&
@@ -32,7 +32,7 @@ subroutine turBlaz(params_file,output_file,cool_withKN,with_abs)
    real(dp),allocatable,dimension(:) :: freqs,t,Ntot,Inu,g,dt,dg,urad,dfreq
    real(dp),allocatable,dimension(:) :: tempg,tempnu,Ap,Dpp,total,Mgam,ubol
    real(dp),allocatable,dimension(:,:) :: gdotty,n1,jnut,jmbs,jssc,jeic,&
-      ambs,anut,Qinj,Diff
+         ambs,anut,Qinj,Diff
    real(dp),allocatable,dimension(:,:) :: dotg_temp,dotg_temp2
    character(len=256) :: mtb_label
    logical :: with_cool
@@ -107,7 +107,7 @@ subroutine turBlaz(params_file,output_file,cool_withKN,with_abs)
 
    ! ------------   zhdankin parameters   ------------
    !    Middle (1),top (2),bottom (3) panels in Fig. 17 from Zhdankin et al. (2020)
-   mtb_case=1
+   mtb_case=3
    select case(mtb_case)
    case(1)
       l_rho=28.3d0!m
@@ -190,16 +190,17 @@ subroutine turBlaz(params_file,output_file,cool_withKN,with_abs)
    Dpp=(Gamma0*gam0**2+Gamma2*g**2)/tc
    ! Dpp=((g**2d0)/t2)+((gam0**2d0)/t2)
 
-   !   ---> Following Eq. (7) in Zhdankin et al. (2020)
+   ! ------------- External radiation field -------------
+   ! ---> Following Eq. (7) in Zhdankin et al. (2020)
    uph=mass_e*cLight*sig*va/(16d0*sigmaT*thss *R)
-   ! ----->    External radiation field
-   nu_ext=par_nu_ext*gamma_bulk
-   uext=par_uext*gamma_bulk**2*(1d0+beta_bulk**2/3d0) ! Eq. (5.25) Dermer & Menon (2009)
+   nu_ext=par_nu_ext
+   ! uext=par_uext*gamma_bulk**2*(1d0+beta_bulk**2/3d0) ! Eq. (5.25) Dermer & Menon (2009)
    urad_const=4d0*sigmaT*cLight/(3d0*energy_e)
-
+   ! -------------
    !distribution parameters
    ! gdotty(:,0)=urad_const*(uB+uext)*pofg(g)**2
    call rad_cool_mono(dotg_temp(:,0),g,nu_ext,uph,cool_withKN)
+   ! dotg_temp(:,0) = dotg_temp(:,0)
    gdotty(:,0)=-(Ap + (1d0*2d0*Gamma2*g/tc) + (2d0*Dpp/g) - dotg_temp(:,0))! - (g**2/(gam0*tc)))
    !gdotty= (-1d0)*(Ap+(1)*2d0*g/t2+2d0*Dpp/g-(g**2)/(gam0*tc))
    Diff(:,0)=2d0*Dpp
@@ -312,7 +313,7 @@ subroutine turBlaz(params_file,output_file,cool_withKN,with_abs)
       !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) PRIVATE(j)
       do j=1,numdf
          call IC_iso_powlaw(jssc(j,i),freqs(j),freqs,Inu,n1(:,i),g)
-         call IC_iso_monochrom(jeic(j,i),freqs(j),uext,nu_ext,n1(:,i),g)
+         call IC_iso_monochrom(jeic(j,i),freqs(j),uph,nu_ext,n1(:,i),g)
          jnut(j,i)=jmbs(j,i)+jssc(j,i)+jeic(j,i)
          anut(j,i)=ambs(j,i)
       end do

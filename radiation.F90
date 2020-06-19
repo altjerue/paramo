@@ -619,7 +619,7 @@ contains
       real(dp) :: uind, urad_const, usum, xi_c, xi_rat, ueval
       real(dp), dimension(size(gg, dim=1), size(freqs, dim=1)) :: xi, uxi
       urad_const = 4d0 * sigmaT * cLight / (3d0 * energy_e)
-      xi_c = 4d0 * hPlanck / energy_e
+      xi_c = 4d0 * h_mec2
       Ng = size(gg, dim=1)
       Nf = size(freqs, dim=1)
       do k = 1, Ng
@@ -639,14 +639,15 @@ contains
                if ( uind > 8d0 ) uind = 8d0
                if ( uind < -8d0 ) uind = -8d0
                if (withKN) then
-                  if (xi(k, j) >= 1d1) then
-                     ueval = 1.5d0 * uxi(k, j) &
-                           * (Qinteg(xi_rat, uind + 2d0, 1d-6) &
+                  if (xi(k, j) >= 1d2) then
+                     ueval = 4.5d0 * uxi(k, j) &
+                           * ( Qinteg(xi_rat, uind + 2d0, 1d-6) &
                            + (dlog(xi(k, j)) - (11d0 / 6d0)) &
-                           * Pinteg(xi_rat, uind + 2d0, 1d-6)) &
-                           / xi(k, j)
-                  else if (xi(k, j) > 0.5d0 .and. xi(k, j) < 1d1) then
-                     ueval = qromb_w2arg(transKN, xi(k, j), xi(k, j + 1), uind) * uxi(k, j) * xi(k, j)**uind
+                           * Pinteg(xi_rat, uind + 2d0, 1d-6) ) / xi(k, j)
+                  else if (xi(k, j) >= 1d0 .and. xi(k, j) < 1d2) then
+                     ueval = qromb_w2arg(transKN_fit,xi(k, j), xi(k, j + 1), uind) * uxi(k, j) * xi(k, j)**uind
+                  else if (xi(k, j) >= 1d-3 .and. xi(k, j) < 1d0) then
+                     ueval = qromb_w2arg(transKN,xi(k, j), xi(k, j + 1), uind) * uxi(k, j) * xi(k, j)**uind
                   else
                      ueval = uxi(k, j) * xi(k, j) * Pinteg(xi_rat, uind, 1d-6)
                   end if
@@ -670,27 +671,16 @@ contains
          integrando = x**(-p) * (1d0 + x)**(-1.5d0)
       end function transKN
 
-      ! subroutine trapzdKN(a, b, s, n, p)
-      !    implicit none
-      !    integer, intent(in) :: n
-      !    real(dp), intent(in) :: a, b, p
-      !    real(dp), intent(inout) :: s
-      !    integer :: it, i
-      !    real(dp) :: del, fsum, prog
-      !    if (n == 1) then
-      !       s = 0.5d0 * (b - a) * (transKN(a, p) + transKN(b, p))
-      !    else
-      !       it = 2**(n - 2)
-      !       del = (b - a) / it
-      !       fsum = 0d0
-      !       prog = a + 0.5d0 * del
-      !       do i=1,it
-      !          fsum = fsum + transKN(prog, p)
-      !          prog = prog + del
-      !       end do
-      !       s = 0.5d0 * (s + del * fsum)
-      !    end if
-      ! end subroutine trapzdKN
+      function transKN_fit(x, p) result(integrando)
+         implicit none
+         real(dp), intent(in) :: p
+         real(dp), intent(in), dimension(:) :: x
+         real(dp), dimension(size(x, dim=1)) :: integrando
+         integrando = x**(-p) * dexp(-1.01819432d0 &
+               - 0.67980349d0 * dlog(x) &
+               - 0.14948459d0 * dlog(x)**2 &
+               + 0.00627589d0 * dlog(x)**3)
+      end function transKN_fit
 
    end subroutine rad_cool_pwl
 
@@ -705,23 +695,27 @@ contains
       real(dp), dimension(size(gg, dim=1)) :: xi0
       Ng = size(gg, dim=1)
       urad_const = 4d0 * sigmaT * cLight / (3d0 * energy_e)
-      xi0 = 4d0 * gg * nu0 * hPlanck / energy_e
+      xi0 = 4d0 * gg * nu0 * h_mec2
       do k=1,Ng
          if (withKN) then
-            if (xi0(k) >= 1d1) then
-               dotg(k) = urad_const * gg(k)**2 * u0 * (4.5d0 * (dlog(xi0(k)) - 11d0/6d0) / xi0(k)**2)
-            else if (xi0(k) > 0.5 .and. xi0(k) < 1d1) then
-               dotg(k) = urad_const * gg(k)**2 * u0 * (1d0 + xi0(k))**(-1.5d0)
+            if (xi0(k) >= 1d2) then
+               dotg(k) = urad_const * u0 * gg(k)**2 * 4.5d0 * (dlog(xi0(k)) - 11d0 / 6d0) / xi0(k)**2
+            else if (xi0(k) >= 1d0 .and. xi0(k) < 1d2) then
+               dotg(k) = urad_const * u0 * gg(k)**2 * dexp(-1.01819432d0 &
+                     - 0.67980349d0 * LN1(xi0(k), 1d-6) &
+                     - 0.14948459d0 * LN2(xi0(k), 1d-6) &
+                     + 0.00627589d0 * LN3(xi0(k), 1d-6))
+            else if (xi0(k) > 1d-3 .and. xi0(k) < 1d0) then
+               dotg(k) = urad_const * u0 * pofg(gg(k))**2 * (1d0 + xi0(k))**(-1.5d0)
             else
-               dotg(k) = urad_const * gg(k)**2 * u0
+               dotg(k) = urad_const * u0 * pofg(gg(k))**2
             end if
          else
-            dotg(k) = urad_const * gg(k)**2 * u0
+            dotg(k) = urad_const * u0 * pofg(gg(k))**2
          end if
       end do
    end subroutine rad_cool_mono
-
-   
+ 
    !  ###### #    #  ####  #      #    # ##### #  ####  #    #
    !  #      #    # #    # #      #    #   #   # #    # ##   #
    !  #####  #    # #    # #      #    #   #   # #    # # #  #

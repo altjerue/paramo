@@ -90,7 +90,8 @@ contains
       uB = B**2 / 8d0 / pi
       nu0 = 3d0 * B * nuconst / 2d0
       if (nu.ge.nu0*g1**2.and.nu.le.nu0*g2**2) then
-         j_nu = 4d0 * cLight * (eCharge**2 / (mass_e * cLight**2))**2 * uB * n0 * nu0**((q - 3d0) / 2d0) * nu**((1d0 - q) / 2d0) / 9d0
+         j_nu = 4d0 * cLight * (eCharge**2 / (mass_e * cLight**2))**2 * uB * &
+               n0 * nu0**((q - 3d0) / 2d0) * nu**((1d0 - q) / 2d0) / 9d0
       else
          j_nu = 1d-200
       end if

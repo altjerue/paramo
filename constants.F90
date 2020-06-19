@@ -28,25 +28,25 @@ module constants
    ! #      #    #   #    ####
    !
    real(dp), parameter :: &
-      cLight  = 2.99792458d10, &                 ! cm / s
-      mass_p = 1.672621898d-24, &                ! g
-      mass_e = 9.10938356d-28, &                 ! g
-      energy_e = 8.187105776823886d-07, &        ! erg [mass_e cLight**2]
-      energy_p = 1.5032776159851257d-3, &        ! erg
-      eCharge = 4.80320467299766d-10, &          ! cm^(3/2) g^(1/2) / s
-      sigmaT = 6.6524587158d-25, &               ! 1 / cm^2
-      hPlanck = 6.62607004d-27, &                ! erg s
-      hbar = 1.0545718d-27, &                    ! erg s
-      kBoltz = 1.38064852d-16, &                 ! erg / K
-      sigmaSB = 5.670367d-5, &                   ! erg / cm^2 / K^4 / s
-      Ggrav = 6.67408d-8, &                      ! c^3 / g / s^2
-      eVolt = 1.60218d-12, &                     ! erg
-      nuconst = 2.7992491077281560779657886d6, & ! eCharge / (2 * pi * m_e * cLight)
-      jmbconst = 6.66456981963510022816d-30, &   ! sqrt(3) * eCharge**2 / (2 * cLight)
-      ambconst = 3.65807942558050123993d-3, &    ! sqrt(3) * eCharge**2 / (4 * m_e * cLight)
-      Bcritical = 4.414e13, &                    ! mass_e**2 * cLight**3 / (eCharge * hbar)
-      mec2_h = 1.235589965126603d20, &           ! m_e c^2 / h
-      h_mec2 = 8.093299785722493d-21             ! h / m_e c^2
+      cLight  = 2.99792458d10, &            ! [cm / s]
+      mass_p = 1.67262192369d-24, &         ! [g]
+      mass_e = 9.1093837015d-28, &          ! [g]
+      eCharge = 4.80320467299766d-10, &     ! [cm^(3/2) g^(1/2) / s]
+      sigmaT = 6.6524587321000005d-25, &    ! [1 / cm^2]
+      hPlanck = 6.62607015d-27, &           ! [erg s]
+      hbar = 1.0545718176461565d-27, &      ! [erg s]
+      kBoltz = 1.380649d-16, &              ! [erg / K]
+      sigmaSB = 5.6703744191844314d-5, &    ! [erg / cm^2 / K^4 / s]
+      Ggrav = 6.674299999999999d-8, &       ! [c^3 / g / s^2]
+      eVolt = 1.602176634d-12, &            ! [erg]
+      nuconst = 2.799248987233304d6, &      ! eCharge / (2 * pi * m_e * cLight)
+      jmbconst = 6.6645698196351d-30, &     ! sqrt(3) * eCharge**2 / (2 * cLight)
+      ambconst = 3.6580794255805012d-3, &   ! sqrt(3) * eCharge**2 / (4 * m_e * cLight)
+      Bcritical = 4.414005218694872e13, &   ! m_e**2 * cLight**3 / (eCharge * hbar)
+      energy_e = 8.187105776823886d-7, &    ! m_e cLight^2
+      energy_p = 1.5032776159851257d-3, &   ! m_p cLight^2
+      mec2_h = 1.235589963807414d20, &      ! m_e c^2 / h
+      h_mec2 = 6.53745089363765d-21         ! h / m_e c^2
 
 
    !
