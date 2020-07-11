@@ -544,8 +544,8 @@ contains
                         if ( 0.25d0 < f1 .and. f1 < g(k)**2 ) then
                            emis = sscG1ISO(gmx_star**(-2), g(k)**(-2), w2, w1, s1, s2)
                         else if ( f1 <= g(k)**2 .and. f2 <= g(k)**2 ) then
-                           emis = sscG1ISO(gmx_star**(-2), g(k)**(-2), w2, g(k)**2, s1, s2) + &
-                              sscG2ISO(gmx_star**(-2), 1d0, g(k)**2, w1, s1, s2)
+                           emis = sscG1ISO(gmx_star**(-2), g(k)**(-2), w2, g(k)**2, s1, s2) &
+                                 + sscG2ISO(gmx_star**(-2), 1d0, g(k)**2, w1, s1, s2)
                         else if ( f2 <= gmx_star**2 .and. f2 > g(k)**2 ) then
                            emis = sscG2ISO(gmx_star**(-2), 1d0, w2, w1, s1, s2)
                         else
@@ -590,11 +590,11 @@ contains
             if ( q2 > 8d0 ) q2 = 8d0
             if ( q2 < -8d0 ) q2 = -8d0
             contrib_if: if ( 0.25d0 <= w .and. w <= g(k)**2 .and. g(k) <= gmx_star ) then
-               emis=(w/gmx_star**2)**q2*&
-                     ( Pinteg((gmx_star/g(k))**2,-q1,eps)-(w/gmx_star**2)*Pinteg((gmx_star/g(k))**2,-q2,eps) )
-            else if (g(k)**2<w.and.w<=gmx_star**2) then
-               emis=(w/gmx_star**2)**q2*&
-                     ( Pinteg(gmx_star**2/w,-q1,eps)-(w/gmx_star**2)*Pinteg(gmx_star**2/w,-q2,eps) )
+               emis = (w / gmx_star**2)**q2 * ( Pinteg((gmx_star / g(k))**2, -q1, eps) &
+                     - (w / gmx_star**2) * Pinteg((gmx_star / g(k))**2, -q2, eps) )
+            else if ( g(k)**2 < w .and. w <= gmx_star**2 ) then
+               emis = (w / gmx_star**2)**q2 * ( Pinteg(gmx_star**2 / w, -q1, eps) &
+                     - (w / gmx_star**2) * Pinteg(gmx_star**2 / w, -q2, eps) )
             else
                emis = 0d0
             end if contrib_if

@@ -175,7 +175,8 @@ subroutine afterglow(params_file, output_file, cool_withKN, ssa_boiler, with_win
    !-----> Fraction of accreted kinetic energy injected into non-thermal electrons
    L_e = eps_e * cs_area * n_ext * energy_p * cLight * beta_bulk * gamma_bulk(0) * (gamma_bulk(0) - 1d0)
    ! Q0 = L_e / ( g1**(2d0 - pind) * Pinteg(g2 / g1, pind - 1d0, 1d-6) * volume(0) * energy_e )
-   Q0 = L_e / ( (g1**(2d0 - pind) * Pinteg(g2 / g1, pind - 1d0, 1d-6) - g1**(1d0 - pind) * Pinteg(g2 / g1, pind, 1d-6)) * volume(0) * energy_e )
+   Q0 = L_e / ((g1**(2d0 - pind) * Pinteg(g2 / g1, pind - 1d0, 1d-6) &
+         - g1**(1d0 - pind) * Pinteg(g2 / g1, pind, 1d-6)) * volume(0) * energy_e)
 
    write(*, "('mu_obs  =', ES15.7)") mu_obs
    write(*, "('Omega_j =', ES15.7)") Omega_j
@@ -243,7 +244,8 @@ subroutine afterglow(params_file, output_file, cool_withKN, ssa_boiler, with_win
                   1d0 / (bofg(gamma_bulk(i - 1)) * gamma_bulk(i - 1) * cLight), &
                   1d0 / (beta_bulk * gamma_bulk(i) * cLight))
          else
-            t(i) = t(i - 1) + 0.5d0 * dr * ( (1d0 / (beta_bulk * gamma_bulk(i))) + (1d0 / (bofg(gamma_bulk(i - 1)) * gamma_bulk(i - 1))) ) / cLight
+            t(i) = t(i - 1) + 0.5d0 * dr * ( (1d0 / (beta_bulk * gamma_bulk(i))) &
+               + (1d0 / (bofg(gamma_bulk(i - 1)) * gamma_bulk(i - 1))) ) / cLight
          end if
          dt = t(i) - t(i - 1)
       else if( radius_evol ) then
@@ -282,7 +284,8 @@ subroutine afterglow(params_file, output_file, cool_withKN, ssa_boiler, with_win
                   1d0 / (bofg(gamma_bulk(i - 1)) * gamma_bulk(i - 1) * cLight), &
                   1d0 / (beta_bulk * gamma_bulk(i) * cLight))
          else
-            t(i) = t(i - 1) + 0.5d0 * dr * ( (1d0 / (beta_bulk * gamma_bulk(i))) + (1d0 / (bofg(gamma_bulk(i - 1)) * gamma_bulk(i - 1))) ) / cLight
+            t(i) = t(i - 1) + 0.5d0 * dr * ( (1d0 / (beta_bulk * gamma_bulk(i))) &
+                  + (1d0 / (bofg(gamma_bulk(i - 1)) * gamma_bulk(i - 1))) ) / cLight
          end if
          dt = t(i) - t(i - 1)
       end if
@@ -301,7 +304,7 @@ subroutine afterglow(params_file, output_file, cool_withKN, ssa_boiler, with_win
             &             dotg(:, i - 1), &
             &             Ddiff(:, i - 1), &
             &             Qinj(:, i - 1), &
-            &             tesc_e, &!1d200, &!
+            &             1d200, &
             &             tlc)
 
       call bw_crossec_area(gamma_bulk0, R(i), gamma_bulk(i), theta_j0, flow_kind, blob, Rb(i), volume(i), cs_area, Omega_j)
@@ -335,8 +338,9 @@ subroutine afterglow(params_file, output_file, cool_withKN, ssa_boiler, with_win
       L_e = eps_e * cs_area * n_ext * energy_p * cLight * beta_bulk * gamma_bulk(i) * (gamma_bulk(i) - 1d0)
       ! Q0 = L_e / ( g1**(2d0 - pind) * Pinteg(g2 / g1, pind - 1d0, 1d-6) * volume(i) * energy_e )
       !!!!!NOTE: The expression below corresponds to the normalization in Eq. (13)
-      !!!!!!!!!! in PM09
-      Q0 = L_e / ( (g1**(2d0 - pind) * Pinteg(g2 / g1, pind - 1d0, 1d-6) - g1**(1d0 - pind) * Pinteg(g2 / g1, pind, 1d-6)) * volume(i) * energy_e )
+      !!!!!      in PM09
+      Q0 = L_e / ((g1**(2d0 - pind) * Pinteg(g2 / g1, pind - 1d0, 1d-6) - &
+            g1**(1d0 - pind) * Pinteg(g2 / g1, pind, 1d-6)) * volume(i) * energy_e)
       Qinj(:, i) = injection_pwl(t(i), tinj, gg, g1, g2, pind, Q0)
 
 
@@ -346,8 +350,7 @@ subroutine afterglow(params_file, output_file, cool_withKN, ssa_boiler, with_win
       !  #####  ###### #    # # ######   #   # #    # #  # #
       !  #   #  #    # #    # # #    #   #   # #    # #   ##
       !  #    # #    # #####  # #    #   #   #  ####  #    #
-      !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
-      !$OMP& PRIVATE(j, k)
+      !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) PRIVATE(j, k)
       do j = 1, numdf
          freqs(j) = nu_com_f(nu_obs(j), z, D(i))
          call mbs_emissivity(jmbs(j, i), freqs(j), gg, n_e(:, i), B)
@@ -382,8 +385,7 @@ subroutine afterglow(params_file, output_file, cool_withKN, ssa_boiler, with_win
       end if
 
       if ( with_ic ) then
-         !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
-         !$OMP& PRIVATE(j)
+         !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) PRIVATE(j)
          do j = 1, numdf
             ! call IC_emis_full(freqs(j), freqs, gg, n_e(:, i), Inu, jssc(j, i))
             call IC_iso_powlaw(jssc(j, i), freqs(j), freqs, Inu, n_e(:, i), gg)
@@ -407,12 +409,14 @@ subroutine afterglow(params_file, output_file, cool_withKN, ssa_boiler, with_win
       !     Radiative cooling
       !
       if ( full_rad_cool ) then
-         ! call RadTrans(Inu, Rb(i), jmbs(:, i), ambs(:, i))
+         ! call bolometric_integ(freqs, 4d0 * pi * Inu / cLight, urad)
+         ! call RadTrans_blob(Inu, R, jssc(:, i) + jeic(:, i), anut(:, i))
+         call RadTrans_blob(Inu, Rb(i), jmbs(:, i), ambs(:, i))
          call rad_cool(dotg(:, i), gg, freqs, 4d0 * pi * Inu / cLight, cool_withKN)
       else
          dotg(:, i) = 0d0
       end if
-      dotg(:, i) = dabs(dotg(:, i)) + urad_const * (uB + uext) * pofg(gg)**2
+      dotg(:, i) = dotg(:, i) + urad_const * (uB + uext) * pofg(gg)**2
 
 
       !
