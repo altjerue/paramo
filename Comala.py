@@ -216,7 +216,7 @@ def PBSfile(jname, qname, xcmd, depen=None, nodes=None, cores=None, mail=None, h
 #
 #  SLURM
 #
-def SlurmFile(jname, qname, xcmd, depen=None, nodes=None, cores=None, mail=None, htime=None):
+def SlurmFile(jname, qname, xcmd, depen=None, nodes=None, cores=None, mail=None, htime=None, box=None):
     '''This function generates the Slurm file to queue a simulation
     '''
     from datetime import timedelta as td
@@ -254,11 +254,13 @@ def SlurmFile(jname, qname, xcmd, depen=None, nodes=None, cores=None, mail=None,
             print("#SBATCH --mail-user={0}".format(mail), file=f)
             print("#SBATCH --mail-type=FAIL", file=f)
         else:
-            print("#SBATCH --mail-type=NONE", file=f)        
+            print("#SBATCH --mail-type=NONE", file=f)
         print("Working at: {0}".format(os.getcwd()))
         print("\ncd {0}".format(os.getcwd()), file=f)
         if (c > 1) or not (qname == 'debug'):
             print("export OMP_NUM_THREADS={0}".format(c), file=f)
+        if box == 'brown':
+            print("module load intel impi hdf5", file=f)
         print("\n# RUN", file=f)
         print(xcmd, file=f)
     return sname
