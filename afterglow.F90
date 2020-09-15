@@ -17,8 +17,9 @@ subroutine afterglow(params_file, output_file, cool_withKN, ssa_boiler, with_win
    implicit none
 
    integer, intent(in) :: flow_kind
-   character(len=*), intent(in) :: output_file, params_file
+   character(len=*), intent(in) :: params_file
    logical, intent(in) :: cool_withKN, ssa_boiler, with_wind, blob
+   character(len=*),intent(inout) :: output_file
    integer, parameter :: nmod = 50
    character(len=*), parameter :: screan_head = &
       '| Iteration | Obser. time |   BW radius |  gamma_bulk |      Bfield |'&
@@ -34,7 +35,7 @@ subroutine afterglow(params_file, output_file, cool_withKN, ssa_boiler, with_win
          b_const, beta_bulk, eps_g2, theta_j0, cs_area, n_ext0, g2_const, &
          Omega_j, dt, f_esc
    real(dp), allocatable, dimension(:) :: freqs, t, Inu, gg, urad, &
-         nu_obs, t_obs, gamma_bulk, R, D, tcool, Rb, volume
+         nu_obs, t_obs, gamma_bulk, R, D, tcool, Rb, volume, dotg_tmp
    real(dp), allocatable, dimension(:,:) :: dotg, n_e, jnut, jmbs, jssc, jeic, &
          ambs, anut, Qinj, tau_gg, pow_syn, Ddiff
    logical :: full_rad_cool, bw_approx, radius_evol, pwl_over_trpzd_integ, &
@@ -87,7 +88,7 @@ subroutine afterglow(params_file, output_file, cool_withKN, ssa_boiler, with_win
 
    allocate(t(0:numdt), freqs(numdf), Inu(numdf), gg(numbins), urad(numbins), &
          nu_obs(numdf), t_obs(0:numdt), R(0:numdt), tcool(numbins), Rb(0:numdt), &
-         gamma_bulk(0:numdt), D(0:numdt), volume(0:numdt))
+         gamma_bulk(0:numdt), D(0:numdt), volume(0:numdt), dotg_tmp(numbins))
    allocate(n_e(numbins, 0:numdt), Ddiff(numbins, 0:numdt), &
          dotg(numbins, 0:numdt), ambs(numdf, numdt), jmbs(numdf, numdt), &
          jnut(numdf, numdt), jssc(numdf, numdt), anut(numdf, numdt), &
@@ -97,10 +98,11 @@ subroutine afterglow(params_file, output_file, cool_withKN, ssa_boiler, with_win
    call K1_init
    call K2_init
 
+   !!!!!COMBAK: Transform all these into arguments of the subroutine
    with_ic = .true.
    full_rad_cool = .true.
-   bw_approx = .false.
-   radius_evol = .true.
+   bw_approx = .true.
+   radius_evol = .false.
    pwl_over_trpzd_integ = .false.
 
    !-----> About the observer
@@ -216,6 +218,15 @@ subroutine afterglow(params_file, output_file, cool_withKN, ssa_boiler, with_win
    Qinj(:, 0) = injection_pwl(t(0), tinj, gg, g1, g2, pind, Q0)
    n_e(:, 0) = Qinj(:, 0)
 
+   write(*,"('--> Calculating the emission')")
+   if (cool_withKN) then
+      write(*, "('--> Radiative cooling: Klein-Nishina')")
+      output_file="KNcool-"//trim(output_file)
+   else
+      write(*, "('--> Radiative cooling: Thomson')")
+      output_file="Thcool-"//trim(output_file)
+   end if
+   write(*,*) ''
    write(*, "('---> Calculating the emission')")
    write(*, *) ''
    write(*, "(' Using tstep = ', F7.3)") tstep
@@ -408,15 +419,16 @@ subroutine afterglow(params_file, output_file, cool_withKN, ssa_boiler, with_win
       !
       !     Radiative cooling
       !
+      dotg(:, i) = 0d0
       if ( full_rad_cool ) then
          ! call bolometric_integ(freqs, 4d0 * pi * Inu / cLight, urad)
          ! call RadTrans_blob(Inu, R, jssc(:, i) + jeic(:, i), anut(:, i))
          call RadTrans_blob(Inu, Rb(i), jmbs(:, i), ambs(:, i))
-         call rad_cool(dotg(:, i), gg, freqs, 4d0 * pi * Inu / cLight, cool_withKN)
-      else
-         dotg(:, i) = 0d0
+         call rad_cool_pwl(dotg_tmp, gg, freqs, 4d0 * pi * Inu / cLight, cool_withKN)
+         dotg(:, i) = dotg_tmp
+         call rad_cool_mono(dotg_tmp, gg, nu_ext, uext, cool_withKN)
+         dotg(:, i) = dotg(:, i) + dotg_tmp
       end if
-      dotg(:, i) = dotg(:, i) + urad_const * (uB + uext) * pofg(gg)**2
 
 
       !

@@ -78,7 +78,7 @@ program afterglow_main
       call an_error(args_error)
    end if
 
-   call afterglow(trim(params_file), trim(output_file), with_cool, with_abs, &
+   call afterglow(trim(params_file), output_file, with_cool, with_abs, &
          with_wind, fgeom, with_blob)
 
 end program afterglow_main

@@ -610,6 +610,9 @@ contains
    !  #      #    # #    # #      # #  # # #  ###
    !  #    # #    # #    # #      # #   ## #    #
    !   ####   ####   ####  ###### # #    #  ####
+   !
+   !     ----------> Power-law radiation field <----------
+   !
    subroutine rad_cool_pwl(dotg, gg, freqs, uu, withKN)
       implicit none
       real(dp), intent(in), dimension(:) :: freqs, gg, uu
@@ -684,6 +687,9 @@ contains
 
    end subroutine rad_cool_pwl
 
+   !
+   !     ----------> Monoenergetic radiation field <----------
+   !
    subroutine rad_cool_mono(dotg, gg, nu0, u0, withKN)
       implicit none
       real(dp), intent(in) :: u0, nu0
@@ -716,6 +722,7 @@ contains
       end do
    end subroutine rad_cool_mono
  
+
    !  ###### #    #  ####  #      #    # ##### #  ####  #    #
    !  #      #    # #    # #      #    #   #   # #    # ##   #
    !  #####  #    # #    # #      #    #   #   # #    # # #  #
