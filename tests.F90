@@ -16,11 +16,10 @@ program tests
    implicit none
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! TODO:
-   !   [ ] dir as an input parameter
-   !   [ ] blast wave test: Numerical vs Sari, Piran & Narayan (1998)
-   !   [ ] choise of test as input
-   !       [ ] Modify Comala
-   !   [ ]
+   !   - dir as an input parameter
+   !   - blast wave test: Numerical vs Sari, Piran & Narayan (1998)
+   !   - choise of test as input
+   !      - Modify Comala
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! call steady_state
    ! call rad_procs
