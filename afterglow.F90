@@ -128,10 +128,10 @@ subroutine afterglow(params_file, output_file, cool_withKN, ssa_boiler, with_win
    call deceleration_radius(Rd, Rd2, E0, gamma_bulk0, Aw, with_wind, sind)
    td = (1d0 + z) * Rd / (4d0 * gamma_bulk0**2 * cLight)
 
-   !-----> True outflow energy and decceleration radius
+   !---> True outflow energy and decceleration radius
    Ejet = E0 * Omega_j / (4d0 * pi)
 
-   !-----> Locating the emission region
+   !---> Locating the emission region
    if ( bw_approx ) then
       t_obs(0) = tstep
       call blastwave_approx(t_obs(0), z, gamma_bulk0, E0, Aw, gamma_bulk(0), R(0), .true.)
@@ -149,32 +149,32 @@ subroutine afterglow(params_file, output_file, cool_withKN, ssa_boiler, with_win
 
    call bw_crossec_area(gamma_bulk0, R(0), gamma_bulk(0), theta_j0, flow_kind, blob, Rb(0), volume(0), cs_area, Omega_j)
 
-   !-----> External medioum
+   !---> External medioum
    n_ext = Aw * R(0)**(-sind)
 
-   !-----> Magnetic field
+   !---> Magnetic field
    b_const = dsqrt(32d0 * pi * eps_B * mass_p) * cLight
    ! B = b_const * dsqrt(n_ext) * gamma_bulk(0)
    B = b_const * dsqrt(n_ext * (gamma_bulk(0) - 1d0) * (gamma_bulk(0) + 0.75d0))
    uB = B**2 / (8d0 * pi)
 
-   !-----> Radiation fields
+   !---> Radiation fields
    uext = uext0 * gamma_bulk(0)**2 * (1d0 + beta_bulk**2 / 3d0) ! eq. (5.25) in DM09
    nu_ext = nu_ext0 * gamma_bulk(0)
    urad_const = 4d0 * sigmaT * cLight / (3d0 * energy_e)
 
-   !-----> Minimum and maximum Lorentz factors of the particles distribution
+   !---> Minimum and maximum Lorentz factors of the particles distribution
    g2_const = dsqrt(6d0 * pi * eCharge * eps_g2 / sigmaT)
    g1_const = eps_e * mass_p * (pind - 2d0) / ((pind - 1d0) * mass_e)
    g2 = g2_const / dsqrt(B)
    g1 = g1_const * (gamma_bulk(0) - 1d0)
 
-   !-----> Time-scales
+   !---> Time-scales
    tlc = Rb(0) / cLight
    tesc_e = f_esc * tlc! * R(0) / (cLight * gamma_bulk(0))!
    tinj = 1d200
 
-   !-----> Fraction of accreted kinetic energy injected into non-thermal electrons
+   !---> Fraction of accreted kinetic energy injected into non-thermal electrons
    L_e = eps_e * cs_area * n_ext * energy_p * cLight * beta_bulk * gamma_bulk(0) * (gamma_bulk(0) - 1d0)
    ! Q0 = L_e / ( g1**(2d0 - pind) * Pinteg(g2 / g1, pind - 1d0, 1d-6) * volume(0) * energy_e )
    Q0 = L_e / ((g1**(2d0 - pind) * Pinteg(g2 / g1, pind - 1d0, 1d-6) &
@@ -227,7 +227,7 @@ subroutine afterglow(params_file, output_file, cool_withKN, ssa_boiler, with_win
       output_file="Thcool-"//trim(output_file)
    end if
    write(*,*) ''
-   write(*, "('---> Calculating the emission')")
+   write(*, "('--> Calculating the emission')")
    write(*, *) ''
    write(*, "(' Using tstep = ', F7.3)") tstep
    write(*, *) "Wrting data in: ", trim(output_file)
@@ -242,8 +242,7 @@ subroutine afterglow(params_file, output_file, cool_withKN, ssa_boiler, with_win
    ! #       #  #  #    # #      #    #   #   # #    # #   ##
    ! ######   ##    ####  ######  ####    #   #  ####  #    #
    time_loop: do i = 1, numdt
-
-      !-----> Locating the emission region
+      !-----> Localizing the emission region
       if ( bw_approx ) then
          t_obs(i) = t_obs(0) * (tmax / t_obs(0))**(dble(i) / dble(numdt))
          call blastwave_approx(t_obs(i), z, gamma_bulk0, E0, Aw, gamma_bulk(i), R(i), .true.)
@@ -374,7 +373,7 @@ subroutine afterglow(params_file, output_file, cool_withKN, ssa_boiler, with_win
       end do
       !$OMP END PARALLEL DO
 
-      !!!!!COMBAK: pairs optical depth
+      !!!!!TODO: pairs optical depth
       ! if ( hPlanck * freqs(j) > 5d11 * (0.01d0 / 0.02d0) * (100d0 / gamma_bulk(i)) ) then
       !    tau_gg(j, i) = 0.16d0 * (R(i) / 1d16) * (100d0 / gamma_bulk(i)) * (uext / 1d-7) * (1d11 / (hPlanck * freqs(j))) * (0.01d0 / 0.02d0)**2
       ! else
