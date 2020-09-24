@@ -16,29 +16,27 @@ contains
 !        # #       #   # #       # #     #
 !  #     # #       #    ## #     # #     #
 !   #####  #       #     #  #####   #####
-subroutine blastwave_approx_SPN98(tobs, z, G0, E0, n, Gshk, Rshk, adiabatic)
+subroutine blastwave_approx_SPN98(G0, E0, n, tobs, Gshk, Rshk, adiabatic)
    !
    !  Description:
    !    Evolution model of a blast wave as in eqs. (9) and (10) of SPN98
    !
    implicit none
-   real(dp), intent(in) :: tobs, G0, E0, n, z
+   real(dp), intent(in) :: G0, E0, n, tobs
    logical, intent(in) :: adiabatic
-   real(dp), intent(out) :: Rshk
-   real(dp) :: M, L, Gshk, t
-   t = tobs / (1d0 + z) !<--- transforming to the comoving frame
+   real(dp), intent(out) :: Rshk, Gshk
+   real(dp) :: M, L
    M = E0 / (G0 * cLight**2)
    L = (17d0 * M / (16d0 * pi * mass_p * n))**(1d0 / 3d0)
    adiab: if ( adiabatic ) then
-      Rshk = (17d0 * E0 * t / (4d0 * pi * mass_p * n * cLight))**(0.25d0)
+      Rshk = (17d0 * E0 * tobs / (4d0 * pi * mass_p * n * cLight))**(0.25d0)
       Gshk = (17d0 * E0 / (1024d0 * pi * mass_p * n * cLight**5 * t**3))**(0.125d0)
    else
-      Rshk = (4d0 * cLight * t / L)**(1d0 / 7d0) * L
-      Gshk = (4d0 * cLight * t / L)**(-3d0 / 7d0)
+      Rshk = (4d0 * cLight * tobs / L)**(1d0 / 7d0) * L
+      Gshk = (4d0 * cLight * tobs / L)**(-3d0 / 7d0)
    end if adiab
    Gshk = dmin1(G0, Gshk)
 end subroutine blastwave_approx_SPN98
-
 
 subroutine syn_afterglow_SPN98(nuo, to, z, E0, epse, epsB, G0, pind, n, d_lum, adiab, flux)
    !
@@ -68,7 +66,7 @@ subroutine syn_afterglow_SPN98(nuo, to, z, E0, epse, epsB, G0, pind, n, d_lum, a
       t0 = 4.6d0 * (epsB * epse)**1.4d0 * (E52 / G2)**0.8d0 * n**0.6d0
    end if
 
-   evolution: do i=1, size(t)
+   evolution: do i = 1, size(t)
 
       tdy = sec2dy(t(i))
 
@@ -113,9 +111,12 @@ subroutine deceleration_radius(Rd1, Rd2, E0, G0, Aw, with_wind, s)
    !   Blast-wave solution. Deceleration radius as in eq. (1) of RM92
    !
    implicit none
-   real(dp), intent(in) :: G0, E0, Aw, s
+   real(dp), intent(in) :: G0, E0, Aw
    logical, intent(in) :: with_wind
+   real(dp), intent(in), optional :: s
    real(dp), intent(out) :: Rd1, Rd2
+   if ( with_wind .and. .not. present(s) ) &
+         call an_error("deceleration_radius: Wind index s not declared")
    if ( with_wind ) then
       !     Eq. (5) in PK00
       Rd1 = ( (3d0 - s) * E0 / (4d0 * pi * Aw * mass_p * (cLight * G0)**2) )**(1d0 / (3d0 - s))

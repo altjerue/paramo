@@ -63,10 +63,12 @@ module SRtoolkit
    end interface x_com_f
 
 contains
-   !
-   !     ----------{     beta(gamma)     }----------
-   !
+
    function bofg_s(g) result(b)
+      !
+      !  Description:
+      !    beta = sqrt(1 - 1 / gamma^2)
+      !
       real(dp), intent(in) :: g
       real(dp) :: b
       if ( g <= 1d0 ) then

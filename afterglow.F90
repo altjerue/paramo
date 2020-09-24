@@ -250,9 +250,9 @@ subroutine afterglow(params_file, output_file, cool_withKN, ssa_boiler, with_win
          D(i) = Doppler(gamma_bulk(i), mu_obs)
          beta_bulk = bofg(gamma_bulk(i))
          if ( pwl_over_trpzd_integ ) then
-            t(i) = t(i - 1) + powlaw_integ(R(i - 1), R(i), &
+            t(i) = t(i - 1) + powlaw_integ( R(i - 1), R(i), &
                   1d0 / (bofg(gamma_bulk(i - 1)) * gamma_bulk(i - 1) * cLight), &
-                  1d0 / (beta_bulk * gamma_bulk(i) * cLight))
+                  1d0 / (beta_bulk * gamma_bulk(i) * cLight) )
          else
             t(i) = t(i - 1) + 0.5d0 * dr * ( (1d0 / (beta_bulk * gamma_bulk(i))) &
                + (1d0 / (bofg(gamma_bulk(i - 1)) * gamma_bulk(i - 1))) ) / cLight

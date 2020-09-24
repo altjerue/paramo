@@ -33,12 +33,7 @@ implicit none
 ! TODO: PK00
 private
 integer :: Ng, Nt, Nv
-real(dp) :: theta_obs, z, dLum
-real(dp) :: pind, gmin, gmax, g1, g2, tmax, tstep
-real(dp) :: numin, numax
-real(dp) :: eps_B, eps_e, E0, G0, n_ext, u_ext, nu_ext
-real(dp), allocatable, dimension(:) :: t, t_obs, nu, nu_obs
-real(dp), allocatable, dimension(:,:) :: jnu, anu, 
+real(dp) :: theta_obs, z, dLum, pind, gmin, gmax, g1, g2, tmax, tstep, numin, numax, eps_B, eps_e, E0, G0, n_ext, u_ext, nu_ext
 public steady_state, BB_RadCool, afterglow_syn_lc
 
 contains
@@ -234,7 +229,9 @@ subroutine afterglow_syn_lc
    implicit none
 
    real(dp) :: Rd, R0
-
+   real(dp), allocatable, dimension(:) :: t, t_obs, v, v_obs, g, Ddiff
+   real(dp), allocatable, dimension(:,:) :: j_v, a_v, Qinj, dotg, n_e
+   
    !---> Parameters
    Nt = 400
    Ng = 384
@@ -245,18 +242,29 @@ subroutine afterglow_syn_lc
    epsB = 8d-5
    epse = 0.07d0
    E0 = 8d53
-   G0 = 700d0
-   n0 = 0.5d0
+   gamma_bulk0 = 700d0
+   n_ext = 0.5d0
+   theta_obs = 2d0
 
-   !---> Magnetic field
-   b_const = dsqrt(32d0 * pi * mass_p * eps_B) * cLight
-   B = b_const * dsqrt(n_ext) * gamma_bulk(0)
+   allocate(t(Nt), t_obs(Nt), v(Nv), v_obs(Nv), g(Ng), Ddiff(Ng))
+   allocate(j_v(Nv, Nt), a_v(Nv, Nt), Qinj(Ng, Nt), dotg(Ng, Nt), n_e(Ng, Nt))
+
+   !-----> About the observer
+   theta_obs = theta_obs * pi / 180d0
+   mu_obs = dcos(theta_obs)
+
+   !---> Spherical shock radius and bulk Lorentz factor
+   call deceleration_radius(Rd, Rd2, E0, gamma_bulk0, n_ext, .false., 0d0)
+   t_obs(0) = 0.9d0 * Rd / (4d0 * gamma_bulk0**2 * cLight)
+   call blastwave_approx_SPN98(gamma_bulk0, E0, n_ext, t_obs(0), gamma_bulk(0), R(0), .true.)
+   volume(0) = 4d0 * pi * R(0)**3 / 3d0
+   D(0) = Doppler(gamma_bulk(0), mu_obs)
+   t(0) = t_com_f(t_obs(0), z, gamma_bulk(0), 0d0, mu_obs)
+
+   !---> Magnetic field following eq. (2) in SPN98
+   b_const = dsqrt(32d0 * pi * mass_p * eps_B * n_ext) * cLight
+   B = b_const * gamma_bulk(0)
    uB = B**2 / (8d0 * pi)
-
-   !---> Radiation fields
-   uext = uext0 * gamma_bulk(0)**2 * (1d0 + beta_bulk**2 / 3d0) ! eq. (5.25) in DM09
-   nu_ext = nu_ext0 * gamma_bulk(0)
-   urad_const = 4d0 * sigmaT * cLight / (3d0 * energy_e)
 
    !---> Minimum and maximum Lorentz factors of the particles distribution
    g2_const = dsqrt(6d0 * pi * eCharge * eps_g2 / sigmaT)
@@ -264,22 +272,32 @@ subroutine afterglow_syn_lc
    g2 = g2_const / dsqrt(B)
    g1 = g1_const * (gamma_bulk(0) - 1d0)
 
-   !---> Time-scales
-   tlc = Rb(0) / cLight
-   tesc_e = f_esc * tlc! * R(0) / (cLight * gamma_bulk(0))!
-   tinj = 1d200
+   !---> Total number of swept-up electrons in the postshock SPN98
+   N_e = volume(0) * n_ext
+   Q0 = N_e / ( g1**(2d0 - pind) * Pinteg(g2 / g1, pind - 1d0, 1d-6) * volume(0) )
+   ! Q0 = N_e / ((g1**(2d0 - pind) * Pinteg(g2 / g1, pind - 1d0, 1d-6) &
+   !       - g1**(1d0 - pind) * Pinteg(g2 / g1, pind, 1d-6)) * volume(0) * energy_e)
 
-   !---> Fraction of accreted kinetic energy injected into non-thermal electrons
-   L_e = eps_e * cs_area * n_ext * energy_p * cLight * beta_bulk * gamma_bulk(0) * (gamma_bulk(0) - 1d0)
-   ! Q0 = L_e / ( g1**(2d0 - pind) * Pinteg(g2 / g1, pind - 1d0, 1d-6) * volume(0) * energy_e )
-   Q0 = L_e / ((g1**(2d0 - pind) * Pinteg(g2 / g1, pind - 1d0, 1d-6) &
-         - g1**(1d0 - pind) * Pinteg(g2 / g1, pind, 1d-6)) * volume(0) * energy_e)
+   build_freqs: do j = 1, Nv
+      v_obs(j) = v_min * ( (v_max / v_min)**(dble(j - 1) / dble(Nv - 1)) )
+   end do build_freqs
 
+   build_gammas: do k = 1, Ng
+      g(k) = g_min * (g_max / g_min)**(dble(k - 1) / dble(Ng - 1))
+   end do build_gammas
 
-   evolution: do i = 1, numdt
+   dotg(:, 0) = urad_const * uB * pofg(gg)**2
+   Ddiff = 1d-200
+   Qinj(:, 0) = injection_pwl(t(0), tinj, gg, g1, g2, pind, Q0)
+   n_e(:, 0) = Qinj(:, 0)
+
+   !---> Evolution loop
+   evolution: do i = 1, Nt
+
       !---> Localizing the emission region
       t_obs(i) = t_obs(0) * (tmax / t_obs(0))**(dble(i) / dble(numdt))
-      call blastwave_approx(t_obs(i), z, gamma_bulk0, E0, Aw, gamma_bulk(i), R(i), .true.)
+      call blastwave_approx_SPN98(gamma_bulk0, E0, n_ext, t_obs(i), gamma_bulk(i), R(i), .true.)
+      volume(i) = 4d0 * pi * R(i)**3 / 3d0
       dr = R(i) - R(i - 1)
       D(i) = Doppler(gamma_bulk(i), mu_obs)
       beta_bulk = bofg(gamma_bulk(i))
@@ -298,29 +316,19 @@ subroutine afterglow_syn_lc
             &             1d200, &
             &             tlc)
 
-      call bw_crossec_area(gamma_bulk0, R(i), gamma_bulk(i), theta_j0, flow_kind, blob, Rb(i), volume(i), cs_area, Omega_j)
-
-      !---> Magnetic field
-      ! B = b_const * dsqrt(n_ext) * gamma_bulk(i)
-      B = b_const * dsqrt(n_ext * (gamma_bulk(i) - 1d0) * (gamma_bulk(i) + 0.75d0))
+      !---> Magnetic field following eq. (2) in SPN98
+      B = b_const * gamma_bulk(i)
       uB = B**2 / (8d0 * pi)
 
       !---> Minimum and maximum Lorentz factors of the particles distribution
       g2 = g2_const / dsqrt(B)
-      g1 = g1_const * (gamma_bulk(i) - 1d0)
+      g1 = g1_const * gamma_bulk(i)
 
-      !---> Time-scales
-      tlc = Rb(i) / cLight
-      tesc_e = f_esc * tlc! * R(i) / (cLight * gamma_bulk(i))!
-      tinj = 1d200
-
-      !---> Fraction of accreted kinetic energy injected into non-thermal electrons
-      L_e = eps_e * cs_area * n_ext * energy_p * cLight * beta_bulk * gamma_bulk(i) * (gamma_bulk(i) - 1d0)
-      ! Q0 = L_e / ( g1**(2d0 - pind) * Pinteg(g2 / g1, pind - 1d0, 1d-6) * volume(i) * energy_e )
-      !!!!!NOTE: The expression below corresponds to the normalization in Eq. (13)
-      !!!!!      in PM09
-      Q0 = L_e / ((g1**(2d0 - pind) * Pinteg(g2 / g1, pind - 1d0, 1d-6) - &
-            g1**(1d0 - pind) * Pinteg(g2 / g1, pind, 1d-6)) * volume(i) * energy_e)
+      !---> Total number of swept-up electrons in the postshock SPN98
+      N_e = volume(i) * n_ext
+      Q0 = N_e / ( g1**(2d0 - pind) * Pinteg(g2 / g1, pind - 1d0, 1d-6) * volume(i) )
+      ! Q0 = N_e / ((g1**(2d0 - pind) * Pinteg(g2 / g1, pind - 1d0, 1d-6) &
+      !       - g1**(1d0 - pind) * Pinteg(g2 / g1, pind, 1d-6)) * volume(i))
       Qinj(:, i) = injection_pwl(t(i), tinj, gg, g1, g2, pind, Q0)
 
       !---> Numerical synchrotron
@@ -329,13 +337,11 @@ subroutine afterglow_syn_lc
          freqs(j) = nu_com_f(nu_obs(j), z, D(i))
          call mbs_emissivity(jmbs(j, i), freqs(j), gg, n_e(:, i), B)
          call mbs_absorption(ambs(j, i), freqs(j), gg, n_e(:, i), B)
-         do k = 1, numbins
-            ! pow_syn(j, k) = dsqrt(3d0) * eCharge**3 * B * RMA_new(freqs(j) / (nuconst * B), gg(k))
-            !---> Expression below is Eq. (3.63) in my thesis
-            pow_syn(j, k) = 1.315d-28 * nuconst * B * volume(i) * RMA_new(freqs(j) / (nuconst * B), gg(k))
-         end do
       end do
       !$OMP END PARALLEL DO
+
+      !---> Peak spectral power as in eq. (5) in SPN98
+      P_syn_max(j, k) = mass_e * cLight**2 * sigmaT * gamma_bulk(i) * B
 
       !---> Cooling coefficient
       !!!---> Numeric using finite differences
