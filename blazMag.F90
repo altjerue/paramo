@@ -69,8 +69,7 @@ subroutine blazMag(params_file, output_file, cool_withKN, with_abs)
    allocate(nn(numbins, 0:numdt), dotg(numbins, 0:numdt), gg(numbins), &
       ambs(numdf, numdt), jmbs(numdf, numdt), jnut(numdf, numdt), &
       jssc(numdf, numdt), anut(numdf, numdt), jeic(numdf, numdt), &
-      Qinj(numbins, numdt), Ddiff(numbins, 0:numdt), Fnut(numdf, numdt), &
-      Fmbs(numdf, numdt), Fssc(numdf, numdt), Feic(numdf, numdt))
+      Qinj(numbins, numdt), Ddiff(numbins, 0:numdt))
 
 
    !   # #    # # #####     ####   ####  #    # #####

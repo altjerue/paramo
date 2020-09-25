@@ -12,8 +12,7 @@ subroutine afterglow(params_file, output_file, cool_withKN, ssa_boiler, with_win
    use radiation
    use pairs
    use Aglow_models
-   use K1
-   use K2
+   use specialf
    implicit none
 
    integer, intent(in) :: flow_kind
@@ -134,7 +133,7 @@ subroutine afterglow(params_file, output_file, cool_withKN, ssa_boiler, with_win
    !---> Locating the emission region
    if ( bw_approx ) then
       t_obs(0) = tstep
-      call blastwave_approx(t_obs(0), z, gamma_bulk0, E0, Aw, gamma_bulk(0), R(0), .true.)
+      call blastwave_approx_SPN98(gamma_bulk0, E0, Aw, t_obs(0), gamma_bulk(0), R(0), .true.)
       beta_bulk = bofg(gamma_bulk(0))
       D(0) = Doppler(gamma_bulk(0), mu_obs)
       t(0) = R(0) / (beta_bulk * gamma_bulk(0) * cLight)
@@ -245,7 +244,7 @@ subroutine afterglow(params_file, output_file, cool_withKN, ssa_boiler, with_win
       !-----> Localizing the emission region
       if ( bw_approx ) then
          t_obs(i) = t_obs(0) * (tmax / t_obs(0))**(dble(i) / dble(numdt))
-         call blastwave_approx(t_obs(i), z, gamma_bulk0, E0, Aw, gamma_bulk(i), R(i), .true.)
+         call blastwave_approx_SPN98(gamma_bulk0, E0, Aw, t_obs(i), gamma_bulk(i), R(i), .true.)
          dr = R(i) - R(i - 1)
          D(i) = Doppler(gamma_bulk(i), mu_obs)
          beta_bulk = bofg(gamma_bulk(i))

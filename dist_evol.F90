@@ -4,7 +4,7 @@ module dist_evol
    use misc
    use pwl_integ
    use SRtoolkit
-   use K2
+   use specialf
    implicit none
 
    interface RMaxwell

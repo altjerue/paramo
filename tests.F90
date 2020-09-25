@@ -7,12 +7,10 @@ use pwl_integ
 use hdf5
 use h5_inout
 use SRtoolkit
-use Aglow_models
 use anaFormulae
 use dist_evol
 use radiation
-use K1
-use K2
+use specialf
 implicit none
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! TODO:

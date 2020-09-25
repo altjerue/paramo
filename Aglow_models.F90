@@ -30,7 +30,7 @@ subroutine blastwave_approx_SPN98(G0, E0, n, tobs, Gshk, Rshk, adiabatic)
    L = (17d0 * M / (16d0 * pi * mass_p * n))**(1d0 / 3d0)
    adiab: if ( adiabatic ) then
       Rshk = (17d0 * E0 * tobs / (4d0 * pi * mass_p * n * cLight))**(0.25d0)
-      Gshk = (17d0 * E0 / (1024d0 * pi * mass_p * n * cLight**5 * t**3))**(0.125d0)
+      Gshk = (17d0 * E0 / (1024d0 * pi * mass_p * n * cLight**5 * tobs**3))**(0.125d0)
    else
       Rshk = (4d0 * cLight * tobs / L)**(1d0 / 7d0) * L
       Gshk = (4d0 * cLight * tobs / L)**(-3d0 / 7d0)
@@ -81,7 +81,7 @@ subroutine syn_afterglow_SPN98(nuo, to, z, E0, epse, epsB, G0, pind, n, d_lum, a
       end if blastwave
 
       spectrum: do j = 1, size(nu)
-         coolin_fast_or_slow: if ( tdy < t0 ) then
+         cooling_fast_or_slow: if ( tdy < t0 ) then
             if ( nu_c > nu(j) ) then
                flux(j, i) = (nu(j) / nu_c)**(1d0 / 3d0) * Fmax
             else if ( nu_m >= nu(j) .and. nu(j) >= nu_c ) then

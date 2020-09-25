@@ -50,8 +50,8 @@ function eV2Hz(veV) result(vHz)
     !    Transfrom frequency in eV to Hz
     !
     implicit none
-    readl(dp) :: veV
-    readl(dp) :: vHz
+    real(dp) :: veV
+    real(dp) :: vHz
     vHz = veV * 2.4179937422321953d14
 end function eV2Hz
 
@@ -60,8 +60,8 @@ function Hz2eV(vHz) result(veV)
     !    Transfrom frequency in Hz to eV
     !
     implicit none
-    readl(dp) :: vHz
-    readl(dp) :: veV
+    real(dp) :: vHz
+    real(dp) :: veV
     veV = vHz / 2.4179937422321953d14
 end function Hz2eV
 

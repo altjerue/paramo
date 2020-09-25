@@ -67,7 +67,7 @@ contains
    function bofg_s(g) result(b)
       !
       !  Description:
-      !    beta = sqrt(1 - 1 / gamma^2)
+      !    beta = sqrt(1 - 1 / gamma^2)  [scalar]
       !
       real(dp), intent(in) :: g
       real(dp) :: b
@@ -79,6 +79,10 @@ contains
    end function bofg_s
 
    function bofg_v(g) result(b)
+      !
+      !  Description:
+      !    beta = sqrt(1 - 1 / gamma^2)  [vector]
+      !
       real(dp), intent(in), dimension(:) :: g
       integer :: i
       real(dp), dimension(size(g)) :: b
@@ -231,7 +235,7 @@ contains
       nucom = nuobs * (1d0 + z) / dopp
    end function nu_com_s
 
-    function nu_com_v(nu, z, dopp) result(nucom)
+   function nu_com_v(nu, z, dopp) result(nucom)
       implicit none
       real(dp), intent(in) :: z, dopp
       real(dp), intent(in), dimension(:) :: nu
@@ -243,7 +247,6 @@ contains
    !
    !     ::::::  Time in the observer frame  ::::::
    !
-   ! NOTE: Argument 'x' is the position in the comoving frame
    !
    function t_obs_s(tcom, z, gamma, xcom, muo) result(tobs)
       implicit none
