@@ -362,6 +362,34 @@ subroutine afterglow_syn_lc
 
    call syn_afterglow_SPN98(v_obs, t_obs, z, E0, eps_e, eps_B, G0, pind, n_ext, d_Lum, .true., Fv_SPN98)
 
+   !---> Saving data
+   call h5open_f(herror)
+   call h5io_createf("Afterglow_bench.h5", file_id, herror)
+   call h5io_wint0(file_id, 'Nt', Nt, herror)
+   call h5io_wint0(file_id, 'Ng', Ng, herror)
+   call h5io_wdble0(file_id, 't_max', tmax, herror)
+   call h5io_wdble0(file_id, 'tstep', tstep, herror)
+   call h5io_wdble0(file_id, 'radius', R, herror)
+   call h5io_wdble0(file_id, 'gamma_min', g_min, herror)
+   call h5io_wdble0(file_id, 'gamma_max', g_max, herror)
+   call h5io_wdble0(file_id, 'gamma_1', g1, herror)
+   call h5io_wdble0(file_id, 'gamma_2', g2, herror)
+   call h5io_wdble0(file_id, 'pwl-index', pind, herror)
+   call h5io_wdble1(file_id, 'time', t(1:), herror)
+   call h5io_wdble1(file_id, 'gamma', g, herror)
+   call h5io_wdble1(file_id, 'freqs', v_obs, herror)
+   call h5io_wdble2(file_id, 'dist', n(1:, :), herror)
+   call h5io_wdble2(file_id, 'j_v', j_v, herror)
+   call h5io_wdble2(file_id, 'a_v', a_v, herror)
+   call h5io_wdble1(file_id, 'n_e', , herror)
+   call h5io_wdble1(file_id, 'Ntot2', Ntot2, herror)
+   call h5io_wdble1(file_id, 'Ntot3', Ntot3, herror)
+   call h5io_wdble1(file_id, 'Ntot4', Ntot4, herror)
+   call h5io_wdble1(file_id, 'Ntot5', Ntot5, herror)
+   call h5io_wdble1(file_id, 'Ntot6', Ntot6, herror)
+   call h5io_closef(file_id, herror)
+   call h5close_f(herror)
+
 end subroutine afterglow_syn_lc
 
 end module benchmarks
