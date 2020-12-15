@@ -15,8 +15,8 @@ endif
 ifeq ($(DBG),1)
 
 ifeq ($(IFORT),1)
-OPTIMIZATION=-g -debug all -check all -check nostack -warn all -fp-stack-check -heap-arrays \
-	-ftrapuv -free
+OPTIMIZATION=-g -debug all -check all -check nostack -warn all -fp-stack-check \
+	-heap-arrays -ftrapuv -free
 else  #####  IFORT
 OPTIMIZATION=-g -Wall -ffree-form -ffree-line-length-none \
 	-ffpe-trap=invalid,zero -fbacktrace -fcheck=all \
