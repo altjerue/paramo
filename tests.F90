@@ -17,7 +17,7 @@ implicit none
 !   - dir as an input parameter
 !   - blast wave test: Numerical vs Sari, Piran & Narayan (1998)
 !   - choise of test as input
-!      - Modify Comala
+!      - Modify Miguel.py
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! call steady_state
 ! call rad_procs
@@ -151,7 +151,7 @@ subroutine steady_state
 
    end do time_loop
 
- 
+
 
    write(*, "('--> Fokker-Planck solver test')")
 

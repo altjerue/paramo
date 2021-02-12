@@ -1,6 +1,10 @@
+# –¿Qué es lo que pasa, doña Eduviges?
+# Ella sacudieo la cabeza como si despertara de un sueño
+# –Es el caballo de Miguel Páramo, que galopa por el camino de la Media Luna.
+
 import os
 from time import strftime, localtime
-from SAPytho.misc import fortran_double
+from Eduviges.misc import fortran_double
 
 
 #

@@ -1,4 +1,4 @@
-module Aglow_models
+module blastwave
 use data_types
 use constants
 use transformers
@@ -105,6 +105,7 @@ subroutine syn_afterglow_SPN98(nuo, to, z, E0, epse, epsB, G0, pind, n, d_lum, a
 end subroutine syn_afterglow_SPN98
 !##############################################################################
 
+
 subroutine deceleration_radius(Rd1, Rd2, E0, G0, Aw, with_wind, s)
    !
    !  Description:
@@ -210,6 +211,25 @@ subroutine bw_crossec_area(G0, Rbw, Gbulk, theta_j0, beam_kind, blob, Rb, volume
    end if iso_or_beamed
 
 end subroutine bw_crossec_area
-!##############################################################################
 
-end module Aglow_models
+subroutine bw_numeric_rogelio(filename, nlines, r, v, theta, Gbulk)
+   !
+   !  Description:
+   !    Read a blast-wave from numerical simulation
+   !
+   implicit none
+   integer, intent(in) :: nlines
+   character(len=*),intent(in) :: filename
+   double precision, intent(out), dimension(nlines) :: r, v, theta, Gbulk
+   integer :: i
+   double precision :: x, y, vx,vy
+   open(77,file=trim(filename))
+   do i=1,nlines
+      read(77, *) x, y, vx, vy, theta(i), Gbulk(i)
+      r(i) = dsqrt(x**2 + y**2)
+      v(i) = dsqrt(vx**2 + vy**2)
+   end do
+   close(77)
+end subroutine bw_numeric_rogelio
+
+end module blastwave

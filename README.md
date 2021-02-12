@@ -12,11 +12,6 @@ Paramo stands for: PArticles and RAdiation MOnitor. In a few words: this code so
 - HDF5
 - OpenMP (optional)
 
-### Python interface
-
-- [SAPyto](https://github.com/altjerue/SAPyto)
-- [extractor](https://github.com/altjerue/extractor)
-
 # References
 
 These are the most referenced works on which I based all the modeling
