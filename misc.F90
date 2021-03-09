@@ -271,15 +271,15 @@ contains
    !
    !   -----{  Trapezoidal rule  }-----
    !
-   subroutine trapzd_w2arg(func,a,b,s,n,p)
+   subroutine trapzd_w2arg(func, a, b, s, n, p)
       implicit none
       integer, intent(in) :: n
-      real(dp), intent(in) :: a,b,p
+      real(dp), intent(in) :: a, b, p
       real(dp), intent(inout) :: s
       interface
-         function func(x,p) result(res)
+         function func(x, pp) result(res)
             use data_types
-            real(dp), intent(in) :: p
+            real(dp), intent(in) :: pp
             real(dp), dimension(:), intent(in) :: x
             real(dp), dimension(size(x,dim=1)) :: res
          end function func
@@ -304,9 +304,9 @@ contains
       real(dp), intent(in) :: a,b,p
       real(dp) :: qromb
       interface
-         function func(x,p) result(res)
+         function func(x, pp) result(res)
             use data_types
-            real(dp), intent(in) :: p
+            real(dp), intent(in) :: pp
             real(dp), dimension(:), intent(in) :: x
             real(dp), dimension(size(x, dim=1)) :: res
          end function func
