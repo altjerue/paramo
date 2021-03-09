@@ -22,8 +22,8 @@ contains
       !            /
       !             1
       implicit none
-      real(dp) :: res
       real(dp), intent(in) :: a, s, eps
+      real(dp) :: res
       if ( LN3(a, eps) * (s - 1d0)**2 > 6d0 * eps) then
          res = (1d0 - a**(1d0 - s)) / (s - 1d0)
       else

@@ -23,7 +23,7 @@ program blazMag_main
    call get_command_argument(3, wAbs)
    call get_command_argument(4, output_file)
 
-   !    -----> With or without absorption
+   !!----->  With or without absorption
    if ( wAbs == 'True' ) then
       with_abs = .true.
    elseif ( wAbs == 'False' ) then
@@ -32,7 +32,7 @@ program blazMag_main
       call an_error(args_error)
    end if
 
-   !    -----> With or without SSC emissivity
+   !!----->  With or without SSC emissivity
    if ( wCool == 'True' ) then
       with_cool = .true.
    elseif ( wCool == 'False' ) then
