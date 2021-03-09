@@ -11,7 +11,7 @@ subroutine afterglow(params_file, output_file, cool_withKN, ssa_boiler, with_win
    use dist_evol
    use radiation
    use pairs
-   use Aglow_models
+   use blastwave
    use specialf
    implicit none
 
