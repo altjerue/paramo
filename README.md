@@ -10,11 +10,26 @@ Paramo stands for: PArticles and RAdiation MOnitor. In a few words: this code so
 
 - Fortran (either GNU or Intel)
 - HDF5
-- OpenMP (optional)
+
+## How to run it
+
+- Clone the repository
+- Create parameters file
+- `make`
+- Run executable
+
+### Example
+
+A fast way to run `Paramo` can be done by downloading/copy the file [`runGRB190114C.py`](https://bitbucket.org/comala/workspace/snippets/LpLgGL/afterglow-of-grb190114c#file-runGRB190114C.py) from the [snippets](https://bitbucket.org/comala/workspace/snippets/). Running this file will:
+- Create the parameters file
+- Compile `Paramo` for an afterglow simulation
+- Run the executable
+
+**Note**: The code can be run from another directory. This can be done by specifying in `runGRB190114C.py` its full address, as well `Paramo`'s.
 
 # References
 
-These are the most referenced works on which I based all the modeling
+These are the most referenced works on which I based all the modeling of afterglows
 
 - [PVP14] Pannanen, Vurm, Poutanen, 2014, A&A, 564, A77
 - [PM09]  Petropoulou, Mastichiadis, 2009, A&A, 507, 599
