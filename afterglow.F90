@@ -97,7 +97,7 @@ subroutine afterglow(params_file, output_file, cool_withKN, ssa_boiler, with_win
    call K1_init
    call K2_init
 
-   !!!!!COMBAK: Transform all these into arguments of the subroutine
+   !!!!!TODO: Transform all these into arguments of the subroutine
    with_ic = .true.
    full_rad_cool = .true.
    bw_approx = .true.

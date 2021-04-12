@@ -26,27 +26,29 @@ subroutine afterglow(params_file, output_file, cool_withKN, ssa_boiler, with_win
       ' ---------------------------------------------------------------------', &
       on_screen = "(' | ', I9, ' | ', ES11.4, ' | ', ES11.4, ' | ', ES11.4, ' | ', ES11.4, ' |')"
    integer(HID_T) :: file_id, group_id
-   integer :: i, j, k, numbins, numdf, numdt, time_grid, herror
+   integer :: i, j, k, numbins, numdf, numdt, time_grid, herror, ndirs
    real(dp) :: uB, uext, L_j, gmin, gmax, numin, numax, pind, B, R0, Rmax, &
          tinj, g1, g2, tstep, Q0, tmax, d_lum, z, n_ext, urad_const, Aw, sind, &
          theta_obs, mu_obs, nu_ext, tesc_e, uext0, eps_e, tlc, g1_const, Rd2, &
          Ejet, eps_B, E0, gamma_bulk0, L_e, nu_ext0, tmin, td, Rd, dr, &
          b_const, beta_bulk, eps_g2, theta_j0, cs_area, n_ext0, g2_const, &
          Omega_j, dt, f_esc
-   real(dp), allocatable, dimension(:) :: freqs, t, Inu, gg, urad, &
+   real(dp), allocatable, dimension(:) :: freqs, t, Inu, gg, urad, theta_jet, &
          nu_obs, t_obs, gamma_bulk, R, D, tcool, Rb, volume, dotg_tmp
    real(dp), allocatable, dimension(:,:) :: dotg, n_e, jnut, jmbs, jssc, jeic, &
          ambs, anut, Qinj, tau_gg, pow_syn, Ddiff
    logical :: full_rad_cool, bw_approx, radius_evol, pwl_over_trpzd_integ, &
          with_ic
+   type(blast_wave), allocatable, dimension(:) :: bw
 
-
+   !
    !  #####    ##   #####    ##   #    #  ####
    !  #    #  #  #  #    #  #  #  ##  ## #
    !  #    # #    # #    # #    # # ## #  ####
    !  #####  ###### #####  ###### #    #      #
    !  #      #    # #   #  #    # #    # #    #
    !  #      #    # #    # #    # #    #  ####
+   !
    call read_params(params_file)
    eps_e = par_eps_e
    eps_B = par_eps_B
@@ -76,7 +78,6 @@ subroutine afterglow(params_file, output_file, cool_withKN, ssa_boiler, with_win
    E0 = par_E0
    f_esc = par_fesc
 
-
    !  ####  ###### ##### #    # #####
    ! #      #        #   #    # #    #
    !  ####  #####    #   #    # #    #
@@ -93,11 +94,15 @@ subroutine afterglow(params_file, output_file, cool_withKN, ssa_boiler, with_win
          jnut(numdf, numdt), jssc(numdf, numdt), anut(numdf, numdt), &
          jeic(numdf, numdt), Qinj(numbins, 0:numdt), pow_syn(numdf, numbins), &
          tau_gg(numdf, numdt))
+   allocate(bw(0:numdt))
+
+   !!!TODO: Read the shock profile and directions of motion
+   call bw_mezcal("test.dat", bw(0)%r, bw(0)%der, bw(0)%Gbulk, derroteros)
 
    call K1_init
    call K2_init
 
-   !!!!!COMBAK: Transform all these into arguments of the subroutine
+   !!!IDEA: Transform all these into arguments of the subroutine
    with_ic = .true.
    full_rad_cool = .true.
    bw_approx = .true.
@@ -105,17 +110,22 @@ subroutine afterglow(params_file, output_file, cool_withKN, ssa_boiler, with_win
    pwl_over_trpzd_integ = .false.
 
    !-----> About the observer
+   !!!IDEA: We could leave the observer to Eduviges
+   !!!IDEA: or maybe I could create an object called blastwave which contains all the info of the blastwave
    theta_obs = par_theta_obs * pi / 180d0
    mu_obs = dcos(theta_obs)
-
+   !!!TODO: Calculated the trigonometric relations between theta_obs and theta_jet
+   
    !-----> Initializing blast wave
    theta_j0 = 0.2d0
    beta_bulk = bofg(gamma_bulk0)
    call bw_crossec_area(gamma_bulk0, R0, gamma_bulk0, theta_j0, flow_kind, blob, Rb(0), volume(0), cs_area, Omega_j)
+   !!!IDEA: Consider each direction of propagation as an individual jet
+   !!!QUESTION: What is the proper crossectional area?
 
-   !-----> External medioum
+   !-----> External medium
    if ( with_wind ) then
-      !!!!!NOTE: n_ext0 is A_{*}
+      !!!NOTE: n_ext0 here is A_{*} in the papers
       sind = 2d0
       Aw = n_ext0 * 3d35
       n_ext = Aw * R0**(-sind)
@@ -128,9 +138,13 @@ subroutine afterglow(params_file, output_file, cool_withKN, ssa_boiler, with_win
    td = (1d0 + z) * Rd / (4d0 * gamma_bulk0**2 * cLight)
 
    !---> True outflow energy and decceleration radius
+   !!!NOTE: The energy of the blast-wave will be different for each direction.
+   !!!TODO: Setup properly the initial energy of the blast-wave for each direction
    Ejet = E0 * Omega_j / (4d0 * pi)
 
    !---> Locating the emission region
+   !!!NOTE: If we are going to calculate the Doppler factor here, we must take into account the observer viewing angle. For each direaction of motion, the same observer will have a different viewing angle at each time-step
+   !!!TODO: Draw the trigonometry of the system
    if ( bw_approx ) then
       t_obs(0) = tstep
       call blastwave_approx_SPN98(gamma_bulk0, E0, Aw, t_obs(0), gamma_bulk(0), R(0), .true.)

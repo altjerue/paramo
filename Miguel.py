@@ -195,7 +195,7 @@ def PBSfile(jname, qname, xcmd, depen=None, nodes=None, cores=None, mail=None, h
         c = cores
 
     with open(sname, 'w') as f:
-        print("#!/bin/sh -l\n", file=f)
+        print("#!/bin/bash -l\n", file=f)
         print("# FILENAME: {0}\n".format(sname), file=f)
         print("#PBS -q " + qname, file=f)
         print("#PBS -l nodes={0:d}:ppn={1:d},naccesspolicy=singleuser".format(n, c), file=f)
