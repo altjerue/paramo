@@ -6,22 +6,20 @@ module blastwave
    use SRtoolkit
    implicit none
 
-   !!!TODO: Make a blast-wave type
+   !> blast-wave type
+   !! @param der course [derrotero]
+   !! @param t_com time (comoving)
+   !! @param r_lab position (lab)
+   !! @param Gbulk bulk Lorentz factor
+   !! @param cs cross-sectional area
+   !! @param vol volume of the shocked region
    type blast_wave
-      !  Variables:
-      !     der   := course (derrotero)
-      !     t     := comoving time
-      !     r     := location
-      !     Gbulk := bulk Lorentz factor
-      !     cs    := cross-sectional area
-      !     vol   := volume of the shocked region
-      real(dp) :: der
-      real(dp), allocatable, dimension(:) :: t, r, Gbulk, cs, vol
+      real(dp) :: der, vol, cs
+      real(dp), allocatable, dimension(:) :: t, r, Gbulk
    end type blast_wave
 
 contains
 
-   !############################################################################
    !   #####  ######  #     #  #####   #####
    !  #     # #     # ##    # #     # #     #
    !  #       #     # # #   # #     # #     #
@@ -29,11 +27,10 @@ contains
    !        # #       #   # #       # #     #
    !  #     # #       #    ## #     # #     #
    !   #####  #       #     #  #####   #####
+   !
+   !> Evolution model of a blast-wave as in eqs. (9) and (10) of Sari, Piran & 
+   !! Narayan (1998)
    subroutine blastwave_approx_SPN98(G0, E0, n, tobs, Gshk, Rshk, adiabatic)
-      !
-      !  Description:
-      !    Evolution model of a blast wave as in eqs. (9) and (10) of SPN98
-      !
       implicit none
       real(dp), intent(in) :: G0, E0, n, tobs
       logical, intent(in) :: adiabatic
@@ -51,12 +48,9 @@ contains
       Gshk = dmin1(G0, Gshk)
    end subroutine blastwave_approx_SPN98
 
-
+   !> Synchrotron spectra and light curves as in eqs. (11) of Sari, Piran &
+   !! Narayan (1998)
    subroutine syn_afterglow_SPN98(nuo, to, z, E0, epse, epsB, G0, pind, n, d_lum, adiab, flux)
-      !
-      !  Description:
-      !    Synchrotron spectra and light curves as in eqs. (11) SPN98
-      !
       implicit none
       real(dp), intent(in) :: E0, epsB, epse, G0, n, d_lum, pind, z
       real(dp), intent(in), dimension(:) :: nuo, to
@@ -229,20 +223,21 @@ contains
    end subroutine bw_crossec_area
 
 
-   !
    !  #####                                      #              
    ! #     # ##### #####  #    #  ####           # ###### ##### 
    ! #         #   #    # #    # #    #          # #        #   
    !  #####    #   #    # #    # #               # #####    #   
    !       #   #   #####  #    # #         #     # #        #   
    ! #     #   #   #   #  #    # #    #    #     # #        #   
-   !  #####    #   #    #  ####   ####      #####  ######   #   
+   !  #####    #   #    #  ####   ####      #####  ######   #
    !
+   !> Read a blast-wave properties from numerical simulation shock profile
+   !! @param filename input ASCII file
+   !! @param r output radius of the shock
+   !! @param theta output direction of the shock
+   !! @param Gbulk output bulk Lorentz factor
+   !! @param nlines output total number of directions
    subroutine bw_mezcal(filename, r, theta, Gbulk, nlines)
-      !
-      !  Description:
-      !    Read a blast-wave from numerical simulations
-      !
       implicit none
       character(len=*), intent(in) :: filename
       integer, intent(out) :: nlines

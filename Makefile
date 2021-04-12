@@ -68,10 +68,10 @@ OPTIMIZATION+=-arch ssse3 -mtune=corei7-avx
 LIBS+=-L/usr/lib64
 endif
 
-endif #####  DBG
+endif # DBG
 
-COPT=-c $(OPTIMIZATION) $(DEFS) $(INCL)
-LOPT=$(OPTIMIZATION) $(DEFS) $(LIBS)
+COPT=-c $(OPTIMIZATION) -cpp -dU $(DEFS) $(INCL)
+LOPT=$(OPTIMIZATION) -cpp -dU $(DEFS) $(LIBS)
 
 
 # -----  executables  -----

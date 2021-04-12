@@ -1,3 +1,5 @@
+#define WITHMEZCAL 1
+
 program afterglow_main
    use data_types
    use misc
@@ -78,7 +80,11 @@ program afterglow_main
       call an_error(args_error)
    end if
 
+#if WITHMEZCAL
+   call mezcal(trim(params_file), output_file, with_cool, with_abs, &
+      with_wind, fgeom, with_blob)
+#else
    call afterglow(trim(params_file), output_file, with_cool, with_abs, &
          with_wind, fgeom, with_blob)
-
+#endif
 end program afterglow_main
