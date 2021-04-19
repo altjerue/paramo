@@ -1,3 +1,5 @@
+#define WITH_KNCOOL .false.
+
 program tests
 use data_types
 use constants
@@ -21,10 +23,10 @@ implicit none
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! call steady_state
 ! call rad_procs
-!   call BB_RadCool
-call MaxwellDist
+call BlackBody_tests
+! call MaxwellDist
 
-! write(*, *) '=======  FINISHED  ======='
+write(*, *) '=======  FINISHED  ======='
 write(*, *) ''
 
 contains
@@ -151,32 +153,32 @@ subroutine steady_state
 
    end do time_loop
 
-
-
    write(*, "('--> Fokker-Planck solver test')")
 
 end subroutine steady_state
 
-
-subroutine BB_RadCool
+!> Tests with a Blackbody
+subroutine BlackBody_tests
    implicit none
    integer :: Ng, Nf, j, k
-   real(dp) :: T, Theta, lC, xi_c, gmin, gmax, fmin, fmax
-   real(dp), allocatable, dimension(:) :: Ibb, dotg, nu, g
+   real(dp) :: T, Theta, xi_c, gmin, gmax, fmin, fmax
+   real(dp), allocatable, dimension(:) :: Ibb, dotg, nu, g, n
    Ng = 384
    Nf = 512
-   allocate(nu(Nf), g(Ng), dotg(Ng), Ibb(Nf))
+   allocate(nu(Nf), g(Ng), dotg(Ng), Ibb(Nf), n(Ng), j1(Nf), j2(Nf))
    gmin = 1d7
-   gmax = 1e13
+   gmax = 1d13
    fmin = 1d5
    fmax = 1.26d13
    T = 2.72d0
    Theta = kBoltz * T / energy_e
-   lC = hPlanck / (mass_e * cLight)
    xi_c = 4d0 * hPlanck / energy_e
+   fbb_max = 2.8214393721220788934d0 * kBoltz * T / hPlanck
+   ubb = BBenergy_dens(T)
 
    do k = 1, Ng
       g(k) = gmin * (gmax / gmin)**(dble(k - 1) / dble(Ng - 1))
+      n(k) = powlaw_dis(g(k), 1d3, 1d6, 2d0)
    end do
 
    do j = 1, Nf
@@ -184,14 +186,19 @@ subroutine BB_RadCool
       Ibb(j) = BBintensity(nu(j), T)
    end do
 
-   call rad_cool(dotg, g, nu, 4 * pi * Ibb / cLight, .true.)
+   call IC_iso_powlaw(j1, nu, nu, Ibb, n, g)
+   call IC_iso_monochrom(j2, nu, ubb, fbb_max, n, g)
+
+   call rad_cool_pwl(dotg, g, nu, 4 * pi * Ibb / cLight, WITH_KNCOOL)
+   call rad_cool_mono(dotg, g, nu, 4 * pi * Ibb / cLight, WITH_KNCOOL)
 
    do k = 1, Ng
       write(*, *) g(k), dotg(k)
    end do
 
-end subroutine BB_RadCool
+end subroutine BlackBody_tests
 
+!> Maxwell distribution constructor
 subroutine MaxwellDist
    implicit none
    integer :: i
