@@ -4,8 +4,10 @@ subroutine blazMag(params_file, output_file, cool_withKN, with_abs)
    use params
    use misc
    use pwl_integ
+#ifdef HDF5
    use hdf5
    use h5_inout
+#endif
    use SRtoolkit
    use anaFormulae
    use distribs
@@ -20,7 +22,9 @@ subroutine blazMag(params_file, output_file, cool_withKN, with_abs)
       //new_line('A')//&
       ' ---------------------------------------------------------------------',&
       on_screen = "(' | ', I9, ' | ', ES11.4, ' | ', ES11.4, ' | ', ES11.4, ' | ', ES11.4, ' |')"
+#ifdef HDF5
    integer(HID_T) :: file_id, group_id
+#endif
    integer :: i, j, k, numbins, numdf, numdt, time_grid, herror
    real(dp) :: uB, uext, R, gmin, gmax, numin, numax, pind, B, D, g1, g2, &
          tstep, Qnth, tmax, d_lum, z, tinj, gamma_bulk, theta_obs, Rdis, &
@@ -274,6 +278,7 @@ subroutine blazMag(params_file, output_file, cool_withKN, with_abs)
    !      # ###### #    # # #  # # #  ###
    ! #    # #    #  #  #  # #   ## #    #
    !  ####  #    #   ##   # #    #  ####
+#ifdef HDF5
    write(*, *) "---> Saving"
    !----->   Opening output file
    call h5open_f(herror)
@@ -335,7 +340,7 @@ subroutine blazMag(params_file, output_file, cool_withKN, with_abs)
    !----->   Closing output file
    call h5io_closef(file_id, herror)
    call h5close_f(herror)
-
+#endif
    write(*,*) '=======  FINISHED  ======='
    write(*,*) ''
 

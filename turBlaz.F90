@@ -4,8 +4,10 @@ subroutine turBlaz(params_file, output_file, cool_withKN, with_abs)
    use params
    use misc
    use pwl_integ
+#ifdef HDF5
    use hdf5
    use h5_inout
+#endif
    use SRtoolkit
    use anaFormulae
    use distribs
@@ -21,7 +23,9 @@ subroutine turBlaz(params_file, output_file, cool_withKN, with_abs)
       //new_line('A')//&
       ' ---------------------------------------------------------------------',&
       on_screen="(' | ',I9,' | ',ES11.4,' | ',ES11.4,' | ',ES11.4,' | ',ES11.4,' |')"
+#ifdef HDF5
    integer(HID_T) :: file_id,group_id
+#endif
    integer :: i,j,k,numbins,numdf,numdt,time_grid,herror
    integer :: l,mtb_case
    real(dp) :: uB,R,gmin,gmax,numin,numax,pind,D,g1,g2,tstep,Qnth,tmax,&
@@ -379,6 +383,7 @@ subroutine turBlaz(params_file, output_file, cool_withKN, with_abs)
    ! #    # #    #  #  #  # #   ## #    #
    !  ####  #    #   ##   # #    #  ####
    write(*,*) "---> Saving"
+#ifdef HDF5
    !----->   Opening output file
    call h5open_f(herror)
    call h5io_createf(trim(output_file),file_id,herror)
@@ -431,7 +436,7 @@ subroutine turBlaz(params_file, output_file, cool_withKN, with_abs)
    !----->   Closing output file
    call h5io_closef(file_id,herror)
    call h5close_f(herror)
-
+#endif
    write(*,*) '=======  FINISHED  ======='
    write(*,*) ''
 

@@ -211,6 +211,7 @@ contains
 
       else
 
+         !--->  Isotropic spherical blast-wave
          Oj = 4d0 * pi
          ! Rb = Rbw / Gbulk
          ! Rb = Rbw / (Gbulk * 12d0)
@@ -246,6 +247,7 @@ contains
       real(dp), intent(out), allocatable, dimension(:) :: r, theta, Gbulk
       integer :: i, io
       real(dp) :: x, y, vx,vy
+      real(dp), allocatable, dimension(:) :: v
       if ( nlines /= count_lines(filename) ) call an_error("bw_mezcal: nlines and number of lines in "//trim(filename)//"are not the same")
       call realloc(r, nlines)
       call realloc(v, nlines)

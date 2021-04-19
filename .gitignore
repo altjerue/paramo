@@ -7,7 +7,7 @@
 *.backup
 *.dSYM
 .tramp_history
-x*
+Paramo
 .DS_Store
 *.pyc
 *.log

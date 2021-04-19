@@ -1,5 +1,3 @@
-#define WITHMEZCAL 1
-
 program afterglow_main
    use data_types
    use misc
@@ -23,7 +21,7 @@ program afterglow_main
       '  blob            is the emission region a blob?: T/F (True/False)'//new_line('A')//&
       '  output-name     Name of the output file'//new_line('A')
    integer :: numArgs, fgeom
-   character(len=256) :: program_name, params_file, output_file, wCool, &
+   character(len=256) :: program_name, params_file, output_file, wCoolKN, &
          wAbs, wWind, flow_geom, wBlob
    logical :: with_coolKN, with_wind, with_abs, with_blob
 
@@ -33,7 +31,7 @@ program afterglow_main
    if ( numArgs /= 7 ) call an_error(args_error)
 
    call get_command_argument(1, params_file)
-   call get_command_argument(2, wCool)
+   call get_command_argument(2, wCoolKN)
    call get_command_argument(3, wAbs)
    call get_command_argument(4, wWind)
    call get_command_argument(5, flow_geom)
@@ -41,9 +39,9 @@ program afterglow_main
    call get_command_argument(7, output_file)
 
    !----->   With or without KN cooling
-   if ( wCool == 'True' ) then
+   if ( wCoolKN == 'True' ) then
       with_coolKN = .true.
-   elseif ( wCool == 'False' ) then
+   elseif ( wCoolKN == 'False' ) then
       with_coolKN = .false.
    else
       call an_error(args_error)
@@ -80,10 +78,10 @@ program afterglow_main
       call an_error(args_error)
    end if
 
-#if WITHMEZCAL
+#ifdef MEZCAL
    call mezcal(trim(params_file), output_file, with_coolKN)
 #else
-   call afterglow(trim(params_file), output_file, with_coolKN, with_abs, &
+   call bw1D_afterglow(trim(params_file), output_file, with_coolKN, with_abs, &
          with_wind, fgeom, with_blob)
 #endif
 end program afterglow_main
