@@ -114,11 +114,8 @@ contains
    !############################################################################
 
 
+   !> Blast-wave solution. Deceleration radius as in eq. (1) of RM92
    subroutine deceleration_radius(Rd1, Rd2, E0, G0, Aw, with_wind, s)
-      !
-      !  Description:
-      !   Blast-wave solution. Deceleration radius as in eq. (1) of RM92
-      !
       implicit none
       real(dp), intent(in) :: G0, E0, Aw
       logical, intent(in) :: with_wind
@@ -138,11 +135,8 @@ contains
    end subroutine deceleration_radius
 
 
+   !> Analytic solution for the adiabatic blast wave.
    function adiab_blast_wave(Rshk, G0, E0, Aw, with_wind, s) result(Gshk)
-      !
-      !  Description:
-      !    Analytic solution for the adiabatic blast wave.
-      !
       implicit none
       real(dp), intent(in) :: Rshk, G0, E0, Aw, s
       logical, intent(in) :: with_wind
@@ -161,14 +155,11 @@ contains
    end function adiab_blast_wave
 
 
-   subroutine bw_crossec_area(G0, Rbw, Gbulk, theta_j0, beam_kind, blob, Rb, volume, csa, Oj)
-      !
-      !  Description:
-      !    Depending on the model, the blast wave cross sectional area may be
-      !    isotropic or beamed. This subroutine returns the the cross sectional
-      !    area, volume, radius/thickness and Omega_j of the emitting region.
-      !    The emitting region may be a blob or a slab
-      !
+   !> Depending on the model, the blast wave cross sectional area may be 
+   !! isotropic or beamed. This subroutine returns the the cross sectional area,
+   !! volume, radius/thickness and Omega_j of the emitting region. The emitting
+   !! region may be a blob or a slab.
+   subroutine bw_crossec_area(beam_kind, blob, G0, Rbw, Gbulk, theta_j0, Rb, volume, csa, Oj)
       implicit none
       integer, intent(in)   :: beam_kind
       real(dp), intent(in)  :: Rbw, theta_j0, Gbulk, G0

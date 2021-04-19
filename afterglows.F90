@@ -535,14 +535,14 @@ subroutine bw1D_afterglow(params_file, output_file, cool_withKN, ssa_boiler, wit
    ! ------  Closing output file  ------
    call h5io_closef(file_id, herror)
    call h5close_f(herror)
-
+#endif
    write(*, "('==========  FINISHED  ==========')")
    write(*,*) ''
 
-end subroutine afterglow
+end subroutine bw1D_afterglow
 
 
-
+#if 0
 ! #    # ###### ######  ####    ##   #
 ! ##  ## #          #  #    #  #  #  #
 ! # ## # #####     #   #      #    # #
@@ -553,27 +553,29 @@ end subroutine afterglow
 !> Blast-wave from mezcal simulations.
 !! @param params_file input file with list of parameters
 !! @output_file output name of HDF5 file
-!! @param cool_withKN input boolean radiative cooling with or without Klein-Nishina
-subroutine mezcal(params_file, output_file, cool_withKN)
+!! @param KNcool input boolean radiative cooling with or without Klein-Nishina
+!! @param assume_blob input boolean geometry of the emission region: .true. for blob, .false. for slab
+subroutine mezcal(params_file, output_file, KNcool, assume_blob)
    use data_types
    use constants
    use params
    use misc
    use pwl_integ
+#ifdef HDF5
    use hdf5
    use h5_inout
+#endif
    use SRtoolkit
    use anaFormulae
-   use dist_evol
+   use distribs
    use radiation
    use pairs
    use blastwave
    use specialf
    implicit none
 
-   integer, intent(in) :: flow_kind
    character(len=*), intent(in) :: params_file
-   logical, intent(in) :: cool_withKN, ssa_boiler, with_wind, blob
+   logical, intent(in) :: assume_blob, KNcool
    character(len=*),intent(inout) :: output_file
    integer, parameter :: nmod = 50
    character(len=*), parameter :: screan_head = &
@@ -581,7 +583,9 @@ subroutine mezcal(params_file, output_file, cool_withKN)
       //new_line('A')//&
       ' ---------------------------------------------------------------------', &
       on_screen = "(' | ', I9, ' | ', ES11.4, ' | ', ES11.4, ' | ', ES11.4, ' | ', ES11.4, ' |')"
+#ifdef HDF5
    integer(HID_T) :: file_id, group_id
+#endif
    integer :: i, j, k, l, numt, numf, numg, numd, herror
    real(dp) :: uB, uext, L_j, gmin, gmax, numin, numax, pind, B, R0, Rmax, &
          tinj, g1, g2, tstep, Q0, tmax, d_lum, z, n_ext, urad_const, Aw, sind, &
@@ -783,7 +787,7 @@ subroutine mezcal(params_file, output_file, cool_withKN)
    n_e(:, 0) = Qinj(:, 0)
 
    write(*,"('--> Calculating the emission')")
-   if (cool_withKN) then
+   if ( KNcool ) then
       write(*, "('--> Radiative cooling: Klein-Nishina')")
       output_file="KNcool-"//trim(output_file)
    else
@@ -955,7 +959,7 @@ subroutine mezcal(params_file, output_file, cool_withKN)
             ! call bolometric_integ(freqs, 4d0 * pi * Inu / cLight, urad)
             ! call RadTrans_blob(Inu, R, jssc(:, i) + jeic(:, i), anut(:, i))
             call RadTrans_blob(Inu, Rb(i), jmbs(:, i), ambs(:, i))
-            call rad_cool_pwl(dotg_tmp, gg, freqs, 4d0 * pi * Inu / cLight, cool_withKN)
+            call rad_cool_pwl(dotg_tmp, gg, freqs, 4d0 * pi * Inu / cLight, KNcool)
             dotg(:, i) = dotg_tmp
             call rad_cool_mono(dotg_tmp, gg, nu_ext, uext, cool_withKN)
             dotg(:, i) = dotg(:, i) + dotg_tmp
@@ -992,7 +996,7 @@ subroutine mezcal(params_file, output_file, cool_withKN)
    ! #    # #    #  #  #  # #   ## #    #
    !  ####  #    #   ##   # #    #  ####
    write(*, "('--> Saving')")
-
+#ifdef HDF5
    ! ------  Opening output file  ------
    call h5open_f(herror)
    call h5io_createf(output_file, file_id, herror)
@@ -1055,8 +1059,9 @@ subroutine mezcal(params_file, output_file, cool_withKN)
    ! ------  Closing output file  ------
    call h5io_closef(file_id, herror)
    call h5close_f(herror)
-
+#endif
    write(*, "('==========  FINISHED  ==========')")
    write(*,*) ''
 
 end subroutine mezcal
+#endif
