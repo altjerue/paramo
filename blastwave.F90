@@ -223,6 +223,8 @@ contains
    end subroutine bw_crossec_area
 
 
+
+
    !  #####                                      #              
    ! #     # ##### #####  #    #  ####           # ###### ##### 
    ! #         #   #    # #    # #    #          # #        #   
@@ -237,14 +239,14 @@ contains
    !! @param theta output direction of the shock
    !! @param Gbulk output bulk Lorentz factor
    !! @param nlines output total number of directions
-   subroutine bw_mezcal(filename, r, theta, Gbulk, nlines)
+   subroutine bw_mezcal(filename, nlines, r, theta, Gbulk)
       implicit none
+      integer, intent(in) :: nlines
       character(len=*), intent(in) :: filename
-      integer, intent(out) :: nlines
       real(dp), intent(out), allocatable, dimension(:) :: r, theta, Gbulk
       integer :: i, io
       real(dp) :: x, y, vx,vy
-      nlines = count_lines(filename)
+      if ( nlines /= count_lines(filename) ) call an_error("bw_mezcal: nlines and number of lines in "//trim(filename)//"are not the same")
       call realloc(r, nlines)
       call realloc(v, nlines)
       call realloc(theta, nlines)

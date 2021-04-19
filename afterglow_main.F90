@@ -25,7 +25,7 @@ program afterglow_main
    integer :: numArgs, fgeom
    character(len=256) :: program_name, params_file, output_file, wCool, &
          wAbs, wWind, flow_geom, wBlob
-   logical :: with_cool, with_wind, with_abs, with_blob
+   logical :: with_coolKN, with_wind, with_abs, with_blob
 
    numArgs = command_argument_count()
    call get_command_argument(0, program_name)
@@ -42,9 +42,9 @@ program afterglow_main
 
    !----->   With or without KN cooling
    if ( wCool == 'True' ) then
-      with_cool = .true.
+      with_coolKN = .true.
    elseif ( wCool == 'False' ) then
-      with_cool = .false.
+      with_coolKN = .false.
    else
       call an_error(args_error)
    end if
@@ -81,10 +81,9 @@ program afterglow_main
    end if
 
 #if WITHMEZCAL
-   call mezcal(trim(params_file), output_file, with_cool, with_abs, &
-      with_wind, fgeom, with_blob)
+   call mezcal(trim(params_file), output_file, with_coolKN)
 #else
-   call afterglow(trim(params_file), output_file, with_cool, with_abs, &
+   call afterglow(trim(params_file), output_file, with_coolKN, with_abs, &
          with_wind, fgeom, with_blob)
 #endif
 end program afterglow_main

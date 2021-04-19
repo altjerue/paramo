@@ -330,7 +330,7 @@ subroutine afterglow(params_file, output_file, cool_withKN, ssa_boiler, with_win
       !-----> External medioum
       n_ext = Aw * R(i)**(-sind)
 
-      !-----> Magnetic field
+      !-----> Magnetic field assuming equipartition
       ! B = b_const * dsqrt(n_ext) * gamma_bulk(i)
       B = b_const * dsqrt(n_ext * (gamma_bulk(i) - 1d0) * (gamma_bulk(i) + 0.75d0))
       uB = B**2 / (8d0 * pi)
@@ -547,7 +547,10 @@ end subroutine afterglow
 ! #    # ###### ######  ####  #    # ######
 !
 !> Blast-wave from mezcal simulations.
-subroutine mezcal(params_file, output_file, cool_withKN, ssa_boiler, with_wind, flow_kind, blob)
+!! @param params_file input file with list of parameters
+!! @output_file output name of HDF5 file
+!! @param cool_withKN input boolean radiative cooling with or without Klein-Nishina
+subroutine mezcal(params_file, output_file, cool_withKN)
    use data_types
    use constants
    use params
@@ -575,7 +578,7 @@ subroutine mezcal(params_file, output_file, cool_withKN, ssa_boiler, with_wind, 
       ' ---------------------------------------------------------------------', &
       on_screen = "(' | ', I9, ' | ', ES11.4, ' | ', ES11.4, ' | ', ES11.4, ' | ', ES11.4, ' |')"
    integer(HID_T) :: file_id, group_id
-   integer :: i, j, k, numbins, numdf, numdt, time_grid, herror, ndirs
+   integer :: i, j, k, l, numt, numf, numg, numd, herror
    real(dp) :: uB, uext, L_j, gmin, gmax, numin, numax, pind, B, R0, Rmax, &
          tinj, g1, g2, tstep, Q0, tmax, d_lum, z, n_ext, urad_const, Aw, sind, &
          theta_obs, mu_obs, nu_ext, tesc_e, uext0, eps_e, tlc, g1_const, Rd2, &
@@ -588,7 +591,7 @@ subroutine mezcal(params_file, output_file, cool_withKN, ssa_boiler, with_wind, 
          ambs, anut, Qinj, tau_gg, pow_syn, Ddiff
    logical :: full_rad_cool, bw_approx, radius_evol, pwl_over_trpzd_integ, &
          with_ic
-   type(blast_wave), allocatable, dimension(:) :: bw
+   ! type(blast_wave), allocatable, dimension(:) :: bw
 
    !
    !  #####    ##   #####    ##   #    #  ####
@@ -635,18 +638,18 @@ subroutine mezcal(params_file, output_file, cool_withKN, ssa_boiler, with_wind, 
    !  ####  ######   #    ####  #
    write(*, "('--> Simulation setup')")
 
-   allocate(t(0:numdt), freqs(numdf), Inu(numdf), gg(numbins), urad(numbins), &
-         nu_obs(numdf), t_obs(0:numdt), R(0:numdt), tcool(numbins), Rb(0:numdt), &
-         gamma_bulk(0:numdt), D(0:numdt), volume(0:numdt), dotg_tmp(numbins))
-   allocate(n_e(numbins, 0:numdt), Ddiff(numbins, 0:numdt), &
-         dotg(numbins, 0:numdt), ambs(numdf, numdt), jmbs(numdf, numdt), &
-         jnut(numdf, numdt), jssc(numdf, numdt), anut(numdf, numdt), &
-         jeic(numdf, numdt), Qinj(numbins, 0:numdt), pow_syn(numdf, numbins), &
-         tau_gg(numdf, numdt))
-   allocate(bw(0:numdt))
+   allocate(t(0:numt), freqs(numf), Inu(numf), gg(numg), theta_d(numd), &
+         nu_obs(numf), t_obs(0:numt), dotg_tmp(numg), beta_bulk(numd))
+   allocate(r(numd, 0:numt), rb(numd, 0:numt), gamma_bulk(numd, 0:numt), &
+         ambs(numf, numt), tau_pairs(numf, numt), jmbs(numf, numt), &
+         D(numd, 0:numt), dotg(numg, 0:numt), Ddiff(numg, 0:numt), &
+         volume(numd, 0:numdt), n_ext(numd, 0:numt))
+   allocate(n_e(numg, numd, 0:numt), jnut(numf, numd, numt), &
+         jssc(numf, numd, numt), anut(numf, numd, numt), &
+         jeic(numf, numd, numt), Qinj(numg, numd, 0:numt))
 
    !!!TODO: Read the shock profile and directions of motion
-   call bw_mezcal("test.dat", bw(0)%r, bw(0)%der, bw(0)%Gbulk, nderro)
+   call bw_mezcal("test.dat", ndirs, R(:, 0), theta_d, gamms_bulk(:, 0))
 
    call K1_init
    call K2_init
@@ -664,13 +667,14 @@ subroutine mezcal(params_file, output_file, cool_withKN, ssa_boiler, with_wind, 
    theta_obs = par_theta_obs * pi / 180d0
    mu_obs = dcos(theta_obs)
    !!!TODO: Calculated the trigonometric relations between theta_obs and theta_jet
-   
+
    !-----> Initializing blast wave
    theta_j0 = 0.2d0
-   beta_bulk = bofg(gamma_bulk0)
-   call bw_crossec_area(gamma_bulk0, R0, gamma_bulk0, theta_j0, flow_kind, blob, Rb(0), volume(0), cs_area, Omega_j)
-   !!!IDEA: Consider each direction of propagation as an individual jet
-   !!!QUESTION: What is the proper crossectional area?
+   beta_bulk = bofg(gamma_bulk(:, 0))
+   ! call bw_crossec_area(gamma_bulk0, R0, gamma_bulk0, theta_j0, flow_kind, blob, Rb(0), volume(0), cs_area, Omega_j)
+   !!!NOTE Each crossectional area will be given by the corresponding element of arc = \Delta\phi * r
+   !!!IDEA Consider each direction of propagation as an individual jet
+   !!!QUESTION What is the proper crossectional area?
 
    !-----> External medium
    sind = 0d0
@@ -797,25 +801,9 @@ subroutine mezcal(params_file, output_file, cool_withKN, ssa_boiler, with_wind, 
    ! #      #    # #    # #      #    #   #   # #    # #  # #
    ! #       #  #  #    # #      #    #   #   # #    # #   ##
    ! ######   ##    ####  ######  ####    #   #  ####  #    #
-   ! derrotero_loop: do l=1, nderro
-   time_loop: do i = 1, numdt
-      !-----> Localizing the emission region
-      if ( bw_approx ) then
-         t_obs(i) = t_obs(0) * (tmax / t_obs(0))**(dble(i) / dble(numdt))
-         call blastwave_approx_SPN98(gamma_bulk0, E0, Aw, t_obs(i), gamma_bulk(i), R(i), .true.)
-         dr = R(i) - R(i - 1)
-         D(i) = Doppler(gamma_bulk(i), mu_obs)
-         beta_bulk = bofg(gamma_bulk(i))
-         if ( pwl_over_trpzd_integ ) then
-            t(i) = t(i - 1) + powlaw_integ( R(i - 1), R(i), &
-                  1d0 / (bofg(gamma_bulk(i - 1)) * gamma_bulk(i - 1) * cLight), &
-                  1d0 / (beta_bulk * gamma_bulk(i) * cLight) )
-         else
-            t(i) = t(i - 1) + 0.5d0 * dr * ( (1d0 / (beta_bulk * gamma_bulk(i))) &
-               + (1d0 / (bofg(gamma_bulk(i - 1)) * gamma_bulk(i - 1))) ) / cLight
-         end if
-         dt = t(i) - t(i - 1)
-      else if( radius_evol ) then
+   derroteros_loop: do l=1, nderro
+      time_loop: do i = 1, numdt
+         !-----> Localizing the emission region
          R(i) = R0 * ( (Rmax / R0)**(dble(i) / dble(numdt)) )
          dr = R(i) - R(i - 1)
          gamma_bulk(i) = adiab_blast_wave(R(i), gamma_bulk0, E0, Aw, with_wind, sind)
@@ -839,176 +827,159 @@ subroutine mezcal(params_file, output_file, cool_withKN, ssa_boiler, with_wind, 
                   ) / cLight
          end if
          dt = t(i) - t(i - 1)
-      else
-         t_obs(i) = t_obs(0) * ( (tmax / t_obs(0))**(dble(i) / dble(numdt)) )
-         dr = (t_obs(i) - t_obs(i - 1)) * bofg(gamma_bulk(i - 1)) * gamma_bulk(i - 1) * D(i - 1) * cLight / (1d0 + z)
-         R(i) = R(i - 1) + dr
-         gamma_bulk(i) = adiab_blast_wave(R(i), gamma_bulk0, E0, Aw, with_wind, sind)
-         D(i) = Doppler(gamma_bulk(i), mu_obs)
-         beta_bulk = bofg(gamma_bulk(i))
-         if ( pwl_over_trpzd_integ ) then
-            t(i) = t(i - 1) + powlaw_integ(R(i - 1), R(i), &
-                  1d0 / (bofg(gamma_bulk(i - 1)) * gamma_bulk(i - 1) * cLight), &
-                  1d0 / (beta_bulk * gamma_bulk(i) * cLight))
-         else
-            t(i) = t(i - 1) + 0.5d0 * dr * ( (1d0 / (beta_bulk * gamma_bulk(i))) &
-                  + (1d0 / (bofg(gamma_bulk(i - 1)) * gamma_bulk(i - 1))) ) / cLight
-         end if
-         dt = t(i) - t(i - 1)
-      end if
 
 
-      !  ###### ###### #####
-      !  #      #      #    #
-      !  #####  #####  #    #
-      !  #      #      #    #
-      !  #      #      #    #
-      !  ###### ###### #####
-      call FP_FinDif_difu(dt, &
-            &             gg, &
-            &             n_e(:, i - 1), &
-            &             n_e(:, i), &
-            &             dotg(:, i - 1), &
-            &             Ddiff(:, i - 1), &
-            &             Qinj(:, i - 1), &
-            &             1d200, &
-            &             tlc)
+         !  ###### ###### #####
+         !  #      #      #    #
+         !  #####  #####  #    #
+         !  #      #      #    #
+         !  #      #      #    #
+         !  ###### ###### #####
+         call FP_FinDif_difu(dt, &
+               &             gg, &
+               &             n_e(:, i - 1), &
+               &             n_e(:, i), &
+               &             dotg(:, i - 1), &
+               &             Ddiff(:, i - 1), &
+               &             Qinj(:, i - 1), &
+               &             1d200, &
+               &             tlc)
 
-      call bw_crossec_area(gamma_bulk0, R(i), gamma_bulk(i), theta_j0, flow_kind, blob, Rb(i), volume(i), cs_area, Omega_j)
+         call bw_crossec_area(gamma_bulk0, R(i), gamma_bulk(i), theta_j0, flow_kind, blob, Rb(i), volume(i), cs_area, Omega_j)
 
-      !-----> External medioum
-      n_ext = Aw * R(i)**(-sind)
+         !-----> External medioum
+         n_ext = Aw * R(i)**(-sind)
 
-      !-----> Magnetic field
-      ! B = b_const * dsqrt(n_ext) * gamma_bulk(i)
-      B = b_const * dsqrt(n_ext * (gamma_bulk(i) - 1d0) * (gamma_bulk(i) + 0.75d0))
-      uB = B**2 / (8d0 * pi)
+         !-----> Magnetic field
+         ! B = b_const * dsqrt(n_ext) * gamma_bulk(i)
+         B = b_const * dsqrt(n_ext * (gamma_bulk(i) - 1d0) * (gamma_bulk(i) + 0.75d0))
+         uB = B**2 / (8d0 * pi)
 
-      !-----> Radiation fields
-      uext = uext0 * gamma_bulk(i)**2 * (1d0 + beta_bulk**2 / 3d0) ! eq. (5.25) in DM09
-      nu_ext = nu_ext0 * gamma_bulk(i)
+         !-----> Radiation fields
+         uext = uext0 * gamma_bulk(i)**2 * (1d0 + beta_bulk**2 / 3d0) ! eq. (5.25) in DM09
+         nu_ext = nu_ext0 * gamma_bulk(i)
 
-      !-----> Minimum and maximum Lorentz factors of the particles distribution
-      g2 = g2_const / dsqrt(B)
-      g1 = g1_const * (gamma_bulk(i) - 1d0)
+         !-----> Minimum and maximum Lorentz factors of the particles distribution
+         g2 = g2_const / dsqrt(B)
+         g1 = g1_const * (gamma_bulk(i) - 1d0)
 
-      !-----> Time-scales
-      tlc = Rb(i) / cLight
-      !!!!!COMBAK: here may be implemented escape time-scale in PVP14, eq. (27)
-      ! call bolometric_integ(freqs, opt_depth(anut(:, i - 1), 2d0 * Rb(i)), tau)
-      ! tesc_e = tlc * 0.75d0 * Rb(i) * (1d0 + (1d0 - dexp(-tau)) / (1d0 + dexp(-tau))) / cLight
-      !!!!!!!!!!!!!!!
-      tesc_e = f_esc * tlc! * R(i) / (cLight * gamma_bulk(i))!
-      tinj = 1d200
+         !-----> Time-scales
+         tlc = Rb(i) / cLight
+         !!!!!COMBAK: here may be implemented escape time-scale in PVP14, eq. (27)
+         ! call bolometric_integ(freqs, opt_depth(anut(:, i - 1), 2d0 * Rb(i)), tau)
+         ! tesc_e = tlc * 0.75d0 * Rb(i) * (1d0 + (1d0 - dexp(-tau)) / (1d0 + dexp(-tau))) / cLight
+         !!!!!!!!!!!!!!!
+         tesc_e = f_esc * tlc! * R(i) / (cLight * gamma_bulk(i))!
+         tinj = 1d200
 
-      !-----> Fraction of accreted kinetic energy injected into non-thermal electrons
-      L_e = eps_e * cs_area * n_ext * energy_p * cLight * beta_bulk * gamma_bulk(i) * (gamma_bulk(i) - 1d0)
-      ! Q0 = L_e / ( g1**(2d0 - pind) * Pinteg(g2 / g1, pind - 1d0, 1d-6) * volume(i) * energy_e )
-      !!!!!NOTE: The expression below corresponds to the normalization in Eq. (13)
-      !!!!!      in PM09
-      Q0 = L_e / ((g1**(2d0 - pind) * Pinteg(g2 / g1, pind - 1d0, 1d-6) - &
-            g1**(1d0 - pind) * Pinteg(g2 / g1, pind, 1d-6)) * volume(i) * energy_e)
-      Qinj(:, i) = injection_pwl(t(i), tinj, gg, g1, g2, pind, Q0)
+         !-----> Fraction of accreted kinetic energy injected into non-thermal electrons
+         L_e = eps_e * cs_area * n_ext * energy_p * cLight * beta_bulk * gamma_bulk(i) * (gamma_bulk(i) - 1d0)
+         ! Q0 = L_e / ( g1**(2d0 - pind) * Pinteg(g2 / g1, pind - 1d0, 1d-6) * volume(i) * energy_e )
+         !!!!!NOTE: The expression below corresponds to the normalization in Eq. (13)
+         !!!!!      in PM09
+         Q0 = L_e / ((g1**(2d0 - pind) * Pinteg(g2 / g1, pind - 1d0, 1d-6) - &
+               g1**(1d0 - pind) * Pinteg(g2 / g1, pind, 1d-6)) * volume(i) * energy_e)
+         Qinj(:, i) = injection_pwl(t(i), tinj, gg, g1, g2, pind, Q0)
 
 
-      !  #####    ##   #####  #   ##   ##### #  ####  #    #
-      !  #    #  #  #  #    # #  #  #    #   # #    # ##   #
-      !  #    # #    # #    # # #    #   #   # #    # # #  #
-      !  #####  ###### #    # # ######   #   # #    # #  # #
-      !  #   #  #    # #    # # #    #   #   # #    # #   ##
-      !  #    # #    # #####  # #    #   #   #  ####  #    #
-      !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) PRIVATE(j, k)
-      do j = 1, numdf
-         freqs(j) = nu_com_f(nu_obs(j), z, D(i))
-         call mbs_emissivity(jmbs(j, i), freqs(j), gg, n_e(:, i), B)
-         call mbs_absorption(ambs(j, i), freqs(j), gg, n_e(:, i), B)
-         do k = 1, numbins
-            ! pow_syn(j, k) = dsqrt(3d0) * eCharge**3 * B * RMA_new(freqs(j) / (nuconst * B), gg(k))
-            !-----> Expression below is Eq. (3.63) in my thesis
-            pow_syn(j, k) = 1.315d-28 * nuconst * B * volume(i) * RMA_new(freqs(j) / (nuconst * B), gg(k))
-         end do
-      end do
-      !$OMP END PARALLEL DO
-
-      !!!!!TODO: pairs optical depth
-      ! if ( hPlanck * freqs(j) > 5d11 * (0.01d0 / 0.02d0) * (100d0 / gamma_bulk(i)) ) then
-      !    tau_gg(j, i) = 0.16d0 * (R(i) / 1d16) * (100d0 / gamma_bulk(i)) * (uext / 1d-7) * (1d11 / (hPlanck * freqs(j))) * (0.01d0 / 0.02d0)**2
-      ! else
-      !    tau_gg(j, i) = 0d0
-      ! end if
-
-      anut(:, i) = ambs(:, i)! + tau_gg(j, i) / (2d0 * Rb(i))
-
-      call RadTrans(Inu, Rb(i), jmbs(:, i), ambs(:, i))
-
-      !-----> Synchrotron boiler from GGS88
-      if ( ssa_boiler ) then
-         do k=1,numbins
-            call bolometric_integ(freqs, Inu * pow_syn(:, k) / freqs**2, Ddiff(k, i))
-            Ddiff(k, i) = Ddiff(k, i) * gg(k) * pofg(gg(k)) / (2d0 * mass_e * energy_e)
-         end do
-      else
-         Ddiff(:, i) = 1d-200
-      end if
-
-      if ( with_ic ) then
-         !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) PRIVATE(j)
+         !  #####    ##   #####  #   ##   ##### #  ####  #    #
+         !  #    #  #  #  #    # #  #  #    #   # #    # ##   #
+         !  #    # #    # #    # # #    #   #   # #    # # #  #
+         !  #####  ###### #    # # ######   #   # #    # #  # #
+         !  #   #  #    # #    # # #    #   #   # #    # #   ##
+         !  #    # #    # #####  # #    #   #   #  ####  #    #
+         !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) PRIVATE(j, k)
          do j = 1, numdf
-            ! call IC_emis_full(freqs(j), freqs, gg, n_e(:, i), Inu, jssc(j, i))
-            call IC_iso_powlaw(jssc(j, i), freqs(j), freqs, Inu, n_e(:, i), gg)
-            call IC_iso_monochrom(jeic(j, i), freqs(j), uext, nu_ext, n_e(:, i), gg)
-            jnut(j, i) = jmbs(j, i) + jssc(j, i) + jeic(j, i)
+            freqs(j) = nu_com_f(nu_obs(j), z, D(i))
+            call mbs_emissivity(jmbs(j, i), freqs(j), gg, n_e(:, i), B)
+            call mbs_absorption(ambs(j, i), freqs(j), gg, n_e(:, i), B)
+            do k = 1, numbins
+               ! pow_syn(j, k) = dsqrt(3d0) * eCharge**3 * B * RMA_new(freqs(j) / (nuconst * B), gg(k))
+               !-----> Expression below is Eq. (3.63) in my thesis
+               pow_syn(j, k) = 1.315d-28 * nuconst * B * volume(i) * RMA_new(freqs(j) / (nuconst * B), gg(k))
+            end do
          end do
          !$OMP END PARALLEL DO
-      else
-         jnut(:, i) = jmbs(:, i)
-      end if
+
+         !!!!!TODO: pairs optical depth
+         ! if ( hPlanck * freqs(j) > 5d11 * (0.01d0 / 0.02d0) * (100d0 / gamma_bulk(i)) ) then
+         !    tau_gg(j, i) = 0.16d0 * (R(i) / 1d16) * (100d0 / gamma_bulk(i)) * (uext / 1d-7) * (1d11 / (hPlanck * freqs(j))) * (0.01d0 / 0.02d0)**2
+         ! else
+         !    tau_gg(j, i) = 0d0
+         ! end if
+
+         anut(:, i) = ambs(:, i)! + tau_gg(j, i) / (2d0 * Rb(i))
+
+         call RadTrans(Inu, Rb(i), jmbs(:, i), ambs(:, i))
+
+         !-----> Synchrotron boiler from GGS88
+         if ( ssa_boiler ) then
+            do k=1,numbins
+               call bolometric_integ(freqs, Inu * pow_syn(:, k) / freqs**2, Ddiff(k, i))
+               Ddiff(k, i) = Ddiff(k, i) * gg(k) * pofg(gg(k)) / (2d0 * mass_e * energy_e)
+            end do
+         else
+            Ddiff(:, i) = 1d-200
+         end if
+
+         if ( with_ic ) then
+            !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) PRIVATE(j)
+            do j = 1, numdf
+               ! call IC_emis_full(freqs(j), freqs, gg, n_e(:, i), Inu, jssc(j, i))
+               call IC_iso_powlaw(jssc(j, i), freqs(j), freqs, Inu, n_e(:, i), gg)
+               call IC_iso_monochrom(jeic(j, i), freqs(j), uext, nu_ext, n_e(:, i), gg)
+               jnut(j, i) = jmbs(j, i) + jssc(j, i) + jeic(j, i)
+            end do
+            !$OMP END PARALLEL DO
+         else
+            jnut(:, i) = jmbs(:, i)
+         end if
 
 
-      !   ####   ####   ####  #      # #    #  ####
-      !  #    # #    # #    # #      # ##   # #    #
-      !  #      #    # #    # #      # # #  # #
-      !  #      #    # #    # #      # #  # # #  ###
-      !  #    # #    # #    # #      # #   ## #    #
-      !   ####   ####   ####  ###### # #    #  ####
+         !   ####   ####   ####  #      # #    #  ####
+         !  #    # #    # #    # #      # ##   # #    #
+         !  #      #    # #    # #      # # #  # #
+         !  #      #    # #    # #      # #  # # #  ###
+         !  #    # #    # #    # #      # #   ## #    #
+         !   ####   ####   ####  ###### # #    #  ####
 
-      !
-      !     Radiative cooling
-      !
-      dotg(:, i) = 0d0
-      if ( full_rad_cool ) then
-         ! call bolometric_integ(freqs, 4d0 * pi * Inu / cLight, urad)
-         ! call RadTrans_blob(Inu, R, jssc(:, i) + jeic(:, i), anut(:, i))
-         call RadTrans_blob(Inu, Rb(i), jmbs(:, i), ambs(:, i))
-         call rad_cool_pwl(dotg_tmp, gg, freqs, 4d0 * pi * Inu / cLight, cool_withKN)
-         dotg(:, i) = dotg_tmp
-         call rad_cool_mono(dotg_tmp, gg, nu_ext, uext, cool_withKN)
-         dotg(:, i) = dotg(:, i) + dotg_tmp
-      end if
-
-
-      !
-      !     Adiabatic cooling
-      !
-      !-----> Numeric using finite differences
-      dotg(:, i) = dotg(:, i) + pofg(gg) * dlog(volume(i) / volume(i - 1)) / (3d0 * dt)
-      !-----> MSB00
-      !dotg(:, i) = dotg(:, i) + cLight * beta_bulk * gamma_bulk(i) * pofg(gg) / R(i)
-      !!!!!NOTE: using time-scile in Hao's paper, eq. (11)
-      !dotg(:, i) = dotg(:, i) + 1.6d0 * cLight * gamma_bulk(i) * pofg(gg) / R(i)
+         !
+         !     Radiative cooling
+         !
+         dotg(:, i) = 0d0
+         if ( full_rad_cool ) then
+            ! call bolometric_integ(freqs, 4d0 * pi * Inu / cLight, urad)
+            ! call RadTrans_blob(Inu, R, jssc(:, i) + jeic(:, i), anut(:, i))
+            call RadTrans_blob(Inu, Rb(i), jmbs(:, i), ambs(:, i))
+            call rad_cool_pwl(dotg_tmp, gg, freqs, 4d0 * pi * Inu / cLight, cool_withKN)
+            dotg(:, i) = dotg_tmp
+            call rad_cool_mono(dotg_tmp, gg, nu_ext, uext, cool_withKN)
+            dotg(:, i) = dotg(:, i) + dotg_tmp
+         end if
 
 
-      !   ####  #    #     ####   ####  #####  ###### ###### #    #
-      !  #    # ##   #    #      #    # #    # #      #      ##   #
-      !  #    # # #  #     ####  #      #    # #####  #####  # #  #
-      !  #    # #  # #         # #      #####  #      #      #  # #
-      !  #    # #   ##    #    # #    # #   #  #      #      #   ##
-      !   ####  #    #     ####   ####  #    # ###### ###### #    #
-      if ( mod(i, nmod) == 0 .or. i == 1 ) &
-            write(*, on_screen) i, t_obs(i), R(i), gamma_bulk(i), B
+         !
+         !     Adiabatic cooling
+         !
+         !-----> Numeric using finite differences
+         dotg(:, i) = dotg(:, i) + pofg(gg) * dlog(volume(i) / volume(i - 1)) / (3d0 * dt)
+         !-----> MSB00
+         !dotg(:, i) = dotg(:, i) + cLight * beta_bulk * gamma_bulk(i) * pofg(gg) / R(i)
+         !!!!!NOTE: using time-scile in Hao's paper, eq. (11)
+         !dotg(:, i) = dotg(:, i) + 1.6d0 * cLight * gamma_bulk(i) * pofg(gg) / R(i)
 
-   end do time_loop
 
+         !   ####  #    #     ####   ####  #####  ###### ###### #    #
+         !  #    # ##   #    #      #    # #    # #      #      ##   #
+         !  #    # # #  #     ####  #      #    # #####  #####  # #  #
+         !  #    # #  # #         # #      #####  #      #      #  # #
+         !  #    # #   ##    #    # #    # #   #  #      #      #   ##
+         !   ####  #    #     ####   ####  #    # ###### ###### #    #
+         if ( mod(i, nmod) == 0 .or. i == 1 ) &
+               write(*, on_screen) i, t_obs(i), R(i), gamma_bulk(i), B
+
+      end do time_loop
+   end do derroteros_loop
 
    !  ####    ##   #    # # #    #  ####
    ! #       #  #  #    # # ##   # #    #
