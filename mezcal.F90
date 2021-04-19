@@ -8,7 +8,7 @@ subroutine afterglow(params_file, output_file, cool_withKN, ssa_boiler, with_win
    use h5_inout
    use SRtoolkit
    use anaFormulae
-   use dist_evol
+   use distribs
    use radiation
    use pairs
    use blastwave

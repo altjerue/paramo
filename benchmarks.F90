@@ -12,7 +12,7 @@ use h5_inout
 use SRtoolkit
 use Aglow_models
 use anaFormulae
-use dist_evol
+use distribs
 use radiation
 use specialf
 implicit none

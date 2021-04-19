@@ -8,7 +8,7 @@ subroutine turBlaz(params_file, output_file, cool_withKN, with_abs)
    use h5_inout
    use SRtoolkit
    use anaFormulae
-   use dist_evol
+   use distribs
    use radiation
    implicit none
 
