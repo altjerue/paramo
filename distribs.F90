@@ -1,4 +1,4 @@
-module dist_evol
+module distribs
    use data_types
    use constants
    use misc
@@ -289,7 +289,7 @@ contains
       end if
    end subroutine time_step
 
-end module dist_evol
+end module distribs
 
 
 

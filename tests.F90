@@ -1,3 +1,5 @@
+#define WITH_KNCOOL .true.
+
 program tests
 use data_types
 use constants
@@ -8,7 +10,7 @@ use hdf5
 use h5_inout
 use SRtoolkit
 use anaFormulae
-use dist_evol
+use distribs
 use radiation
 use specialf
 implicit none
@@ -21,10 +23,10 @@ implicit none
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! call steady_state
 ! call rad_procs
-!   call BB_RadCool
-call MaxwellDist
+call BlackBody_tests
+! call MaxwellDist
 
-! write(*, *) '=======  FINISHED  ======='
+write(*, *) '=======  FINISHED  ======='
 write(*, *) ''
 
 contains
@@ -151,32 +153,36 @@ subroutine steady_state
 
    end do time_loop
 
-
-
    write(*, "('--> Fokker-Planck solver test')")
 
 end subroutine steady_state
 
-
-subroutine BB_RadCool
+!> Tests with a Blackbody
+subroutine BlackBody_tests
    implicit none
    integer :: Ng, Nf, j, k
-   real(dp) :: T, Theta, lC, xi_c, gmin, gmax, fmin, fmax
-   real(dp), allocatable, dimension(:) :: Ibb, dotg, nu, g
+   real(dp) :: T, Theta, xi_c, gmin, gmax, fmin, fmax, fbb_max, ubb, g1, g2, p
+   real(dp), allocatable, dimension(:) :: Ibb, dotg1, dotg2, nu, g, n, j1, j2
    Ng = 384
    Nf = 512
-   allocate(nu(Nf), g(Ng), dotg(Ng), Ibb(Nf))
-   gmin = 1d7
-   gmax = 1e13
-   fmin = 1d5
-   fmax = 1.26d13
+   allocate(nu(Nf), g(Ng), dotg1(Ng), dotg2(Ng), Ibb(Nf), n(Ng), j1(Nf), j2(Nf))
+   gmin = 9d2
+   gmax = 1.1d5
+   g1 = 1d3
+   g2 = 1d5
+   p = 2d0
+   fmin = 1d8
+   fmax = 1d23
    T = 2.72d0
    Theta = kBoltz * T / energy_e
-   lC = hPlanck / (mass_e * cLight)
    xi_c = 4d0 * hPlanck / energy_e
+   fbb_max = 2.8214393721220788934d0 * kBoltz * T / hPlanck
+   ubb = BBenergy_dens(T)
+   write(*,"(2ES14.7)") T, fbb_max, ubb
 
    do k = 1, Ng
       g(k) = gmin * (gmax / gmin)**(dble(k - 1) / dble(Ng - 1))
+      n(k) = powlaw_dis(g(k), g1, g2, p)
    end do
 
    do j = 1, Nf
@@ -184,14 +190,25 @@ subroutine BB_RadCool
       Ibb(j) = BBintensity(nu(j), T)
    end do
 
-   call rad_cool(dotg, g, nu, 4 * pi * Ibb / cLight, .true.)
-
-   do k = 1, Ng
-      write(*, *) g(k), dotg(k)
+   open(77, "ic_emiss.dat")
+   do j=1, Nf
+      call IC_iso_powlaw(j1(j), nu(j), nu, Ibb, n, g)
+      call IC_iso_monochrom(j2(j), nu(j), ubb, fbb_max, n, g)
+      write(77, "(3ES14.7)") nu(j), j1(j), j2(j)
    end do
+   close(77)
 
-end subroutine BB_RadCool
+   open(1, "rad_cool.dat")
+   call rad_cool_pwl(dotg1, g, nu, 4 * pi * Ibb / cLight, WITH_KNCOOL)
+   call rad_cool_mono(dotg2, g, fbb_max, ubb, WITH_KNCOOL)
+   do k=1, Ng
+      write(1, "(3ES14.7)") g(k), dotg1(k), dotg2(k)
+   end do
+   close(1)
 
+end subroutine BlackBody_tests
+
+!> Maxwell distribution constructor
 subroutine MaxwellDist
    implicit none
    integer :: i

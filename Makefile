@@ -22,9 +22,9 @@ OPTIMIZATION=-g -Wall -ffree-form -ffree-line-length-none \
 	-ffpe-trap=invalid,zero -fbacktrace -fcheck=all \
 	-fbounds-check -fno-unsafe-math-optimizations -frounding-math \
 	-fsignaling-nans
-endif #####  IFORT
+endif ###  IFORT
 
-else ######  DBG
+else ####  DBG
 
 ifeq ($(IFORT),1)
 
@@ -32,15 +32,15 @@ ifeq ($(IFAST),1)
 FASTI=-fast
 else  ##### IFAST
 FASTI=-O3
-endif #####  IFAST
+endif ###  IFAST
 
 ifeq ($(IPAR),1)
 PARI=-parallel
-endif #####  IPAR
+endif ###  IPAR
 
 ifeq ($(OPENMP),1)
 OMP=-qopenmp
-endif #####  OPENMP
+endif ###  OPENMP
 
 OPTIMIZATION=-free $(FASTI) $(PARI) $(OMP)
 
@@ -48,12 +48,12 @@ else #####  IFORT
 
 ifeq ($(OPENMP),1)
 OMP=-fopenmp
-endif #####  OPENMP
+endif ###  OPENMP
 
 OPTIMIZATION=-O3 -ftree-vectorize -funroll-all-loops -ffree-form \
 	-ffree-line-length-none -fbacktrace $(OMP)
 
-endif #####  IFORT
+endif ###  IFORT
 
 ifeq ($(COREI7),1)
 OPTIMIZATION+=-march=corei7 -mtune=corei7
@@ -68,7 +68,7 @@ OPTIMIZATION+=-arch ssse3 -mtune=corei7-avx
 LIBS+=-L/usr/lib64
 endif
 
-endif # DBG
+endif ### DBG
 
 COPT=-c $(OPTIMIZATION) -cpp -dU $(DEFS) $(INCL)
 LOPT=$(OPTIMIZATION) -cpp -dU $(DEFS) $(LIBS)
@@ -84,16 +84,16 @@ BENCH=xBenchmarking
 
 # -----  dependencies  -----
 TESTS_OBJ=misc.o params.o pwl_integ.o h5_inout.o specialf.o SRtoolkit.o \
-	anaFormulae.o radiation.o dist_evol.o tests.o
+	anaFormulae.o radiation.o distribs.o tests.o
 BLAZMAG_OBJ=misc.o params.o pwl_integ.o h5_inout.o specialf.o SRtoolkit.o \
-	anaFormulae.o radiation.o dist_evol.o blazMag.o blazMag_main.o
+	anaFormulae.o radiation.o distribs.o blazMag.o blazMag_main.o
 AFGLOW_OBJ=transformers.o misc.o params.o pwl_integ.o h5_inout.o specialf.o \
-	SRtoolkit.o anaFormulae.o radiation.o pairs.o dist_evol.o blastwave.o \
+	SRtoolkit.o anaFormulae.o radiation.o pairs.o distribs.o blastwave.o \
 	afterglow.o afterglow_main.o
 TURBLAZ_OBJ=misc.o params.o pwl_integ.o h5_inout.o specialf.o SRtoolkit.o \
-	anaFormulae.o radiation.o dist_evol.o turBlaz.o turBlaz_main.o
+	anaFormulae.o radiation.o distribs.o turBlaz.o turBlaz_main.o
 BENCH_OBJ=transformers.o misc.o pwl_integ.o h5_inout.o SRtoolkit.o specialf.o \
-	anaFormulae.o blastwave.o radiation.o dist_evol.o benchmarks.o \
+	anaFormulae.o blastwave.o radiation.o distribs.o benchmarks.o \
 	benchmarking.o
 
 
@@ -107,22 +107,22 @@ pairs.o: data_types.o constants.o misc.o
 params.o: data_types.o misc.o
 blastwave.o: data_types.o constants.o transformers.o SRtoolkit.o
 blazMag.o: data_types.o constants.o misc.o pwl_integ.o h5_inout.o SRtoolkit.o \
-	anaFormulae.o radiation.o dist_evol.o specialf.o
+	anaFormulae.o radiation.o distribs.o specialf.o
 blazMag_main.o: data_types.o misc.o blazMag.o
 afterglow_main.o: data_types.o misc.o afterglow.o
 turBlaz.o: data_types.o constants.o misc.o pwl_integ.o h5_inout.o SRtoolkit.o \
-	anaFormulae.o radiation.o dist_evol.o specialf.o
+	anaFormulae.o radiation.o distribs.o specialf.o
 turBlaz_main.o: data_types.o misc.o turBlaz.o
 anaFormulae.o: data_types.o constants.o misc.o pwl_integ.o
 radiation.o: data_types.o constants.o misc.o pwl_integ.o SRtoolkit.o \
 	anaFormulae.o
-dist_evol.o: data_types.o constants.o misc.o pwl_integ.o SRtoolkit.o specialf.o
+distribs.o: data_types.o constants.o misc.o pwl_integ.o SRtoolkit.o specialf.o
 tests.o: data_types.o constants.o misc.o pwl_integ.o h5_inout.o SRtoolkit.o \
-	anaFormulae.o blastwave.o radiation.o dist_evol.o specialf.o
+	anaFormulae.o blastwave.o radiation.o distribs.o specialf.o
 afterglow.o: data_types.o constants.o misc.o pwl_integ.o specialf.o\
-	h5_inout.o blastwave.o SRtoolkit.o anaFormulae.o radiation.o dist_evol.o
+	h5_inout.o blastwave.o SRtoolkit.o anaFormulae.o radiation.o distribs.o
 benchmarks.o: data_types.o constants.o transformers.o misc.o pwl_integ.o \
-	h5_inout.o specialf.o SRtoolkit.o blastwave.o anaFormulae.o dist_evol.o \
+	h5_inout.o specialf.o SRtoolkit.o blastwave.o anaFormulae.o distribs.o \
 	radiation.o
 benchmarking.o: benchmarks.o
 

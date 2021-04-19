@@ -21,11 +21,12 @@ Paramo stands for: PArticles and RAdiation MOnitor. In a few words: this code so
 ### Example
 
 A fast way to run `Paramo` can be done by downloading/copy the file [`runGRB190114C.py`](https://bitbucket.org/comala/workspace/snippets/LpLgGL/afterglow-of-grb190114c#file-runGRB190114C.py) from the [snippets](https://bitbucket.org/comala/workspace/snippets/). Running this file will:
+
 - Create the parameters file
 - Compile `Paramo` for an afterglow simulation
 - Run the executable
 
-**Note**: The code can be run from another directory. This can be done by specifying in `runGRB190114C.py` its full address, as well `Paramo`'s.
+for you. **Note**: The code can be run from another directory. This can be done by specifying in `runGRB190114C.py` its full address, as well `Paramo`'s.
 
 # References
 
