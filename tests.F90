@@ -6,8 +6,6 @@ use constants
 use params
 use misc
 use pwl_integ
-use hdf5
-use h5_inout
 use SRtoolkit
 use anaFormulae
 use distribs
@@ -39,7 +37,6 @@ subroutine steady_state
    !
    ! ************************************************************************
    implicit none
-   integer(HID_T) :: file_id
    integer :: i, k, numg, numt, herror, numf, j
    real(dp) :: g1, g2, gmin, gmax, tmax, tstep, qind, tacc, tesc, R, B, numax, numin, uB
    real(dp), allocatable, dimension(:) :: t, g, Q0, D0, C0, aux0, dt, dg, &
@@ -166,23 +163,23 @@ subroutine BlackBody_tests
    Ng = 384
    Nf = 512
    allocate(nu(Nf), g(Ng), dotg1(Ng), dotg2(Ng), Ibb(Nf), n(Ng), j1(Nf), j2(Nf))
-   gmin = 9d2
-   gmax = 1.1d5
+   gmin = 1.1d0
+   gmax = 1d6
    g1 = 1d3
    g2 = 1d5
    p = 2d0
    fmin = 1d8
    fmax = 1d23
    T = 2.72d0
-   Theta = kBoltz * T / energy_e
+   Theta = 30d0!kBoltz * T_e / energy_e
    xi_c = 4d0 * hPlanck / energy_e
    fbb_max = 2.8214393721220788934d0 * kBoltz * T / hPlanck
    ubb = BBenergy_dens(T)
-   write(*,"(2ES14.7)") T, fbb_max, ubb
+   write(*,"(3ES14.7)") T, fbb_max, ubb
 
    do k = 1, Ng
       g(k) = gmin * (gmax / gmin)**(dble(k - 1) / dble(Ng - 1))
-      n(k) = powlaw_dis(g(k), g1, g2, p)
+      n(k) = RMaxwell(g(k), Theta)!powlaw_dis(g(k), g1, g2, p)
    end do
 
    do j = 1, Nf
@@ -190,7 +187,7 @@ subroutine BlackBody_tests
       Ibb(j) = BBintensity(nu(j), T)
    end do
 
-   open(77, "ic_emiss.dat")
+   open(unit=77, file="ic_emiss.dat", action="write")
    do j=1, Nf
       call IC_iso_powlaw(j1(j), nu(j), nu, Ibb, n, g)
       call IC_iso_monochrom(j2(j), nu(j), ubb, fbb_max, n, g)
@@ -198,7 +195,7 @@ subroutine BlackBody_tests
    end do
    close(77)
 
-   open(1, "rad_cool.dat")
+   open(unit=1, file="cooling.dat", action="write")
    call rad_cool_pwl(dotg1, g, nu, 4 * pi * Ibb / cLight, WITH_KNCOOL)
    call rad_cool_mono(dotg2, g, fbb_max, ubb, WITH_KNCOOL)
    do k=1, Ng

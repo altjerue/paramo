@@ -10,6 +10,7 @@
 !  - char2int    : function
 !  - char2double : function
 !  - dbesseljn   : function
+!!!TODO: Update list
 !
 ! *************************************************************************
 module misc
@@ -168,8 +169,8 @@ contains
       integer :: locate
       integer :: n, jl, jm, ju
       logical :: ascnd, bounds
-      !! NOTE: The flag 'bounds' tells the function to return the index of the
-      !!       lower value of the interval of 'xx' in which 'x' is
+      !!!NOTE: The flag 'bounds' tells the function to return the index of the
+      !!!      lower value of the interval of 'xx' in which 'x' is
       if ( present(in_bounds) ) then
          bounds = in_bounds
       else
@@ -299,9 +300,9 @@ contains
    !
    !   ----------{   Romberg integrator   }----------
    !
-   function qromb_w2arg(func,a,b,p) result(qromb)
+   function qromb_w2arg(func, a, b, p) result(qromb)
       implicit none
-      real(dp), intent(in) :: a,b,p
+      real(dp), intent(in) :: a, b, p
       real(dp) :: qromb
       interface
          function func(x, pp) result(res)
@@ -312,7 +313,7 @@ contains
          end function func
       end interface
       integer, parameter :: jmax=20,jmaxp=jmax+1,k=5,km=k-1
-      real(dp), parameter :: eps=1d-4
+      real(dp), parameter :: eps=1d-5
       integer :: j
       real(dp) :: dqromb
       real(dp), dimension(jmaxp) :: h,s
@@ -380,6 +381,25 @@ contains
          a = 0d0
       end if
    end function zeros1D
+
+
+   function count_lines(filename) result(nlines)
+      !  Description:
+      !     Count lines of a text file
+      !
+      implicit none
+      character(len=*), intent(in) :: filename
+      integer :: nlines, io
+      open(10, file=filename, iostat=io, status="old")
+      if ( io /= 0 ) stop "Cannot open file!"
+      nlines = 0
+      do
+         read(10, *, iostat=io)
+         if (io/=0) exit
+         nlines = nlines + 1
+      end do
+      close(10)
+   end function count_lines
 
 #if 0
    ! ====================================================================

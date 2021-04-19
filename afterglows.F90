@@ -1,14 +1,25 @@
-subroutine afterglow(params_file, output_file, cool_withKN, ssa_boiler, with_wind, flow_kind, blob)
+!   #   ######
+!  ##   #     #    #####  #        ##    ####  #####       #    #   ##   #    # ######
+! # #   #     #    #    # #       #  #  #        #         #    #  #  #  #    # #
+!   #   #     #    #####  #      #    #  ####    #   ##### #    # #    # #    # #####
+!   #   #     #    #    # #      ######      #   #         # ## # ###### #    # #
+!   #   #     #    #    # #      #    # #    #   #         ##  ## #    #  #  #  #
+! ##### ######     #####  ###### #    #  ####    #         #    # #    #   ##   ######
+!
+!> 1D blast-wave from the self-similar solution
+subroutine bw1D_afterglow(params_file, output_file, cool_withKN, ssa_boiler, with_wind, flow_kind, blob)
    use data_types
    use constants
    use params
    use misc
    use pwl_integ
+#ifdef HDF5
    use hdf5
    use h5_inout
+#endif
    use SRtoolkit
    use anaFormulae
-   use dist_evol
+   use distribs
    use radiation
    use pairs
    use blastwave
@@ -25,7 +36,9 @@ subroutine afterglow(params_file, output_file, cool_withKN, ssa_boiler, with_win
       //new_line('A')//&
       ' ---------------------------------------------------------------------', &
       on_screen = "(' | ', I9, ' | ', ES11.4, ' | ', ES11.4, ' | ', ES11.4, ' | ', ES11.4, ' |')"
+#ifdef HDF5
    integer(HID_T) :: file_id, group_id
+#endif
    integer :: i, j, k, numbins, numdf, numdt, time_grid, herror
    real(dp) :: uB, uext, L_j, gmin, gmax, numin, numax, pind, B, R0, Rmax, &
          tinj, g1, g2, tstep, Q0, tmax, d_lum, z, n_ext, urad_const, Aw, sind, &
@@ -97,7 +110,7 @@ subroutine afterglow(params_file, output_file, cool_withKN, ssa_boiler, with_win
    call K1_init
    call K2_init
 
-   !!!!!COMBAK: Transform all these into arguments of the subroutine
+   !!!!!TODO: Transform all these into arguments of the subroutine
    with_ic = .true.
    full_rad_cool = .true.
    bw_approx = .true.
@@ -111,7 +124,7 @@ subroutine afterglow(params_file, output_file, cool_withKN, ssa_boiler, with_win
    !-----> Initializing blast wave
    theta_j0 = 0.2d0
    beta_bulk = bofg(gamma_bulk0)
-   call bw_crossec_area(gamma_bulk0, R0, gamma_bulk0, theta_j0, flow_kind, blob, Rb(0), volume(0), cs_area, Omega_j)
+   call bw_crossec_area(flow_kind, blob, gamma_bulk0, R0, gamma_bulk0, theta_j0, Rb(0), volume(0), cs_area, Omega_j)
 
    !-----> External medioum
    if ( with_wind ) then
@@ -146,7 +159,7 @@ subroutine afterglow(params_file, output_file, cool_withKN, ssa_boiler, with_win
       t(0) = R(0) / (beta_bulk * gamma_bulk(0) * cLight)
    end if
 
-   call bw_crossec_area(gamma_bulk0, R(0), gamma_bulk(0), theta_j0, flow_kind, blob, Rb(0), volume(0), cs_area, Omega_j)
+   call bw_crossec_area(flow_kind, blob, gamma_bulk0, R(0), gamma_bulk(0), theta_j0, Rb(0), volume(0), cs_area, Omega_j)
 
    !---> External medioum
    n_ext = Aw * R(0)**(-sind)
@@ -316,12 +329,12 @@ subroutine afterglow(params_file, output_file, cool_withKN, ssa_boiler, with_win
             &             1d200, &
             &             tlc)
 
-      call bw_crossec_area(gamma_bulk0, R(i), gamma_bulk(i), theta_j0, flow_kind, blob, Rb(i), volume(i), cs_area, Omega_j)
+      call bw_crossec_area(flow_kind, blob, gamma_bulk0, R(i), gamma_bulk(i), theta_j0, Rb(i), volume(i), cs_area, Omega_j)
 
       !-----> External medioum
       n_ext = Aw * R(i)**(-sind)
 
-      !-----> Magnetic field
+      !-----> Magnetic field assuming equipartition
       ! B = b_const * dsqrt(n_ext) * gamma_bulk(i)
       B = b_const * dsqrt(n_ext * (gamma_bulk(i) - 1d0) * (gamma_bulk(i) + 0.75d0))
       uB = B**2 / (8d0 * pi)
@@ -459,7 +472,7 @@ subroutine afterglow(params_file, output_file, cool_withKN, ssa_boiler, with_win
    ! #    # #    #  #  #  # #   ## #    #
    !  ####  #    #   ##   # #    #  ####
    write(*, "('--> Saving')")
-
+#ifdef HDF5
    ! ------  Opening output file  ------
    call h5open_f(herror)
    call h5io_createf(output_file, file_id, herror)
@@ -522,8 +535,8 @@ subroutine afterglow(params_file, output_file, cool_withKN, ssa_boiler, with_win
    ! ------  Closing output file  ------
    call h5io_closef(file_id, herror)
    call h5close_f(herror)
-
+#endif
    write(*, "('==========  FINISHED  ==========')")
    write(*,*) ''
 
-end subroutine afterglow
+end subroutine bw1D_afterglow
