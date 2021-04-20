@@ -19,3 +19,4 @@ __pycache__
 *.txt
 *.log
 .vscode*
+*.out

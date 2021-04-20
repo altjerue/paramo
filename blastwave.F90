@@ -215,8 +215,6 @@ contains
    end subroutine bw_crossec_area
 
 
-
-
    !  #####                                      #              
    ! #     # ##### #####  #    #  ####           # ###### ##### 
    ! #         #   #    # #    # #    #          # #        #   

@@ -1,12 +1,21 @@
-# -----  PHONY things  -----
+#----------  PHONY things  ----------
 .PHONY: clean
 
-#-----  compiler level  -----
+#----------  compiler level  ----------
+ifndef COMPILER
 # COMPILER: 0 (GCC), 1 (INTEL)
 COMPILER = 0
+endif
 
+ifndef DEBUGGING
+# DEBUGGING: 0 (OFF), 1 (ON)
+DEBUGGING = 0
+endif
+
+ifndef USEHDF5
 USEHDF5 = 0
-USEMPI = 0
+endif
+# USEMPI = 0
 
 ifeq ($(USEHDF5),1)
 DEFS=-DHDF5
@@ -30,7 +39,7 @@ endif
 
 endif
 
-#-----  servers level  -----
+#----------  servers level  ----------
 # SERVER: 0 (UNIX PC) 1 (Brown@Purdue)
 SERVER = 0
 ifeq ($(SERVER),1)
@@ -39,9 +48,8 @@ LIBS+=-L/usr/lib64
 
 endif
 
-#-----  optimization level  -----
-# DEBUGGING: 0 (OFF), 1 (ON)
-ifeq ($(DBG),1)
+#----------  optimization level  ----------
+ifeq ($(DEBUGGING),1)
 ifeq ($(COMPILER),1)
 OPTIMIZATION=-g -debug all -check all -check nostack -warn all -fp-stack-check \
 	-heap-arrays -ftrapuv -free
@@ -79,9 +87,12 @@ COPT=-c $(OPTIMIZATION) -cpp -dU $(DEFS) $(INCL)
 LOPT=$(OPTIMIZATION) -cpp -dU $(DEFS) $(LIBS)
 
 
-# -----  executables & dependencies  -----
+#----------  executables & dependencies  ----------
+ifndef PROBLEM
 # PROBLEM: 0 (tests), 1 (blazars), 2 (afterflow), 3 (turbulence)
-PROBLEM=2
+PROBLEM=0
+endif
+
 OBJECTS=misc.o params.o pwl_integ.o specialf.o SRtoolkit.o anaFormulae.o\
 	radiation.o distribs.o transformers.o
 
@@ -118,46 +129,14 @@ endif
 # 	benchmarking.o
 
 
-# -----  rules level  -----
+#----------  rules level  ----------
 all: Paramo
 
-################################################################################
-# WARNING: All below is DEPRECATED
-# objects
-# constants.o specialf.o pwl_integ.o misc.o h5_inout.o: data_types.o
-# transformers.o SRtoolkit.o: data_types.o constants.o
-# pairs.o: data_types.o constants.o misc.o
-# params.o: data_types.o misc.o
-# blastwave.o: data_types.o constants.o transformers.o SRtoolkit.o
-# blazMag.o: data_types.o constants.o misc.o pwl_integ.o SRtoolkit.o \
-# 	anaFormulae.o radiation.o distribs.o specialf.o
-# blazMag_main.o: data_types.o misc.o blazMag.o
-# afterglow_main.o: data_types.o misc.o afterglow.o
-# turBlaz.o: data_types.o constants.o misc.o pwl_integ.o SRtoolkit.o \
-# 	anaFormulae.o radiation.o distribs.o specialf.o
-# turBlaz_main.o: data_types.o misc.o turBlaz.o
-# anaFormulae.o: data_types.o constants.o misc.o pwl_integ.o
-# radiation.o: data_types.o constants.o misc.o pwl_integ.o SRtoolkit.o \
-# 	anaFormulae.o
-# distribs.o: data_types.o constants.o misc.o pwl_integ.o SRtoolkit.o specialf.o
-# tests.o: data_types.o constants.o misc.o pwl_integ.o SRtoolkit.o \
-# 	anaFormulae.o radiation.o distribs.o specialf.o
-# afterglows.o: data_types.o constants.o misc.o pwl_integ.o specialf.o\
-# 	blastwave.o SRtoolkit.o anaFormulae.o radiation.o distribs.o
-# benchmarks.o: data_types.o constants.o transformers.o misc.o pwl_integ.o \
-# 	h5_inout.o specialf.o SRtoolkit.o blastwave.o anaFormulae.o distribs.o \
-# 	radiation.o
-# benchmarking.o: benchmarks.o
-################################################################################
-
-# -----  executables production  -----
 Paramo: data_types.o constants.o $(OBJECTS)
 	$(FC) $(LOPT) -o $@ $^
 
-# -----  objects compilation -----
 %.o: %.F90
 	$(FC) $(COPT) $< -o $@
 
 clean:
-	rm -vf *.o *.mod *~
-	rm -rvf x*
+	rm -vf *.o *.mod *~ Paramo
