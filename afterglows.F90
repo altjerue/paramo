@@ -7,7 +7,7 @@
 ! ##### ######     #####  ###### #    #  ####    #         #    # #    #   ##   ######
 !
 !> 1D blast-wave from the self-similar solution
-subroutine bw1D_afterglow(params_file, output_file, cool_withKN, ssa_boiler, with_wind, flow_kind, blob)
+subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob)
    use data_types
    use constants
    use params
@@ -26,9 +26,8 @@ subroutine bw1D_afterglow(params_file, output_file, cool_withKN, ssa_boiler, wit
    use specialf
    implicit none
 
-   integer, intent(in) :: flow_kind
    character(len=*), intent(in) :: params_file
-   logical, intent(in) :: cool_withKN, ssa_boiler, with_wind, blob
+   logical, intent(in) :: cool_withKN, with_wind, blob
    character(len=*),intent(inout) :: output_file
    integer, parameter :: nmod = 50
    character(len=*), parameter :: screan_head = &
@@ -37,9 +36,9 @@ subroutine bw1D_afterglow(params_file, output_file, cool_withKN, ssa_boiler, wit
       ' ---------------------------------------------------------------------', &
       on_screen = "(' | ', I9, ' | ', ES11.4, ' | ', ES11.4, ' | ', ES11.4, ' | ', ES11.4, ' |')"
 #ifdef HDF5
-   integer(HID_T) :: file_id, group_id
+   integer(HID_T) :: file_id, group_id, herror
 #endif
-   integer :: i, j, k, numbins, numdf, numdt, time_grid, herror
+   integer :: i, j, k, numbins, numdf, numdt, time_grid, flow_kind
    real(dp) :: uB, uext, L_j, gmin, gmax, numin, numax, pind, B, R0, Rmax, &
          tinj, g1, g2, tstep, Q0, tmax, d_lum, z, n_ext, urad_const, Aw, sind, &
          theta_obs, mu_obs, nu_ext, tesc_e, uext0, eps_e, tlc, g1_const, Rd2, &
@@ -50,8 +49,8 @@ subroutine bw1D_afterglow(params_file, output_file, cool_withKN, ssa_boiler, wit
          nu_obs, t_obs, gamma_bulk, R, D, tcool, Rb, volume, dotg_tmp
    real(dp), allocatable, dimension(:,:) :: dotg, n_e, jnut, jmbs, jssc, jeic, &
          ambs, anut, Qinj, tau_gg, pow_syn, Ddiff
-   logical :: full_rad_cool, bw_approx, radius_evol, pwl_over_trpzd_integ, &
-         with_ic
+   logical :: bw_approx, radius_evol, pwl_over_trpzd_integ, &
+         with_ic, ssa_boiler
 
 
    !  #####    ##   #####    ##   #    #  ####
@@ -112,10 +111,11 @@ subroutine bw1D_afterglow(params_file, output_file, cool_withKN, ssa_boiler, wit
 
    !!!!!TODO: Transform all these into arguments of the subroutine
    with_ic = .true.
-   full_rad_cool = .true.
    bw_approx = .true.
    radius_evol = .false.
    pwl_over_trpzd_integ = .false.
+   flow_kind = -1
+   ssa_boiler = .false.
 
    !-----> About the observer
    theta_obs = par_theta_obs * pi / 180d0
@@ -128,7 +128,7 @@ subroutine bw1D_afterglow(params_file, output_file, cool_withKN, ssa_boiler, wit
 
    !-----> External medioum
    if ( with_wind ) then
-      !!!!!NOTE: n_ext0 is A_{*}
+      !!!NOTE: n_ext0 is A_{*}
       sind = 2d0
       Aw = n_ext0 * 3d35
       n_ext = Aw * R0**(-sind)
@@ -231,7 +231,7 @@ subroutine bw1D_afterglow(params_file, output_file, cool_withKN, ssa_boiler, wit
    n_e(:, 0) = Qinj(:, 0)
 
    write(*,"('--> Calculating the emission')")
-   if (cool_withKN) then
+   if ( cool_withKN ) then
       write(*, "('--> Radiative cooling: Klein-Nishina')")
       output_file="KNcool-"//trim(output_file)
    else
@@ -431,15 +431,13 @@ subroutine bw1D_afterglow(params_file, output_file, cool_withKN, ssa_boiler, wit
       !     Radiative cooling
       !
       dotg(:, i) = 0d0
-      if ( full_rad_cool ) then
-         ! call bolometric_integ(freqs, 4d0 * pi * Inu / cLight, urad)
-         ! call RadTrans_blob(Inu, R, jssc(:, i) + jeic(:, i), anut(:, i))
-         call RadTrans_blob(Inu, Rb(i), jmbs(:, i), ambs(:, i))
-         call rad_cool_pwl(dotg_tmp, gg, freqs, 4d0 * pi * Inu / cLight, cool_withKN)
-         dotg(:, i) = dotg_tmp
-         call rad_cool_mono(dotg_tmp, gg, nu_ext, uext, cool_withKN)
-         dotg(:, i) = dotg(:, i) + dotg_tmp
-      end if
+      ! call bolometric_integ(freqs, 4d0 * pi * Inu / cLight, urad)
+      ! call RadTrans_blob(Inu, R, jssc(:, i) + jeic(:, i), anut(:, i))
+      call RadTrans_blob(Inu, Rb(i), jmbs(:, i), ambs(:, i))
+      call rad_cool_pwl(dotg_tmp, gg, freqs, 4d0 * pi * Inu / cLight, cool_withKN)
+      dotg(:, i) = dotg_tmp
+      call rad_cool_mono(dotg_tmp, gg, nu_ext, uext, cool_withKN)
+      dotg(:, i) = dotg(:, i) + dotg_tmp
 
 
       !

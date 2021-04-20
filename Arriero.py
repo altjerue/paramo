@@ -3,6 +3,8 @@
 # –Es el caballo de Miguel Páramo, que galopa por el camino de la Media Luna.
 
 import os
+import subprocess
+import sys
 from time import strftime, localtime
 from Eduviges.misc import fortran_double
 
@@ -118,13 +120,13 @@ class compiler(object):
     # -----  COMPILER FLAGS & RULES -----
 
     def flags(self):
-        self.BROWN = False       # compile with BROWN=1 flag
-        self.INTEL = False       # compile with IFORT=1 flag
-        self.arch = ''           # compile with specific arch flag
-        self.OMP = False         # compile with OpenMP
-        self.DBG = False         # compile for debugging
-        self.rules = 'all'       # rule to compile
-        self.compile_dir = './'  # the path to Paramo... must end with '/'
+        self.COMP = 0           # 0 (GCC), 1 (INTEL)
+        self.OMP = False        # compile with OpenMP
+        self.DBG = False        # compile for debugging
+        self.HDF5 = False       # save data with HDF5
+        self.server = 0         # 0 (UNIX PC) 1 (Brown@Purdue)
+        self.problem = 0        # 0 (tests), 1 (blazars), 2 (afterflow), 3 (turbulence)
+        self.compileDir = './'  # the path to Paramo... must end with '/'
 
     def __init__(self, **kwargs):
         self.flags()
@@ -132,34 +134,34 @@ class compiler(object):
         self.cwd = os.getcwd()
 
     def compile(self):
-        make = 'make ' + self.rules + ' -j4'
-        if self.arch in ['i7', 'corei7', 'I7', 'COREI7']:
-            make += ' COREI7=1'
-        else:
-            make += ' NATIVE=1'
-
+        print(strftime("\n\n%a, %d %b %Y %H:%M:%S %Z", localtime()))
+        make = ["make", "Paramo", "PROBLEM=" + str(self.problem), "COMPILER=" + str(self.COMP)]
         if self.OMP:
-            make += ' OPENMP=1'
-
+            make.append("OPENMP=1")
+        else:
+            make.append("OPENMP=0")
         if self.DBG:
-            make += ' DBG=1'
-
-        if self.BROWN:
-            make += ' BROWN=1'
-
-        if self.INTEL:
-            make += ' IFORT=1'
-
+            make.append("DEBUGGING=1")
+        else:
+            make.append("DEBUGGING=0")
+        if self.HDF5:
+            make.append("USEHDF5=1")
+        else:
+            make.append("USEHDF5=0")
         os.chdir(self.compile_dir)
-        print(os.getcwd())
-        print("--> Running Makefile:\n ", make, "\n")
-        log = strftime("%a, %d %b %Y %H:%M:%S %Z", localtime())
-        os.system(make)
-        with open("make.log", "a") as logfile:
-            logfile.write(log + "\n" + make + "\n\n")
-        logfile.close()
+        print("\nCompile dir: " + os.getcwd())
+        print("--> Running Makefile\n ", " ".join(make), "\n")
+        try:
+            make_out = subprocess.run(make, capture_output=True, text=True, check=True)
+            with open("make.out", "w") as logfile:
+                logfile.write(make_out.stdout)
+        except subprocess.CalledProcessError as err:
+            print(err.stdout)
+            print("Compilation Error")
+            print(err.stderr)
+            sys.exit(err.returncode)
         os.chdir(self.cwd)
-        print(os.getcwd())
+        print("Working dir: " + os.getcwd())
 
     def cleanup(self):
         os.chdir(self.compile_dir)
@@ -195,7 +197,7 @@ def PBSfile(jname, qname, xcmd, depen=None, nodes=None, cores=None, mail=None, h
         c = cores
 
     with open(sname, 'w') as f:
-        print("#!/bin/sh -l\n", file=f)
+        print("#!/bin/bash -l\n", file=f)
         print("# FILENAME: {0}\n".format(sname), file=f)
         print("#PBS -q " + qname, file=f)
         print("#PBS -l nodes={0:d}:ppn={1:d},naccesspolicy=singleuser".format(n, c), file=f)
@@ -302,25 +304,22 @@ class Runner(object):
     #
     def run_blazMag(self, cmd_args=(None, None), pream=None, clean=False, cl=False):
         if cmd_args[0] is None or cmd_args[0] is False:
-            wCool = False
+            in1 = 'F'
         else:
-            wCool = True
+            in1 = 'T'
         if cmd_args[1] is None or cmd_args[1] is False:
-            wAbs = False
+            in2 = 'F'
         else:
-            wAbs = True
-
-        comp = compiler(rules='xBlazMag', **self.comp_kw)
-
+            in2 = 'T'
+        comp = compiler(problem=1, **self.comp_kw)
         if clean:
             comp.cleanup()
         comp.compile()
         outfile = self.flabel + '.jp.h5'
-
         if pream is None:
-            run_cmd = '{0}xBlazMag {1} {2} {3} {4}'.format(comp.compile_dir, self.par.params_file, wCool, wAbs, outfile)
+            run_cmd = '{0}Paramo {1} {2} {3} {4}'.format(comp.compile_dir, self.par.params_file, outfile, in1, in2)
         else:
-            run_cmd = '{0} {1}xBlazMag {2} {3} {4} {5}'.format(pream, comp.compile_dir, self.par.params_file, wCool, wAbs, outfile)
+            run_cmd = '{0} {1}Paramo {2} {3} {4} {5}'.format(pream, comp.compile_dir, self.par.params_file, outfile, in1, in2)
         print("\n--> Parameters:")
         os.system("cat -n " + self.par.params_file)
         if cl:
@@ -334,21 +333,28 @@ class Runner(object):
     #
     # ----->   Aglow compilation and run
     #
-    def run_Aglow(self, cmd_args=(False, False, False, -1, False), pream=None, clean=False, cl=False):
-        wCool = cmd_args[0]
-        wAbs = cmd_args[1]
-        wWind = cmd_args[2]
-        flow_geom = cmd_args[3]
-        wBlob = cmd_args[4]
-        comp = compiler(rules='xAglow', **self.comp_kw)
+    def run_Aglow(self, cmd_args=(False, False, True), pream=None, clean=False, cl=False):
+        if cmd_args[0] is None or cmd_args[0] is False:
+            in1 = 'F'
+        else:
+            in1 = 'T'
+        if cmd_args[1] is None or cmd_args[1] is False:
+            in2 = 'F'
+        else:
+            in2 = 'T'
+        if cmd_args[2] is None or cmd_args[2] is False:
+            in3 = 'F'
+        else:
+            in3 = 'T'
+        comp = compiler(problem=2, **self.comp_kw)
         if clean:
             comp.cleanup()
         comp.compile()
         outfile = self.flabel + '.jp.h5'
         if pream is None:
-            run_cmd = '{0}xAglow {1} {2} {3} {4} {5} {6} {7}'.format(comp.compile_dir, self.par.params_file, wCool, wAbs, wWind, flow_geom, wBlob, outfile)
+            run_cmd = '{0}Paramo {1} {2} {3} {4} {5}'.format(comp.compile_dir, self.par.params_file, outfile, in1, in2, in3)
         else:
-            run_cmd = '{0} {1}xAglow {2} {3} {4} {5} {6} {7} {8}'.format(pream, comp.compile_dir, self.par.params_file, wCool, wAbs, wWind, flow_geom, wBlob, outfile)
+            run_cmd = '{0} {1}Paramo {2} {3} {4} {5} {6}'.format(pream, comp.compile_dir, self.par.params_file, outfile, in1, in2, in3)
         print("\n--> Parameters:")
         os.system("cat -n " + self.par.params_file)
         if cl:
@@ -360,9 +366,9 @@ class Runner(object):
             print("\n--> Finished")
 
     #
-    # ----->   turBlaz compilation and run
+    # ----->   turbulence compilation and run
     #
-    def run_turBlaz(self, cmd_args=(None, None), pream=None, clean=False, cl=False):
+    def run_turb(self, cmd_args=(None, None), pream=None, clean=False, cl=False):
         if cmd_args[0] is None or cmd_args[0] is False:
             wCool = False
         else:

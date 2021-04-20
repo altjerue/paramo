@@ -6,42 +6,32 @@ program blazMag_main
       '  xBlazMasg params_file KN-cool SSA-boiler with-wind flow-geom blob output-name'//new_line('A')//&
       'Options:'//new_line('A')//&
       '  params_file     Parameters file'//new_line('A')//&
+      '  output-name     Name of the output file'//new_line('A')//&
       '  KN-cool         Klein-Nishina cooling: T/F (True/False)'//new_line('A')//&
-      '  SSA heating     with self-absorption heating: T/F (True/False)'//new_line('A')//&
-      '  output-name     Name of the output file'//new_line('A')
-   integer :: numArgs
-   character(len=256) :: program_name, params_file, output_file, wCool, wAbs
-   logical :: with_cool, with_abs
+      '  with_SSA        with self-absorption: T/F (True/False)'//new_line('A')
+   integer :: numArgs, i
+   character(len=256) :: program_name
+   character(len=256), allocatable, dimension(:) :: args
+   logical, allocatable, dimension(:) :: with_arg
 
    numArgs = command_argument_count()
-   call get_command_argument(0, program_name)
-
    if ( numArgs /= 4 ) call an_error(args_error)
+   call get_command_argument(0, program_name)
+   allocate(args(numArgs), with_arg(numArgs - 2))
+   do i=1, numArgs
+      call get_command_argument(i, args(i))
+      if ( i > 2 ) then
+         if ( args(i) == 'T' ) then
+            with_arg(i) = .true.
+         else if ( args(i) == 'F' ) then
+            with_arg(i) = .false.
+         else
+            call an_error(args_error)
+         end if
+      end if
+   end do
 
-   call get_command_argument(1, params_file)
-   call get_command_argument(2, wCool)
-   call get_command_argument(3, wAbs)
-   call get_command_argument(4, output_file)
-
-   !!----->  With or without absorption
-   if ( wAbs == 'True' ) then
-      with_abs = .true.
-   elseif ( wAbs == 'False' ) then
-      with_abs = .false.
-   else
-      call an_error(args_error)
-   end if
-
-   !!----->  With or without SSC emissivity
-   if ( wCool == 'True' ) then
-      with_cool = .true.
-   elseif ( wCool == 'False' ) then
-      with_cool = .false.
-   else
-      call an_error(args_error)
-   end if
-
-   call blazMag(trim(params_file), trim(output_file), with_cool, with_abs)
+   call blazMag(trim(args(1)), args(2), with_arg(1), with_arg(2))
 
 end program blazMag_main
 
