@@ -236,14 +236,14 @@ contains
       real(dp), intent(out), allocatable, dimension(:) :: r, theta, Gbulk
       integer :: i, io
       real(dp) :: x, y, vx,vy
-      real(dp), allocatable, dimension(:) :: v
+      ! real(dp), allocatable, dimension(:) :: v
       if ( nlines /= count_lines(filename) ) call an_error("bw_mezcal: nlines and number of lines in "//trim(filename)//"are not the same")
       call realloc(r, nlines)
-      call realloc(v, nlines)
+      ! call realloc(v, nlines)
       call realloc(theta, nlines)
       call realloc(Gbulk, nlines)
       ! allocate(r(nlines), v(nlines), theta(nlines), Gbulk(nlines))
-      open(77, file=trim(filename), iostat=io, status='old')
+      open(77, file=trim(filename), iostat=io, status='old', action='read')
       if (io /= 0) stop "Cannot open file!"
       do i=1, nlines
          read(77, *) x, y, vx, vy, theta(i), Gbulk(i)

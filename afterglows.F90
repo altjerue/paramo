@@ -540,7 +540,6 @@ subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob
 end subroutine bw1D_afterglow
 
 
-#if 0
 ! #    # ###### ######  ####    ##   #
 ! ##  ## #          #  #    #  #  #  #
 ! # ## # #####     #   #      #    # #
@@ -591,12 +590,11 @@ subroutine mezcal(params_file, output_file, KNcool, assume_blob, with_ic)
          Ejet, eps_B, E0, gamma_bulk0, L_e, nu_ext0, tmin, td, Rd, dr, &
          b_const, beta_bulk, eps_g2, theta_j0, cs_area, n_ext0, g2_const, &
          Omega_j, dt, f_esc
-   real(dp), allocatable, dimension(:) :: freqs, t, Inu, gg, urad, theta_jet, &
-         nu_obs, t_obs, gamma_bulk, R, D, tcool, Rb, volume, dotg_tmp
+   real(dp), allocatable, dimension(:) :: freqs, t, Inu, gamma_e, urad, &
+         nu_obs, t_obs, gamma_bulk, R, tcool, Rb, volume, dotg_tmp
    real(dp), allocatable, dimension(:,:) :: dotg, n_e, jnut, jmbs, jssc, jeic, &
-         ambs, anut, Qinj, tau_gg, pow_syn, Ddiff
-   logical :: full_rad_cool, bw_approx, radius_evol, pwl_over_trpzd_integ, &
-         with_ic
+         ambs, anut, Qinj, tau_gg, pow_syn, Ddiff, Dopp
+   logical :: full_rad_cool, bw_approx, radius_evol, pwl_over_trpzd_integ
    ! type(blast_wave), allocatable, dimension(:) :: bw
 
    !  #####    ##   #####    ##   #    #  ####
@@ -642,18 +640,18 @@ subroutine mezcal(params_file, output_file, KNcool, assume_blob, with_ic)
    !  ####  ######   #    ####  #
    write(*, "('--> Simulation setup')")
 
-   allocate(t(0:numt), freqs(numf), Inu(numf), gg(numg), theta_d(numd), &
+   allocate(t_com(0:numt), nu_com(numf), Inu(numf), gamma_e(numg), theta(numd),&
          nu_obs(numf), t_obs(0:numt), dotg_tmp(numg), beta_bulk(numd))
    allocate(r(numd, 0:numt), rb(numd, 0:numt), gamma_bulk(numd, 0:numt), &
-         ambs(numf, numt), tau_pairs(numf, numt), jmbs(numf, numt), &
-         D(numd, 0:numt), dotg(numg, 0:numt), Ddiff(numg, 0:numt), &
-         volume(numd, 0:numdt), n_ext(numd, 0:numt))
+         asyn(numf, numt), jsyn(numf, numt), Dopp(numd, 0:numt), &
+         dotg(numg, 0:numt), Ddiff(numg, 0:numt), volume(numd, 0:numdt), &
+         n_ext(numd, 0:numt))
    allocate(n_e(numg, numd, 0:numt), jnut(numf, numd, numt), &
          jssc(numf, numd, numt), anut(numf, numd, numt), &
          jeic(numf, numd, numt), Qinj(numg, numd, 0:numt))
 
    !!!TODO: Read the shock profile and directions of motion
-   call bw_mezcal("test.dat", ndirs, R(:, 0), theta_d, gamms_bulk(:, 0))
+   call bw_mezcal("test.dat", ndirs, R(:, 0), theta, gamma_bulk(:, 0), cs_area)
 
    call K1_init
    call K2_init
@@ -668,25 +666,25 @@ subroutine mezcal(params_file, output_file, KNcool, assume_blob, with_ic)
    !-----> About the observer
    !!!IDEA: We could leave the observer to Eduviges
    !!!IDEA: or maybe I could create an object called blastwave which contains all the info of the blastwave
-   theta_obs = par_theta_obs * pi / 180d0
-   mu_obs = dcos(theta_obs)
+   ! theta_obs = par_theta_obs * pi / 180d0
+   ! mu_obs = dcos(theta_obs)
    !!!TODO: Calculated the trigonometric relations between theta_obs and theta_jet
 
    !-----> Initializing blast wave
-   theta_j0 = 0.2d0
-   beta_bulk = bofg(gamma_bulk(:, 0))
+   ! theta_j0 = 0.2d0
+   ! beta_bulk = bofg(gamma_bulk(:, 0))
    ! call bw_crossec_area(gamma_bulk0, R0, gamma_bulk0, theta_j0, flow_kind, blob, Rb(0), volume(0), cs_area, Omega_j)
    !!!NOTE Each crossectional area will be given by the corresponding element of arc = \Delta\phi * r
    !!!IDEA Consider each direction of propagation as an individual jet
    !!!QUESTION What is the proper crossectional area?
 
    !-----> External medium
-   sind = 0d0
-   Aw = n_ext0
-   n_ext = n_ext0
+   ! sind = 0d0
+   ! Aw = n_ext0
+   ! n_ext = n_ext0
 
-   call deceleration_radius(Rd, Rd2, E0, gamma_bulk0, Aw, with_wind, sind)
-   td = (1d0 + z) * Rd / (4d0 * gamma_bulk0**2 * cLight)
+   ! call deceleration_radius(Rd, Rd2, E0, gamma_bulk0, Aw, with_wind, sind)
+   ! td = (1d0 + z) * Rd / (4d0 * gamma_bulk(:, 0)**2 * cLight)
 
    !---> True outflow energy and decceleration radius
    !!!NOTE: The energy of the blast-wave will be different for each direction.
@@ -696,22 +694,14 @@ subroutine mezcal(params_file, output_file, KNcool, assume_blob, with_ic)
    !---> Locating the emission region
    !!!NOTE: If we are going to calculate the Doppler factor here, we must take into account the observer viewing angle. For each direaction of motion, the same observer will have a different viewing angle at each time-step
    !!!TODO: Draw the trigonometry of the system
-   if ( bw_approx ) then
-      t_obs(0) = tstep
-      call blastwave_approx_SPN98(gamma_bulk0, E0, Aw, t_obs(0), gamma_bulk(0), R(0), .true.)
-      beta_bulk = bofg(gamma_bulk(0))
-      D(0) = Doppler(gamma_bulk(0), mu_obs)
-      t(0) = R(0) / (beta_bulk * gamma_bulk(0) * cLight)
-   else
-      R(0) = R0
-      gamma_bulk(0) = adiab_blast_wave(R(0), gamma_bulk0, E0, Aw, with_wind, sind)
-      beta_bulk = bofg(gamma_bulk(0))
-      D(0) = Doppler(gamma_bulk(0), mu_obs)
-      t_obs(0) = (1d0 + z) * R(0) / (beta_bulk * gamma_bulk(0) * cLight * D(0))
-      t(0) = R(0) / (beta_bulk * gamma_bulk(0) * cLight)
-   end if
+   ! Dopp(:, 0) = Doppler(gamma_bulk(:, 0), mu_obs)
+   ! t_obs(0) = (1d0 + z) * R(0) / (beta_bulk * gamma_bulk(0) * cLight * D(0))
+   do l=1, numd
+      beta_bulk(l) = bofg(gamma_bulk(l, 0))
+      t(l, 0) = r(l, 0) / (beta_bulk(l) * gamma_bulk(l, 0) * cLight)
+      call bw_crossec_area(gamma_bulk(l, 0), R(l, 0), gamma_bulk(l, 0), theta_j0, flow_kind, blob, Rb(l, 0), volume(l, 0), cs_area, Omega_j)
+   end do
 
-   call bw_crossec_area(gamma_bulk0, R(0), gamma_bulk(0), theta_j0, flow_kind, blob, Rb(0), volume(0), cs_area, Omega_j)
 
    !---> External medioum
    n_ext = Aw * R(0)**(-sind)
@@ -735,7 +725,7 @@ subroutine mezcal(params_file, output_file, KNcool, assume_blob, with_ic)
 
    !---> Time-scales
    tlc = Rb(0) / cLight
-   tesc_e = f_esc * tlc! * R(0) / (cLight * gamma_bulk(0))!
+   tesc_e = f_esc * tlc! * R(0) / (cLight * gamma_bulk(0))
    tinj = 1d200
 
    !---> Fraction of accreted kinetic energy injected into non-thermal electrons
@@ -1060,4 +1050,3 @@ subroutine mezcal(params_file, output_file, KNcool, assume_blob, with_ic)
    write(*,*) ''
 
 end subroutine mezcal
-#endif

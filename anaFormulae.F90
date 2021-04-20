@@ -22,13 +22,13 @@ module anaFormulae
    use data_types
    use constants
    use misc
-#ifdef BRWN
+#ifdef INTEL
    use ISO_C_BINDING
 #endif
    use pwl_integ
    implicit none
 
-#ifdef BRWN
+#ifdef INTEL
    interface
       function tgamma(y) bind(c)
         use ISO_C_BINDING
@@ -37,7 +37,6 @@ module anaFormulae
       end function tgamma
    end interface
 #endif
-
 
 contains
    !
@@ -49,7 +48,7 @@ contains
       integer, intent(in) :: m
       real(dp), intent(in) :: beta,nu_b
       real(dp) :: cyclo
-#ifdef BRWN
+#ifdef INTEL
       cyclo = 8d0 * pi**2 * nu_b * dble( (m + 1) * ( m**(2 * m + 1) ) ) * &
       beta**(2 * m) / tgamma(dble(2 * m + 2))
 #else
@@ -74,7 +73,7 @@ contains
       !     dexp(- chi/gam**2) &
       !     / (2.7d1 * dgamma(4d0 / 3d0))
       P_nu = 8d0 * beta**2 * chi_new**(1d0 / 3d0) * dexp(- chi_new) &
-#ifdef BRWN
+#ifdef INTEL
            / (27d0 * tgamma(4d0 / 3d0))
 #else
            / (27d0 * dgamma(4d0 / 3d0))
