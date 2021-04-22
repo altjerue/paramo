@@ -9,7 +9,6 @@ subroutine blazMag(params_file, output_file, cool_withKN, with_abs)
    use h5_inout
 #endif
    use SRtoolkit
-   use anaFormulae
    use distribs
    use radiation
    implicit none
@@ -225,8 +224,8 @@ subroutine blazMag(params_file, output_file, cool_withKN, with_abs)
       !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
       !$OMP& PRIVATE(j)
       do j = 1, numdf
-         call mbs_emissivity(jmbs(j, i), freqs(j), gg, nn(:, i), B)
-         call mbs_absorption(ambs(j, i), freqs(j), gg, nn(:, i), B)
+         call syn_emissivity(jmbs(j, i), freqs(j), gg, nn(:, i), B)
+         call syn_absorption(ambs(j, i), freqs(j), gg, nn(:, i), B)
       end do
       !$OMP END PARALLEL DO
 

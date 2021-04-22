@@ -1,4 +1,10 @@
-#define WITH_KNCOOL .true.
+#define STEADY_STATE  (1)
+#define RAD_PROCS     (2)
+#define BLACK_BODY    (3)
+#define SYN_AFTERGLOW (4)
+#define ODES_SOLVER   (5)
+
+#define TEST_CHOICE(ODE_SOLVER)
 
 program tests
 use data_types
@@ -7,7 +13,6 @@ use params
 use misc
 use pwl_integ
 use SRtoolkit
-use anaFormulae
 use distribs
 use radiation
 use specialf
@@ -19,10 +24,18 @@ implicit none
 !   - choise of test as input
 !      - Modify Miguel.py
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! call steady_state
-! call rad_procs
-call BlackBody_tests
+#if TEST == 1
+call steady_state
+#elif TEST == 2
+call rad_procs
+#elif TEST == 3
+call BlackBody_tests(.true.)
+#elif TEST == 4
+! call syn_afterglow
+#elif TEST == 5
+call odes_solver
 ! call MaxwellDist
+#endif
 
 write(*, *) '=======  FINISHED  ======='
 write(*, *) ''
@@ -123,14 +136,14 @@ subroutine steady_state
 
       !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) PRIVATE(j)
       do j = 1, numf
-         call mbs_emissivity(jmbs1(j, i), freqs(j), g, n1(i, :), B)
-         call mbs_emissivity(jmbs4(j, i), freqs(j), g, n4(i, :), B)
-         call mbs_emissivity(jmbs5(j, i), freqs(j), g, n5(i, :), B)
-         call mbs_emissivity(jmbs6(j, i), freqs(j), g, n6(i, :), B)
-         call mbs_absorption(ambs1(j, i), freqs(j), g, n1(i, :), B)
-         call mbs_absorption(ambs4(j, i), freqs(j), g, n4(i, :), B)
-         call mbs_absorption(ambs5(j, i), freqs(j), g, n5(i, :), B)
-         call mbs_absorption(ambs6(j, i), freqs(j), g, n6(i, :), B)
+         call syn_emissivity(jmbs1(j, i), freqs(j), g, n1(i, :), B)
+         call syn_emissivity(jmbs4(j, i), freqs(j), g, n4(i, :), B)
+         call syn_emissivity(jmbs5(j, i), freqs(j), g, n5(i, :), B)
+         call syn_emissivity(jmbs6(j, i), freqs(j), g, n6(i, :), B)
+         call syn_absorption(ambs1(j, i), freqs(j), g, n1(i, :), B)
+         call syn_absorption(ambs4(j, i), freqs(j), g, n4(i, :), B)
+         call syn_absorption(ambs5(j, i), freqs(j), g, n5(i, :), B)
+         call syn_absorption(ambs6(j, i), freqs(j), g, n6(i, :), B)
       end do
       !$OMP END PARALLEL DO
 
@@ -155,8 +168,9 @@ subroutine steady_state
 end subroutine steady_state
 
 !> Tests with a Blackbody
-subroutine BlackBody_tests
+subroutine BlackBody_tests(with_kncool)
    implicit none
+   logical, intent(in) :: with_kncool
    integer :: Ng, Nf, j, k
    real(dp) :: T, Theta, xi_c, gmin, gmax, fmin, fmax, fbb_max, ubb, g1, g2, p
    real(dp), allocatable, dimension(:) :: Ibb, dotg1, dotg2, nu, g, n, j1, j2
@@ -196,8 +210,8 @@ subroutine BlackBody_tests
    close(77)
 
    open(unit=1, file="cooling.dat", action="write")
-   call rad_cool_pwl(dotg1, g, nu, 4 * pi * Ibb / cLight, WITH_KNCOOL)
-   call rad_cool_mono(dotg2, g, fbb_max, ubb, WITH_KNCOOL)
+   call rad_cool_pwl(dotg1, g, nu, 4 * pi * Ibb / cLight, with_kncool)
+   call rad_cool_mono(dotg2, g, fbb_max, ubb, with_kncool)
    do k=1, Ng
       write(1, "(3ES14.7)") g(k), dotg1(k), dotg2(k)
    end do
@@ -215,5 +229,7 @@ subroutine MaxwellDist
       write(*,*) g(i), RMaxwell(g(i), 100d0)
    end do
 end subroutine MaxwellDist
+
+
 
 end program tests

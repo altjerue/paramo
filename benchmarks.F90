@@ -7,11 +7,12 @@ use constants
 use transformers
 use misc
 use pwl_integ
+#ifdef HDF5
 use hdf5
+#endif
 use h5_inout
 use SRtoolkit
-use Aglow_models
-use anaFormulae
+use blastwave
 use distribs
 use radiation
 use specialf
@@ -338,8 +339,8 @@ subroutine afterglow_syn_lc
       !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) PRIVATE(j, k)
       do j = 1, Nv
          v(j) = nu_com_f(v_obs(j), z, D(i))
-         call mbs_emissivity(j_v(j, i), v(j), g, nn(:, i), B)
-         call mbs_absorption(a_v(j, i), v(j), g, nn(:, i), B)
+         call syn_emissivity(j_v(j, i), v(j), g, nn(:, i), B)
+         call syn_absorption(a_v(j, i), v(j), g, nn(:, i), B)
       end do
       !$OMP END PARALLEL DO
 

@@ -17,6 +17,7 @@ module misc
    use data_types
    implicit none
 
+   !> De-allocate and reallocate array
    interface realloc
       module procedure realloc_1d
       module procedure realloc_2d
@@ -24,6 +25,14 @@ module misc
 
 contains
 
+   ! #    # ##### # #      # ##### # ######  ####
+   ! #    #   #   # #      #   #   # #      #
+   ! #    #   #   # #      #   #   # #####   ####
+   ! #    #   #   # #      #   #   # #           #
+   ! #    #   #   # #      #   #   # #      #    #
+   !  ####    #   # ###### #   #   # ######  ####
+
+   !> De-allocate and reallocate 1D array
    subroutine realloc_1d(array, size)
       implicit none
       integer, intent(in) :: size
@@ -32,6 +41,7 @@ contains
       allocate(array(size))
    end subroutine realloc_1d
 
+   !> De-allocate and reallocate 2D array
    subroutine realloc_2d(array, size1, size2)
       implicit none
       integer, intent(in) :: size1, size2
@@ -40,77 +50,7 @@ contains
       allocate(array(size1, size2))
    end subroutine realloc_2d
 
-
-   !
-   !  ::::  Polinomial interpolation  ::::
-   !
-   subroutine polint(xa, ya, x, y, dy)
-      implicit none
-      real(dp), intent(in) :: x
-      real(dp), dimension(:), intent(in) :: xa, ya
-      real(dp), intent(out) :: y, dy
-      integer :: m, n, ns
-      integer, dimension(1) :: iminloc
-      real(dp), dimension(size(xa)) :: c, d, den, ho
-      if ( size(xa) == size(ya) ) then
-         n = size(xa)
-      else
-         stop 'polint: xa and ya have different size'
-      end if
-      c = ya
-      d = ya
-      ho = xa - x
-      iminloc = minloc(abs(x - xa))
-      ns = iminloc(1)
-      y = ya(ns)
-      ns = ns - 1
-      do m = 1, n - 1
-         den(1:n - m) = ho(1:n - m) - ho(1 + m:n)
-         if ( any( dabs(den(1:n - m)) == 0d0 ) ) then !&
-            print*,x,xa
-            call an_error('polint: calculation failure')
-         end if
-         den(1:n - m) = (c(2:n - m + 1) - d(1:n - m)) / den(1:n - m)
-         d(1:n - m) = ho(1 + m:n) * den(1:n - m)
-         c(1:n - m) = ho(1:n - m) * den(1:n - m)
-         if (2 * ns .lt. n - m) then
-            dy = c(ns + 1)
-         else
-            dy = d(ns)
-            ns = ns - 1
-         end if
-         y = y + dy
-      end do
-   end subroutine polint
-
-
-   !
-   !     :::::   Linear interpolation   :::::
-   !
-   subroutine linint(x1, x2, x, y1, y2, y)
-   implicit none
-   real(dp), intent(out) :: y
-   real(dp), intent(in) :: y1, y2, x1, x2, x
-   real(dp) :: dx1, dx2, dx, dy1, dy2, dy3
-   dx = abs(x2 - x1)
-   dx1 = abs(x1 - x)
-   dx2 = abs(x2 - x)
-   if (dx1 + dx2 > dx) then
-      write(*, *) x1, x2, x
-      call an_error('linint: x not between x1 and x2')
-   end if
-   y = y1 + ( y2 - y1 ) * ( x - x1 ) / dx
-   dy1 = abs(y2 - y1)
-   dy2 = abs(y1 - y)
-   dy3 = abs(y2 - y)
-   if(dy1 + dy2 > dy3) then
-      write(*, *) y1, y2, y
-      call an_error('linint: Interpolation not between y1 and y2')
-   end if
-   end subroutine linint
-
-
-   ! :::: This produces an error message ::::
+   !> This produces an error message
    subroutine an_error(string)
       implicit none
       character(len=*), intent(IN) :: string
@@ -118,16 +58,14 @@ contains
       stop 'program terminated by an_error'
    end subroutine an_error
 
-
-   !       This produces a warning message
+   !> This produces a warning message
    subroutine a_warning(string)
       implicit none
       character(len=*), intent(in) :: string
       write(*,*) 'warging message: '//trim(string)
    end subroutine a_warning
 
-
-   !      This creates an arithmetic progression array
+   !> This creates an arithmetic progression array
    function arth(first, increment, n)
       implicit none
       integer, parameter :: NPAR_ARTH=16,NPAR2_ARTH=8
@@ -157,10 +95,7 @@ contains
       end if
    end function arth
 
-
-   !
-   !     Find closest element in an array to a value
-   !
+   !> Find closest element in an array to a value
    function locate(xx, x, in_bounds)
       implicit none
       real(dp), intent(in) :: x
@@ -208,13 +143,138 @@ contains
             return
          end if
       end if
-
    end function locate
 
+   !> Checking equality of integers
+   function assert_eq(nn, string)
+      implicit none
+      character(len=*), intent(in) :: string
+      integer, intent(in), dimension(:) :: nn
+      integer :: assert_eq
+      if (all(nn(2:) == nn(1))) then
+         assert_eq = nn(1)
+      else
+         write(*,*) 'ERROR: an assert_eq failed with this tag:', string
+         stop 'program terminated by assert_eq'
+      end if
+   end function assert_eq
 
+   !> Convert a string to a integer value using an internal read.
+   function char2int(c) result(i)
+      character(len=*), intent(in) :: c
+      integer :: i
+      read (c,'(I5)') i
+   end function char2int
+
+   !> Convert a string to a double value using an internal read.
+   function char2double(c) result(d)
+      character(len=*), intent(in) :: c
+      real(dp) :: d
+      read(c, *) d
+   end function char2double
+
+   !> A zeros (or almost zero) valued array
+   function zeros1D(n, small) result(a)
+      implicit none
+      integer, intent(in) :: n
+      logical, intent(in) :: small
+      real(dp), dimension(n) :: a
+      if (small) then
+         a = 1d-200
+      else
+         a = 0d0
+      end if
+   end function zeros1D
+
+   !> Count lines of a text file
+   function count_lines(filename) result(nlines)
+      implicit none
+      character(len=*), intent(in) :: filename
+      integer :: nlines, io
+      open(10, file=filename, iostat=io, status="old")
+      if ( io /= 0 ) stop "Cannot open file!"
+      nlines = 0
+      do
+         read(10, *, iostat=io)
+         if (io/=0) exit
+         nlines = nlines + 1
+      end do
+      close(10)
+   end function count_lines
+
+
+   ! #    # #    # #    # ###### #####  #  ####   ####
+   ! ##   # #    # ##  ## #      #    # # #    # #
+   ! # #  # #    # # ## # #####  #    # # #       ####
+   ! #  # # #    # #    # #      #####  # #           #
+   ! #   ## #    # #    # #      #   #  # #    # #    #
+   ! #    #  ####  #    # ###### #    # #  ####   ####
    !
-   !   -----{  Chebychev evaluation  }-----
-   !
+   !> Polinomial interpolation
+   subroutine polint(xa, ya, x, y, dy)
+      implicit none
+      real(dp), intent(in) :: x
+      real(dp), dimension(:), intent(in) :: xa, ya
+      real(dp), intent(out) :: y, dy
+      integer :: m, n, ns
+      integer, dimension(1) :: iminloc
+      real(dp), dimension(size(xa)) :: c, d, den, ho
+      if ( size(xa) == size(ya) ) then
+         n = size(xa)
+      else
+         stop 'polint: xa and ya have different size'
+      end if
+      c = ya
+      d = ya
+      ho = xa - x
+      iminloc = minloc(abs(x - xa))
+      ns = iminloc(1)
+      y = ya(ns)
+      ns = ns - 1
+      do m = 1, n - 1
+         den(1:n - m) = ho(1:n - m) - ho(1 + m:n)
+         if ( any( dabs(den(1:n - m)) == 0d0 ) ) then !&
+            print*,x,xa
+            call an_error('polint: calculation failure')
+         end if
+         den(1:n - m) = (c(2:n - m + 1) - d(1:n - m)) / den(1:n - m)
+         d(1:n - m) = ho(1 + m:n) * den(1:n - m)
+         c(1:n - m) = ho(1:n - m) * den(1:n - m)
+         if (2 * ns .lt. n - m) then
+            dy = c(ns + 1)
+         else
+            dy = d(ns)
+            ns = ns - 1
+         end if
+         y = y + dy
+      end do
+   end subroutine polint
+
+
+   !> Linear interpolation
+   subroutine linint(x1, x2, x, y1, y2, y)
+   implicit none
+   real(dp), intent(out) :: y
+   real(dp), intent(in) :: y1, y2, x1, x2, x
+   real(dp) :: dx1, dx2, dx, dy1, dy2, dy3
+   dx = abs(x2 - x1)
+   dx1 = abs(x1 - x)
+   dx2 = abs(x2 - x)
+   if (dx1 + dx2 > dx) then
+      write(*, *) x1, x2, x
+      call an_error('linint: x not between x1 and x2')
+   end if
+   y = y1 + ( y2 - y1 ) * ( x - x1 ) / dx
+   dy1 = abs(y2 - y1)
+   dy2 = abs(y1 - y)
+   dy3 = abs(y2 - y)
+   if(dy1 + dy2 > dy3) then
+      write(*, *) y1, y2, y
+      call an_error('linint: Interpolation not between y1 and y2')
+   end if
+   end subroutine linint
+
+   !> Chebychev evaluation
    function chebev(x,coef,num_coefs,xmin,xmax) result(res)
       implicit none
       integer, intent(in) :: num_coefs
@@ -239,10 +299,7 @@ contains
       res = y * d - dd + 0.5d0 * coef(1)
    end function chebev
 
-
-   !
-   !   -----{  Tridiagonal matrix solver  }-----
-   !
+   !> Tridiagonal matrix solver
    subroutine tridag_ser(a,b,c,r,u)
       !  Description:
       !     Solver of a tridiagonal matrix. Based on the code in
@@ -268,10 +325,7 @@ contains
       end do
    end subroutine tridag_ser
 
-
-   !
-   !   -----{  Trapezoidal rule  }-----
-   !
+   !> Trapezoidal rule
    subroutine trapzd_w2arg(func, a, b, s, n, p)
       implicit none
       integer, intent(in) :: n
@@ -297,9 +351,7 @@ contains
       end if
    end subroutine trapzd_w2arg
 
-   !
-   !   ----------{   Romberg integrator   }----------
-   !
+   !> Romberg integrator
    function qromb_w2arg(func, a, b, p) result(qromb)
       implicit none
       real(dp), intent(in) :: a, b, p
@@ -330,76 +382,7 @@ contains
       call an_error('qromb: too many steps')
    end function qromb_w2arg
 
-   !
-   !   -----{  checking equality of integers  }-----
-   !
-   function assert_eq(nn, string)
-      implicit none
-      character(len=*), intent(in) :: string
-      integer, intent(in), dimension(:) :: nn
-      integer :: assert_eq
-      if (all(nn(2:) == nn(1))) then
-         assert_eq = nn(1)
-      else
-         write(*,*) 'ERROR: an assert_eq failed with this tag:', string
-         stop 'program terminated by assert_eq'
-      end if
-   end function assert_eq
 
-
-   !                              #####
-   !  ####  #    #   ##   #####  #     # # #    # #####
-   ! #    # #    #  #  #  #    #       # # ##   #   #
-   ! #      ###### #    # #    #  #####  # # #  #   #
-   ! #      #    # ###### #####  #       # #  # #   #
-   ! #    # #    # #    # #   #  #       # #   ##   #
-   !  ####  #    # #    # #    # ####### # #    #   #
-   !
-   function char2int(c) result(i)
-      !  Description:
-      !     Convert a string to a numeric value using an internal read.
-      !
-      character(len=*), intent(in) :: c
-      integer :: i
-      read (c,'(I5)') i
-   end function char2int
-
-   function char2double(c) result(d)
-      character(len=*), intent(in) :: c
-      real(dp) :: d
-      read(c, *) d
-   end function char2double
-
-   function zeros1D(n, small) result(a)
-      implicit none
-      integer, intent(in) :: n
-      logical, intent(in) :: small
-      real(dp), dimension(n) :: a
-      if (small) then
-         a = 1d-200
-      else
-         a = 0d0
-      end if
-   end function zeros1D
-
-
-   function count_lines(filename) result(nlines)
-      !  Description:
-      !     Count lines of a text file
-      !
-      implicit none
-      character(len=*), intent(in) :: filename
-      integer :: nlines, io
-      open(10, file=filename, iostat=io, status="old")
-      if ( io /= 0 ) stop "Cannot open file!"
-      nlines = 0
-      do
-         read(10, *, iostat=io)
-         if (io/=0) exit
-         nlines = nlines + 1
-      end do
-      close(10)
-   end function count_lines
 
 #if 0
    ! ====================================================================

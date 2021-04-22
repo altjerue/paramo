@@ -9,7 +9,6 @@ subroutine turBlaz(params_file, output_file, cool_withKN, with_abs)
    use h5_inout
 #endif
    use SRtoolkit
-   use anaFormulae
    use distribs
    use radiation
    implicit none
@@ -304,8 +303,8 @@ subroutine turBlaz(params_file, output_file, cool_withKN, with_abs)
       !  #    # #    # #####  # #    #   #   #  ####  #    #
       !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) PRIVATE(j)
       do j=1,numdf
-         call mbs_emissivity(jmbs(j,i),freqs(j),g,n1(:,i),B_0)
-         if (with_abs) call mbs_absorption(ambs(j,i),freqs(j),g,n1(:,i),B_0)
+         call syn_emissivity(jmbs(j,i),freqs(j),g,n1(:,i),B_0)
+         if (with_abs) call syn_absorption(ambs(j,i),freqs(j),g,n1(:,i),B_0)
       end do
       !$OMP END PARALLEL DO
 

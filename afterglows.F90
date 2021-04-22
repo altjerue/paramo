@@ -18,7 +18,6 @@ subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob
    use h5_inout
 #endif
    use SRtoolkit
-   use anaFormulae
    use distribs
    use radiation
    use pairs
@@ -375,8 +374,8 @@ subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob
       !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) PRIVATE(j, k)
       do j = 1, numdf
          freqs(j) = nu_com_f(nu_obs(j), z, D(i))
-         call mbs_emissivity(jmbs(j, i), freqs(j), gg, n_e(:, i), B)
-         call mbs_absorption(ambs(j, i), freqs(j), gg, n_e(:, i), B)
+         call syn_emissivity(jmbs(j, i), freqs(j), gg, n_e(:, i), B)
+         call syn_absorption(ambs(j, i), freqs(j), gg, n_e(:, i), B)
          do k = 1, numbins
             ! pow_syn(j, k) = dsqrt(3d0) * eCharge**3 * B * RMA_new(freqs(j) / (nuconst * B), gg(k))
             !-----> Expression below is Eq. (3.63) in my thesis
