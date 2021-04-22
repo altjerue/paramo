@@ -19,10 +19,7 @@ use specialf
 implicit none
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! TODO:
-!   - dir as an input parameter
 !   - blast wave test: Numerical vs Sari, Piran & Narayan (1998)
-!   - choise of test as input
-!      - Modify Miguel.py
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 #if TEST == 1
 call steady_state
@@ -34,7 +31,6 @@ call BlackBody_tests(.true.)
 ! call syn_afterglow
 #elif TEST == 5
 call odes_solver
-! call MaxwellDist
 #endif
 
 write(*, *) '=======  FINISHED  ======='
@@ -219,17 +215,26 @@ subroutine BlackBody_tests(with_kncool)
 
 end subroutine BlackBody_tests
 
-!> Maxwell distribution constructor
-subroutine MaxwellDist
+
+subroutine ode_solver
    implicit none
-   integer :: i
-   real(dp), dimension(100) :: g
-   do i=1,100
-      g(i) = 1.001d0 * (1d4 / 1.001d0)**(dble(i - 1) / 100d0)
-      write(*,*) g(i), RMaxwell(g(i), 100d0)
+   real(dp) :: dx
+   real(dp), dimension(50) :: x
+   real(dp), dimension(50, 2) :: y, dxdy
+   dx = pi / 50d0
+   x = arth(0d0, dx, 50)
+   do i=2,50
+      call rkck(y(i - 1, :), dydx(i - 1, :), x(i - 1), dx, y(i, :), yerr(i, :), derivs)
    end do
-end subroutine MaxwellDist
-
-
+contains
+   subroutine derivs(xx, yy, dd)
+      implicit none
+      real(dp), intent(in) :: xx
+      real(dp), dimension(:), intent(in) :: yy
+      real(dp), dimension(:), intent(out) :: dd
+      dd(1) = yy(2)
+      dd(2) = -yy(1)
+   end subroutine derivs
+end subroutine ode_solver
 
 end program tests

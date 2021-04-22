@@ -68,29 +68,29 @@ contains
    !> This creates an arithmetic progression array
    function arth(first, increment, n)
       implicit none
-      integer, parameter :: NPAR_ARTH=16,NPAR2_ARTH=8
-      real(dp), intent(in) :: first,increment
+      integer, parameter :: NPAR_ARTH=16, NPAR2_ARTH=8
+      real(dp), intent(in) :: first, increment
       integer, intent(in) :: n
       real(dp), dimension(n) :: arth
-      integer :: k,k2
+      integer :: k, k2
       real(dp) :: temp
       if (n > 0) arth(1)=first
       if (n <= NPAR_ARTH) then
          do k=2,n
-            arth(k)=arth(k-1)+increment
+            arth(k) = arth(k - 1) + increment
          end do
       else
          do k=2,NPAR2_ARTH
-            arth(k)=arth(k-1)+increment
+            arth(k) = arth(k - 1) + increment
          end do
-         temp=increment*NPAR2_ARTH
-         k=NPAR2_ARTH
+         temp = increment * NPAR2_ARTH
+         k = NPAR2_ARTH
          do
             if (k >= n) exit
-            k2=k+k
-            arth(k+1:min(k2,n))=temp+arth(1:min(k,n-k))
-            temp=temp+temp
-            k=k2
+            k2 = k + k
+            arth(k + 1:min(k2, n)) = temp + arth(1:min(k, n - k))
+            temp = temp + temp
+            k = k2
          end do
       end if
    end function arth
@@ -211,6 +211,11 @@ contains
    ! #    #  ####  #    # ###### #    # #  ####   ####
    !
    !> Polinomial interpolation
+   !! @parameter xa input array
+   !! @parameter ya input array
+   !! @parameter x input value where y is interpolated
+   !! @parameter y output interpolated value at y
+   !! @parameter dy output error
    subroutine polint(xa, ya, x, y, dy)
       implicit none
       real(dp), intent(in) :: x
@@ -382,7 +387,44 @@ contains
       call an_error('qromb: too many steps')
    end function qromb_w2arg
 
-
+   subroutine rkck(y, dydx, x, h, yout, yerr, derivs)
+      implicit none
+      real(dp), dimension(:), intent(in) :: y, dydx
+      real(dp), intent(in) :: x, h
+      real(dp), dimension(:), intent(out) :: yout, yerr
+      interface
+         subroutine derivs(x, y, dydx)
+            use data_types
+            implicit none
+            real(dp), intent(in) :: x
+            real(dp), dimension(:), intent(in) :: y
+            real(dp), dimension(:), intent(out) :: dydx
+         end subroutine derivs
+      end interface
+      integer :: ndum
+      real(dp), dimension(size(y)) :: ak2, ak3, ak4, ak5, ak6, ytemp
+      real(dp), parameter :: A2=0.2d0, A3=0.3d0, A4=0.6d0, A5=1.0d0, &
+            A6=0.875d0, B21=0.2d0, B31=3.0d0/40d0, B32=9.0d0/40d0, B41=0.3d0, &
+            B42=-0.9d0, B43=1.2d0, B51=-11.0d0/54d0, B52=2.5d0, B53=-70d0/27d0,&
+            B54=35.0d0/27.0d0, B61=1631d0/55296d0, B62=175d0/512d0, &
+            B63=575d0/13824d0, B64=44275d0/110592d0, B65=253d0/4096d0, &
+            C1=37d0/378d0, C3=250d0/621d0, C4=125d0/594d0, C6=512d0/1771d0, &
+            DC1=C1-2825d0/27648d0, DC3=C3-18575d0/48384d0, &
+            DC4=C4-13525d0/55296d0, DC5=-277d0/14336d0, DC6=C6-0.25d0
+      ndum = assert_eq((/ size(y), size(dydx), size(yout), size(yerr) /), 'rkck')
+      ytemp = y + B21 * h * dydx
+      call derivs(x + A2 * h, ytemp, ak2)
+      ytemp = y + h * (B31 * dydx + B32 * ak2)
+      call derivs(x + A3 * h, ytemp, ak3)
+      ytemp = y + h * (B41 * dydx + B42 * ak2 + B43 * ak3)
+      call derivs(x + A4 * h, ytemp, ak4)
+      ytemp = y + h * (B51 * dydx + B52 * ak2 + B53 * ak3 + B54 * ak4)
+      call derivs(x + A5 * h, ytemp, ak5)
+      ytemp = y + h * (B61 * dydx + B62 * ak2 + B63 * ak3 + B64 * ak4 + B65 * ak5)
+      call derivs(x + A6 * h, ytemp, ak6)
+      yout = y + h * (C1 * dydx + C3 * ak3 + C4 * ak4 + C6 * ak6)
+      yerr = h * (DC1 * dydx + DC3 * ak3 + DC4 * ak4 + DC5 * ak5 + DC6 * ak6)
+   end subroutine rkck
 
 #if 0
    ! ====================================================================
