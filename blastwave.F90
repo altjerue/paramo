@@ -186,14 +186,32 @@ contains
    end subroutine bw_crossec_area
 
 
-   !  #####                                      #              
-   ! #     # ##### #####  #    #  ####           # ###### ##### 
-   ! #         #   #    # #    # #    #          # #        #   
-   !  #####    #   #    # #    # #               # #####    #   
-   !       #   #   #####  #    # #         #     # #        #   
-   ! #     #   #   #   #  #    # #    #    #     # #        #   
+   subroutine bw_solver
+      implicit none
+      
+   contains
+      !> Drivatives for adiabatic blast-wave following Bianco & Ruffini (2005)
+      subroutine bw_derivs(x, y, dydx)
+         implicit none
+         real(dp), intent(in) :: x
+         real(dp), dimension(:), intent(in) :: y
+         real(dp), dimension(:), intent(inout) :: dydx
+         dydx(1) = fourpi * mass_p * n * x**2                    ! rate of swept up ISM mass
+         dydx(2) = (y(3) - 1d0) * dydx(1) * cLight**2            ! internal energy
+         dydx(3) = - ((y(3)**2 - 1d0) / y(4)) * dydx(1)          ! bulk Lorentz factor
+         dydx(4) = ((1d0 - eps) * dydx(2) / cLight**2) + dydx(1) ! mass-energy
+      end subroutine bw_derivs
+   end subroutine bw_solver
+
+
+   !  #####                                      #
+   ! #     # ##### #####  #    #  ####           # ###### #####
+   ! #         #   #    # #    # #    #          # #        #
+   !  #####    #   #    # #    # #               # #####    #
+   !       #   #   #####  #    # #         #     # #        #
+   ! #     #   #   #   #  #    # #    #    #     # #        #
    !  #####    #   #    #  ####   ####      #####  ######   #
-   !
+
    !> Read a blast-wave properties from numerical simulation shock profile
    !! @param filename input ASCII file
    !! @param r output radius of the shock
