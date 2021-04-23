@@ -299,9 +299,7 @@ class Runner(object):
         os.system(run_cmd)
         print("\n--> Finished")
 
-    #
     # ----->   BlazMag compilation and run
-    #
     def run_blazMag(self, cmd_args=(None, None), pream=None, clean=False, cl=False):
         if cmd_args[0] is None or cmd_args[0] is False:
             in1 = 'F'
@@ -330,10 +328,17 @@ class Runner(object):
             os.system(run_cmd)
             print("\n--> Finished")
 
-    #
-    # ----->   Aglow compilation and run
-    #
-    def run_Aglow(self, cmd_args=(False, False, True), pream=None, clean=False, cl=False):
+    #####
+    def run_Aglow(self, cmd_args=(False, False, True), pream=None, clean=False, cl=False, wMezcal=False):
+        '''Aglow compilation and run.
+
+        Params:
+        cmd_arg
+        pream
+        clean
+        cl
+        wMezcal
+        '''
         if cmd_args[0] is None or cmd_args[0] is False:
             in1 = 'F'
         else:
@@ -346,7 +351,10 @@ class Runner(object):
             in3 = 'F'
         else:
             in3 = 'T'
-        comp = compiler(problem=2, **self.comp_kw)
+        if wMezcal:
+            comp = compiler(problem=4, **self.comp_kw)
+        else:
+            comp = compiler(problem=2, **self.comp_kw)
         if clean:
             comp.cleanup()
         comp.compile()
@@ -365,9 +373,7 @@ class Runner(object):
             os.system(run_cmd)
             print("\n--> Finished")
 
-    #
     # ----->   turbulence compilation and run
-    #
     def run_turb(self, cmd_args=(None, None), pream=None, clean=False, cl=False):
         if cmd_args[0] is None or cmd_args[0] is False:
             wCool = False
