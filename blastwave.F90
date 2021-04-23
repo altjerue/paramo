@@ -5,8 +5,21 @@ module blastwave
    use misc
    use SRtoolkit
    implicit none
+
+   !> blast-wave type
+   !! @param der course [derrotero]
+   !! @param t_com time (comoving)
+   !! @param r_lab position (lab)
+   !! @param Gbulk bulk Lorentz factor
+   !! @param cs cross-sectional area
+   !! @param vol volume of the shocked region
+   type blast_wave
+      real(dp) :: der, vol, cs
+      real(dp), allocatable, dimension(:) :: t, r, Gbulk
+   end type blast_wave
+
 contains
-   !##############################################################################
+
    !   #####  ######  #     #  #####   #####
    !  #     # #     # ##    # #     # #     #
    !  #       #     # # #   # #     # #     #
@@ -15,7 +28,8 @@ contains
    !  #     # #       #    ## #     # #     #
    !   #####  #       #     #  #####   #####
    !
-   !> Evolution model of a blast wave as in eqs. (9) and (10) of SPN98
+   !> Evolution model of a blast-wave as in eqs. (9) and (10) of Sari, Piran & 
+   !! Narayan (1998)
    subroutine blastwave_approx_SPN98(G0, E0, n, tobs, Gshk, Rshk, adiabatic)
       implicit none
       real(dp), intent(in) :: G0, E0, n, tobs
@@ -34,7 +48,8 @@ contains
       Gshk = dmin1(G0, Gshk)
    end subroutine blastwave_approx_SPN98
 
-   !> Synchrotron spectra and light curves as in eqs. (11) SPN98
+   !> Synchrotron spectra and light curves as in eqs. (11) of Sari, Piran &
+   !! Narayan (1998)
    subroutine syn_afterglow_SPN98(nuo, to, z, E0, epse, epsB, G0, pind, n, d_lum, adiab, flux)
       implicit none
       real(dp), intent(in) :: E0, epsB, epse, G0, n, d_lum, pind, z
@@ -92,10 +107,12 @@ contains
                end if
             end if cooling_fast_or_slow
          end do spectrum
+
       end do evolution
 
    end subroutine syn_afterglow_SPN98
    !############################################################################
+
 
    !> Blast-wave solution. Deceleration radius as in eq. (1) of RM92
    subroutine deceleration_radius(Rd1, Rd2, E0, G0, Aw, with_wind, s)
@@ -116,6 +133,7 @@ contains
          Rd2 = Rd1 * 2d0**(-2d0 / 3d0) ! see R_B in PVP14, p. 3
       end if
    end subroutine deceleration_radius
+
 
    !> Analytic solution for the adiabatic blast wave.
    function adiab_blast_wave(Rshk, G0, E0, Aw, with_wind, s) result(Gshk)
@@ -148,8 +166,10 @@ contains
       logical, intent(in)   :: blob
       real(dp), intent(out) :: csa, volume, Rb, Oj
       real(dp)              :: theta_j
+
       !---> Uniform isotropic or beamed?
       iso_or_beamed: if ( beam_kind >= 0 ) then
+
          select case( beam_kind )
          case(0)
             theta_j = 1d0 / G0
@@ -162,7 +182,9 @@ contains
          case default
             call an_error("bw_crossec_area: wrong value of beam_kind")
          end select
+
          Oj = 2d0 * pi * (1d0 - dcos(theta_j))
+
          if ( blob ) then
             Rb = Rbw * theta_j
             volume = 4d0 * pi * Rb**3 / 3d0
@@ -172,9 +194,14 @@ contains
                csa = Oj * Rbw**2
             end if
          else
+            ! Rb = Rbw / (Gbulk * 12d0)
+            Rb = Rbw / (12d0 * (Gbulk + 0.75d0))
             csa = Oj * Rbw**2
+            volume = csa * Rb
          end if
+
       else
+
          !--->  Isotropic spherical blast-wave
          Oj = 4d0 * pi
          ! Rb = Rbw / Gbulk
@@ -182,7 +209,9 @@ contains
          Rb = Rbw / (12d0 * (Gbulk + 0.75d0))
          volume = 4d0 * pi * Rbw**2 * Rb
          csa = 4d0 * pi * Rbw**2
+
       end if iso_or_beamed
+
    end subroutine bw_crossec_area
 
 
@@ -207,14 +236,14 @@ contains
       real(dp), intent(out), allocatable, dimension(:) :: r, theta, Gbulk
       integer :: i, io
       real(dp) :: x, y, vx,vy
-      real(dp), allocatable, dimension(:) :: v
+      ! real(dp), allocatable, dimension(:) :: v
       if ( nlines /= count_lines(filename) ) call an_error("bw_mezcal: nlines and number of lines in "//trim(filename)//"are not the same")
       call realloc(r, nlines)
-      call realloc(v, nlines)
+      ! call realloc(v, nlines)
       call realloc(theta, nlines)
       call realloc(Gbulk, nlines)
       ! allocate(r(nlines), v(nlines), theta(nlines), Gbulk(nlines))
-      open(77, file=trim(filename), iostat=io, status='old')
+      open(77, file=trim(filename), iostat=io, status='old', action='read')
       if (io /= 0) stop "Cannot open file!"
       do i=1, nlines
          read(77, *) x, y, vx, vy, theta(i), Gbulk(i)

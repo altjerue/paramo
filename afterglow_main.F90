@@ -7,7 +7,11 @@ program afterglow_main
       'Options:'//new_line('A')//&
       '  params_file     Parameters file'//new_line('A')//&
       '  output_file     name of the output file'//new_line('A')//&
+#ifdef MEZCAL
+      '  with IC         with inverse Compton? T/F (True/False)'//new_line('A')//&
+#else
       '  with-wind       constant or wind-like external medium:'//new_line('A')//&
+#endif
       '  KN cooling      Klein-Nishina cooling: T/F (True/False)'//new_line('A')//&
       '  blob            is the emission region a blob?: T/F (True/False)'//new_line('A')
    integer :: numArgs, i
@@ -32,6 +36,11 @@ program afterglow_main
       end if
    end do
 
-   call bw1D_afterglow(trim(args(1)), args(2), with_arg(1), with_arg(2), with_arg(3))
+#ifdef MEZCAL
+   call mezcal(trim(args(1)), args(2), with_arg(1), with_arg(2), with_arg(3))
+#else
+   call bw1D_afterglow(trim(args(1)), args(2), with_arg(1), with_arg(2), &
+         with_arg(3))
+#endif
 
 end program afterglow_main
