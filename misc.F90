@@ -74,7 +74,7 @@ contains
       real(dp), dimension(n) :: arth
       integer :: k, k2
       real(dp) :: temp
-      if (n > 0) arth(1)=first
+      if (n > 0) arth(1) = first
       if (n <= NPAR_ARTH) then
          do k=2,n
             arth(k) = arth(k - 1) + increment
@@ -387,6 +387,39 @@ contains
       call an_error('qromb: too many steps')
    end function qromb_w2arg
 
+   !> 4th order Runge-Kutta
+   subroutine rk4(y, dydx, x, h, yout, derivs)
+      implicit none
+      real(dp), dimension(:), intent(in) :: y, dydx
+      real(dp), intent(in) :: x, h
+      real(dp), dimension(:), intent(out) :: yout
+      interface
+         subroutine derivs(x, y, dydx)
+            use data_types
+            implicit none
+            real(dp), intent(in) :: x
+            real(dp), dimension(:), intent(in) :: y
+            real(dp), dimension(:), intent(out) :: dydx
+         end subroutine derivs
+      end interface
+      integer :: ndum
+      real(dp) :: h6, hh, xh
+      real(dp), dimension(size(y)) :: dym, dyt, yt
+      ndum = assert_eq((/ size(y), size(dydx), size(yout) /), 'rk4')
+      hh = h * 0.5d0
+      h6 = h / 6.0d0
+      xh = x + hh
+      yt = y + hh * dydx
+      call derivs(xh, yt, dyt)
+      yt = y + hh * dyt
+      call derivs(xh, yt, dym)
+      yt = y + h * dym
+      dym = dyt + dym
+      call derivs(x + h, yt, dyt)
+      yout = y + h6 * (dydx + dyt + 2.0d0 * dym)
+   end subroutine rk4
+
+   !> 5th order Cash-Karp Runge-Kutta
    subroutine rkck(y, dydx, x, h, yout, yerr, derivs)
       implicit none
       real(dp), dimension(:), intent(in) :: y, dydx
