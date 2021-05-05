@@ -174,6 +174,8 @@ contains
    end function char2double
 
    !> A zeros (or almost zero) valued array
+   !! @parameter n integer size of the array
+   !! @parameter small logical 1d-200 (true) or 0d0 (false)
    function zeros1D(n, small) result(a)
       implicit none
       integer, intent(in) :: n

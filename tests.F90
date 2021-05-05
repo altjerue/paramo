@@ -4,7 +4,7 @@
 #define SYN_AFTERGLOW (4)
 #define ODE_SOLVER    (5)
 
-#define TEST_CHOICE (ODE_SOLVER)
+#define TEST_CHOICE (SYN_AFTERGLOW)
 
 program tests
    use data_types
@@ -12,10 +12,15 @@ program tests
    use params
    use misc
    use pwl_integ
+#ifdef HDF5
+   use hdf5
+   use h5_inout
+#endif
    use SRtoolkit
    use distribs
    use radiation
    use specialf
+   use blastwave
    implicit none
    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! TODO:
@@ -28,7 +33,7 @@ program tests
 #elif TEST_CHOICE == 3
    call BlackBody_tests(.true.)
 #elif TEST_CHOICE == 4
-   ! call syn_afterglow
+   call syn_afterglow
 #elif TEST_CHOICE == 5
    call ode_solver_test(50, 2, 0d0, 5d0, (/ 0d0, 1d0 /), 2)
 #endif
@@ -252,5 +257,212 @@ contains
       dydx(1) = 3d0 * y(1) + 4d0 * y(2)
       dydx(2) = 3d0 * y(2) - 4d0 * y(1)
    end subroutine derivs_tests
+
+
+   !> Synchrotron aferglow. Comparison between numerical synchrotron and the
+   !! adiabatic blast-wave described in Sari, Piran & Narayan 1998 (SPN98).
+   subroutine syn_afterglow
+      implicit none
+      integer, parameter :: nmod = 50
+      character(len=*), parameter :: screan_head = &
+         '| Iteration | Obser. time |   BW radius |  gamma_bulk |      Bfield |'&
+         //new_line('A')//&
+         ' ---------------------------------------------------------------------',&
+         on_screen = "(' | ', I9, ' | ', ES11.4, ' | ', ES11.4, ' | ', ES11.4, ' | ', ES11.4, ' |')"
+#ifdef HDF5
+      integer(HID_T) :: file_id, group_id, herror
+#endif
+      integer :: numg, numf, numt, i, j
+      real(dp) :: theta_obs, n_ext, dr, cool_const, dt, E0, R0, eps_B, eps_e, &
+            B, g1, g2, g2_const, gmin, gmax, d_lum, eps_g2, G0, L_e, mu_obs, &
+            numax, numin, pind, Q0, tmax, tstep, uB, z
+      real(dp), allocatable, dimension(:) :: t, t_obs, r, Gbulk, Bbulk, D, &
+            gamma_e, Qinj, nu, nu_obs, t_dy, zeros
+      real(dp), allocatable, dimension(:,:) :: dotg, n_e, jnut, anut, Fnu_SPN98
+      character(len=256) :: output_file
+
+      output_file = "afterglow_test.h5"
+
+      numg = 200
+      numf = 200
+      numt = 400
+
+      allocate(gamma_e(numg), nu(numf), t(0:numt), Gbulk(0:numt), Bbulk(0:numt),&
+            r(0:numt), t_obs(numt), D(0:numt), nu_obs(numf), &
+            t_dy(numt))
+      allocate(zeros(numg))
+      allocate(n_e(numg, 0:numt), dotg(numg, 0:numt), jnut(numf, numt), &
+            anut(numf, numt), Fnu_SPN98(numf, numt))
+      zeros = zeros1D(numg, .true.)
+
+      ! SPN98 parameters
+      pind = 2.5d0
+      eps_g2 = 1d0
+      d_lum = 1d28
+      G0 = 400d0
+      E0 = 1d52
+      tstep = 1d-3
+      tmax = 1d4
+      mu_obs = 1d0
+      n_ext = 1d0
+      eps_e = 5d-2
+      eps_B = 1d-5
+      t(0) = 0d0
+
+      ! n_swept = fourpi * r(0)**3 * n_ext / 3d0 ! Total number of swept-up particles
+      call blastwave_approx_SPN98(G0, E0, n_ext, tstep, Gbulk(0), r(0), .true.)
+      Bbulk(0) = bofg(Gbulk(0))
+      D(0) = Doppler(Gbulk(0), mu_obs)
+
+      !--->  Magnetic field
+      B = dsqrt(32d0 * pi * mass_p * eps_B * n_ext) * Gbulk(0) * cLight
+      uB = B**2 / (8d0 * pi)
+      cool_const = 4d0 * sigmaT * cLight / (3d0 * energy_e)
+      dotg(:, 0) = cool_const * uB * (Gbulk(0) * gamma_e)**2
+
+      !---> Minimum and maximum Lorentz factors of the particles distribution
+      g1 = eps_e * 610d0 * Gbulk(0) ! eq. (1) in SPN98
+      g2_const = dsqrt(6d0 * pi * eCharge * eps_g2 / sigmaT)
+      g2 = g2_const / dsqrt(B)
+
+      !---> Fraction of accreted kinetic energy injected into non-thermal electrons
+      L_e = 4d0 * eps_e * Gbulk(0)**2 * n_ext * energy_p
+      Q0 = L_e / ( g1**(2d0 - pind) * Pinteg(g2 / g1, pind - 1d0, 1d-6) * energy_e )
+
+      gmin = 1.0001d0
+      gmax = g2 * 2d0
+      numin = 1e10
+      numax = 1e20
+
+      build_f: do i = 1, numf
+         nu_obs(i) = numin * (numax / numin)**(dble(i - 1) / dble(numf - 1))
+      end do build_f
+
+      build_g: do i = 1, numg
+         gamma_e(i) = gmin * (gmax / gmin)**(dble(i - 1) / dble(numg - 1))
+      end do build_g
+
+      Qinj = injection_pwl(t(0), 1d200, gamma_e, g1, g2, pind, Q0)
+      n_e(:, 0) = Qinj
+
+      ! ###### #    #  ####  #      #    # ##### #  ####  #    #
+      ! #      #    # #    # #      #    #   #   # #    # ##   #
+      ! #####  #    # #    # #      #    #   #   # #    # # #  #
+      ! #      #    # #    # #      #    #   #   # #    # #  # #
+      ! #       #  #  #    # #      #    #   #   # #    # #   ##
+      ! ######   ##    ####  ######  ####    #   #  ####  #    #
+      write(*, "('--> Calculating the emission')")
+      write(*, *) screan_head
+      do i = 1, numt
+         t_obs(i) = tstep * (tmax / tstep)**(dble(i) / dble(numt))
+         call blastwave_approx_SPN98(G0, E0, n_ext, t_obs(i), Gbulk(i), r(i), .true.)
+         t_dy(i) = sec2dy(t_obs(i))
+         dr = r(i) - r(i - 1)
+         D(i) = Doppler(Gbulk(i), mu_obs)
+         Bbulk(i) = bofg(Gbulk(i))
+         t(i) = t(i - 1) + 0.5d0 * dr * ( (1d0 / (Bbulk(i) * Gbulk(i))) + &
+               (1d0 / (Bbulk(i - 1) * Gbulk(i - 1))) ) / cLight
+         dt = t(i) - t(i - 1)
+
+         call FP_FinDif_difu(dt, gamma_e, n_e(:, i - 1), n_e(:, i), &
+               dotg(:, i - 1), zeros, Qinj, 1d200, 1d0)
+
+         !--->  Magnetic field
+         B = dsqrt(32d0 * pi * mass_p * eps_B * n_ext) * Gbulk(i) * cLight
+         uB = B**2 / (8d0 * pi)
+         cool_const = 4d0 * sigmaT * cLight / (3d0 * energy_e)
+         dotg(:, i) = cool_const * uB * (Gbulk(i) * gamma_e)**2
+
+         !---> Minimum and maximum Lorentz factors of the particles distribution
+         g1 = eps_e * 610d0 * Gbulk(i) ! eq. (1) in SPN98
+         g2_const = dsqrt(6d0 * pi * eCharge * eps_g2 / sigmaT)
+         g2 = g2_const / dsqrt(B)
+
+         !---> Fraction of accreted kinetic energy injected into non-thermal electrons
+         L_e = 4d0 * eps_e * Gbulk(i)**2 * n_ext * energy_p
+         Q0 = L_e / ( g1**(2d0 - pind) * Pinteg(g2 / g1, pind - 1d0, 1d-6) * energy_e )
+         Qinj = injection_pwl(t(i), 1d200, gamma_e, g1, g2, pind, Q0)
+
+         !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) PRIVATE(j)
+         do j = 1, numf
+            nu(j) = nu_com_f(nu_obs(j), z, D(i))
+            call syn_emissivity(jnut(j, i), nu(j), gamma_e, n_e(:, i), B)
+            call syn_absorption(anut(j, i), nu(j), gamma_e, n_e(:, i), B)
+            call syn_afterglow_SPN98(nu_obs(j), t_obs(i), E0, eps_e, eps_B, G0, pind, n_ext, d_lum, .true., Fnu_SPN98(j, i))
+         end do
+         !$OMP END PARALLEL DO
+
+         !   ####  #    #     ####   ####  #####  ###### ###### #    #
+         !  #    # ##   #    #      #    # #    # #      #      ##   #
+         !  #    # # #  #     ####  #      #    # #####  #####  # #  #
+         !  #    # #  # #         # #      #####  #      #      #  # #
+         !  #    # #   ##    #    # #    # #   #  #      #      #   ##
+         !   ####  #    #     ####   ####  #    # ###### ###### #    #
+         if ( mod(i, nmod) == 0 .or. i == 1 ) &
+               write(*, on_screen) i, t_obs(i), r(i), Gbulk(i), B
+
+      end do
+
+      !  ####    ##   #    # # #    #  ####
+      ! #       #  #  #    # # ##   # #    #
+      !  ####  #    # #    # # # #  # #
+      !      # ###### #    # # #  # # #  ###
+      ! #    # #    #  #  #  # #   ## #    #
+      !  ####  #    #   ##   # #    #  ####
+      write(*, "('--> Saving')")
+#ifdef HDF5
+      ! ------  Opening output file  ------
+      call h5open_f(herror)
+      call h5io_createf(output_file, file_id, herror)
+      ! ------  Saving initial parameters  ------
+      call h5io_createg(file_id, "Parameters", group_id, herror)
+      call h5io_wint0 (group_id, 'numt',        numt, herror)
+      call h5io_wint0 (group_id, 'numf',        numf, herror)
+      call h5io_wint0 (group_id, 'numg',        numg, herror)
+      call h5io_wdble0(group_id, 't_max',       tmax, herror)
+      call h5io_wdble0(group_id, 'tstep',       tstep, herror)
+      call h5io_wdble0(group_id, 'd_lum',       d_lum, herror)
+      call h5io_wdble0(group_id, 'redshift',    z, herror)
+      call h5io_wdble0(group_id, 'Gamma_bulk0', G0, herror)
+      call h5io_wdble0(group_id, 'gamma_min',   gmin, herror)
+      call h5io_wdble0(group_id, 'gamma_max',   gmax, herror)
+      call h5io_wdble0(group_id, 'gamma_1',     g1, herror)
+      call h5io_wdble0(group_id, 'gamma_2',     g2, herror)
+      call h5io_wdble0(group_id, 'pwl-index',   pind, herror)
+      call h5io_wdble0(group_id, 'epsilon_e',   eps_e, herror)
+      call h5io_wdble0(group_id, 'epsilon_B',   eps_B, herror)
+      call h5io_wdble0(group_id, 'nu_min',      numin, herror)
+      call h5io_wdble0(group_id, 'nu_max',      numax, herror)
+      call h5io_wdble0(group_id, 'E0',          E0, herror)
+      call h5io_wdble0(group_id, 'R0',          R0, herror)
+      call h5io_wdble0(group_id, 'n_ext',       n_ext, herror)
+      call h5io_closeg(group_id, herror)
+      ! ------  Saving Numerical data  ------
+      call h5io_createg(file_id, "Numeric", group_id, herror)
+      call h5io_wdble1(group_id, 'time',    t(1:), herror)
+      call h5io_wdble1(group_id, 't_obs',   t_obs, herror)
+      call h5io_wdble1(group_id, 'r',       r(1:), herror)
+      call h5io_wdble1(group_id, 'Gamma',   Gbulk(1:), herror)
+      call h5io_wdble1(group_id, 'Doppler', D(1:), herror)
+      call h5io_wdble1(group_id, 'nu',      nu, herror)
+      call h5io_wdble1(group_id, 'nu_obs',  nu_obs, herror)
+      call h5io_wdble1(group_id, 'gamma_e', gamma_e, herror)
+      call h5io_wdble2(group_id, 'jnut',    jnut, herror)
+      call h5io_wdble2(group_id, 'anut',    anut, herror)
+      call h5io_wdble2(group_id, 'n_e',     n_e(:, 1:), herror)
+      call h5io_wdble2(group_id, 'dotg',    dotg(:, 1:), herror)
+      call h5io_closeg(group_id, herror)
+      ! ------  Saving SPN98 data  ------
+      call h5io_createg(file_id, "SPN98", group_id, herror)
+      call h5io_wdble2(group_id, "Flux", Fnu_SPN98, herror)
+      call h5io_wdble1(group_id, 't_dy', t_dy, herror)
+      call h5io_closeg(group_id, herror)
+      ! ------  Closing output file  ------
+      call h5io_closef(file_id, herror)
+      call h5close_f(herror)
+#endif
+      write(*, "('==========  FINISHED  ==========')")
+      write(*,*) ''
+   end subroutine syn_afterglow
 
 end program tests

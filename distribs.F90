@@ -189,6 +189,7 @@ contains
 
       WWp2 = dxp2 * BBp2 / CCp2
       WWm2 = dxm2 * BBm2 / CCm2
+      ! print*,'*****  JUST LOOKING  *****'
 
       do i = 1, Ng
 
@@ -259,7 +260,7 @@ contains
       BBm2(1) = -0.5d0 * (gdot(2) + gdot(1))
 
       r = nin + dt * QQ
-      a = zeros1D(Ng,.true.)
+      a = zeros1D(Ng, .true.)
       c = -dt * BBp2 / dx
       b = 1d0 + BBm2 * dt / dx + dt / tesc
 

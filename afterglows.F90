@@ -562,7 +562,6 @@ subroutine mezcal(params_file, output_file, KNcool, assume_blob, with_ic)
    use h5_inout
 #endif
    use SRtoolkit
-   use anaFormulae
    use distribs
    use radiation
    use pairs

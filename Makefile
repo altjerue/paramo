@@ -111,7 +111,7 @@ endif
 
 ifeq ($(PROBLEM),0)
 #  The test is specified in the macro TEST_CHOICE in the file tests.F90
-OBJECTS+=tests.o
+OBJECTS+=blastwave.o tests.o
 endif
 
 ifeq ($(PROBLEM),1)

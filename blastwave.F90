@@ -39,7 +39,7 @@ contains
       M = E0 / (G0 * cLight**2)
       L = (17d0 * M / (16d0 * pi * mass_p * n))**(1d0 / 3d0)
       adiab: if ( adiabatic ) then
-         Rshk = (17d0 * E0 * tobs / (4d0 * pi * mass_p * n * cLight))**(0.25d0)
+         Rshk = (17d0 * E0 * tobs / (fourpi * mass_p * n * cLight))**(0.25d0)
          Gshk = (17d0 * E0 / (1024d0 * pi * mass_p * n * cLight**5 * tobs**3))**(0.125d0)
       else
          Rshk = (4d0 * cLight * tobs / L)**(1d0 / 7d0) * L
@@ -50,22 +50,17 @@ contains
 
    !> Synchrotron spectra and light curves as in eqs. (11) of Sari, Piran &
    !! Narayan (1998)
-   subroutine syn_afterglow_SPN98(nuo, to, z, E0, epse, epsB, G0, pind, n, d_lum, adiab, flux)
+   subroutine syn_afterglow_SPN98(nu_o, t_o, E0, epse, epsB, G0, pind, n, d_lum, adiab, flux)
       implicit none
-      real(dp), intent(in) :: E0, epsB, epse, G0, n, d_lum, pind, z
-      real(dp), intent(in), dimension(:) :: nuo, to
+      real(dp), intent(in) :: E0, epsB, epse, G0, n, d_lum, pind, t_o, nu_o
       logical :: adiab
-      real(dp), intent(out), dimension(:,:) :: flux
-      integer :: i, j
+      real(dp), intent(out) :: flux
+      integer :: j
       real(dp) :: E52, d28, G2, Fmax, nu_c, nu_m, t0, tdy
-      real(dp), dimension(size(nuo, dim=1)) :: nu
-      real(dp), dimension(size(to, dim=1)) :: t
 
       E52 = E0 / 1d52
       d28 = d_lum / 1d28
       G2 = G0 / 100d0
-      nu = nuo * (1d0 + z)
-      t = to / (1d0 + z)
 
       !   Transition between slow and fast cooling
       if ( adiab ) then
@@ -74,41 +69,35 @@ contains
          t0 = 4.6d0 * (epsB * epse)**1.4d0 * (E52 / G2)**0.8d0 * n**0.6d0
       end if
 
-      evolution: do i = 1, size(t)
+      tdy = sec2dy(t_o)
 
-         tdy = sec2dy(t(i))
+      blastwave: if ( adiab ) then
+         nu_c = 2.7d12 * epsB**(-1.5d0) * (E52 * tdy)**(-0.5d0) / n
+         nu_m = 5.7d14 * epse**2 * dsqrt(epsB * E52) * tdy**(-1.5d0)
+         Fmax = 1.1d5 * E52 * dsqrt(epsB * n) / d28**2
+      else
+         nu_c = 1.3d13 * (G2 / E52)**(4d0 / 7d0) * epsB**(-1.5d0) * tdy**(-2d0 / 7d0) * n**(-13d0 / 14d0)
+         nu_m = 1.2d14 * epse**2 * dsqrt(epsB) * (E52 / G2)**(4d0 / 7d0) * n**(-1d0 / 14d0) * tdy**(-12d0 / 7d0)
+         Fmax = 4.5d3 * dsqrt(epsB) * (E52 / G2)**(8d0 / 7d0) * n**(5d0 / 14d0) * tdy**(-3d0 / 7d0) / d28**2
+      end if blastwave
 
-         blastwave: if ( adiab ) then
-            nu_c = 2.7d12 * epsB**(-1.5d0) * (E52 * tdy)**(-0.5d0) / n
-            nu_m = 5.7d14 * epse**2 * dsqrt(epsB * E52) * tdy**(-1.5d0)
-            Fmax = 1.1d5 * E52 * dsqrt(epsB * n) / d28**2
+      cooling_fast_or_slow: if ( tdy < t0 ) then
+         if ( nu_c > nu_o ) then
+            flux = (nu_o / nu_c)**(1d0 / 3d0) * Fmax
+         else if ( nu_m >= nu_o .and. nu_o >= nu_c ) then
+            flux = Fmax / dsqrt(nu_o / nu_c)
          else
-            nu_c = 1.3d13 * (G2 / E52)**(4d0 / 7d0) * epsB**(-1.5d0) * tdy**(-2d0 / 7d0) * n**(-13d0 / 14d0)
-            nu_m = 1.2d14 * epse**2 * dsqrt(epsB) * (E52 / G2)**(4d0 / 7d0) * n**(-1d0 / 14d0) * tdy**(-12d0 / 7d0)
-            Fmax = 4.5d3 * dsqrt(epsB) * (E52 / G2)**(8d0 / 7d0) * n**(5d0 / 14d0) * tdy**(-3d0 / 7d0) / d28**2
-         end if blastwave
-
-         spectrum: do j = 1, size(nu)
-            cooling_fast_or_slow: if ( tdy < t0 ) then
-               if ( nu_c > nu(j) ) then
-                  flux(j, i) = (nu(j) / nu_c)**(1d0 / 3d0) * Fmax
-               else if ( nu_m >= nu(j) .and. nu(j) >= nu_c ) then
-                  flux(j, i) = Fmax / dsqrt(nu(j) / nu_c)
-               else
-                  flux(j, i) = Fmax * (nu(j) / nu_m)**(-0.5d0 * pind) / dsqrt(nu_m / nu_c)
-               end if
-            else
-               if ( nu_m > nu(j) ) then
-                  flux(j, i) = (nu(j) / nu_m)**(1d0 / 3d0) * Fmax
-               else if ( nu_c >= nu(j) .and. nu(j) >= nu_m ) then
-                  flux(j, i) = Fmax * (nu(j) / nu_m)**(-0.5d0 * (pind - 1d0))
-               else
-                  flux(j, i) = Fmax * (nu(j) / nu_c)**(-0.5d0 * pind) * (nu_c / nu_m)**(-0.5d0 * (pind - 1d0))
-               end if
-            end if cooling_fast_or_slow
-         end do spectrum
-
-      end do evolution
+            flux = Fmax * (nu_o / nu_m)**(-0.5d0 * pind) / dsqrt(nu_m / nu_c)
+         end if
+      else
+         if ( nu_m > nu_o ) then
+            flux = (nu_o / nu_m)**(1d0 / 3d0) * Fmax
+         else if ( nu_c >= nu_o .and. nu_o >= nu_m ) then
+            flux = Fmax * (nu_o / nu_m)**(-0.5d0 * (pind - 1d0))
+         else
+            flux = Fmax * (nu_o / nu_c)**(-0.5d0 * pind) * (nu_c / nu_m)**(-0.5d0 * (pind - 1d0))
+         end if
+      end if cooling_fast_or_slow
 
    end subroutine syn_afterglow_SPN98
    !############################################################################
@@ -214,24 +203,34 @@ contains
 
    end subroutine bw_crossec_area
 
-
-   subroutine bw_solver
+#if 0
+   !> Blast-wave following Bianco & Ruffini (2005)
+   subroutine bw_solver(Rin, Gin, Ein, Min, Nin, Gout, Eout, Mout, Nout, dR)
       implicit none
-      
+      real(dp), intent(in) :: Rin, Gin, Ein, Min, Nin, dR
+      real(dp), intent(out) :: Gout, Eout, Mout, Nout
+      real(dp), dimension(1, 4) :: yerr, dydx
+      real(dp), dimension(2, 4) :: y
+      y(1, 1) = Nin ! ISM mass
+      y(1, 2) = Ein ! internal energy
+      y(1, 3) = Gin ! bulk Lorentz factor
+      y(1, 4) = Min ! mass-energy
+      call bw_derivs(Rin, y(1, :), dydx)
+      call rkck(y(1, :), dydx, Rin, dR, y(2, :), yerr, bw_derivs)
    contains
-      !> Drivatives for adiabatic blast-wave following Bianco & Ruffini (2005)
+      !> Drivatives for blast-wave following Bianco & Ruffini (2005)
       subroutine bw_derivs(x, y, dydx)
          implicit none
          real(dp), intent(in) :: x
          real(dp), dimension(:), intent(in) :: y
          real(dp), dimension(:), intent(inout) :: dydx
          dydx(1) = fourpi * mass_p * n * x**2                    ! rate of swept up ISM mass
-         dydx(2) = (y(3) - 1d0) * dydx(1) * cLight**2            ! internal energy
-         dydx(3) = - ((y(3)**2 - 1d0) / y(4)) * dydx(1)          ! bulk Lorentz factor
-         dydx(4) = ((1d0 - eps) * dydx(2) / cLight**2) + dydx(1) ! mass-energy
+         dydx(2) = (y(3) - 1d0) * dydx(1) * cLight**2            ! internal energy deriv
+         dydx(3) = - ((y(3)**2 - 1d0) / y(4)) * dydx(1)          ! bulk Lorentz factor deriv
+         dydx(4) = ((1d0 - eps) * dydx(2) / cLight**2) + dydx(1) ! mass-energy deriv
       end subroutine bw_derivs
    end subroutine bw_solver
-
+#endif
 
    !  #####                                      #
    ! #     # ##### #####  #    #  ####           # ###### #####
