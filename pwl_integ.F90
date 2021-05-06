@@ -98,7 +98,7 @@ contains
    end function sscS
 
 
-   !----->   Eq. 2.106 of Mimica (2004)
+   !> Eq. 2.106 of Mimica (2004)
    function sscG1ISO(a, b, c, d, alpha, beta) result(res)
       implicit none
       real(dp), intent(in) :: a, b, c, d, alpha, beta
@@ -107,7 +107,7 @@ contains
    end function sscG1ISO
 
 
-   !     Eq. 2.107 of Mimica (2004)
+   !> Eq. 2.107 of Mimica (2004)
    function sscG2ISO(a, b, c, d, alpha, beta) result(res)
       implicit none
       real(dp), intent(in) :: a, b, c, d, alpha, beta

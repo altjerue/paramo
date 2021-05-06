@@ -275,37 +275,39 @@ contains
       integer :: numg, numf, numt, i, j
       real(dp) :: theta_obs, n_ext, dr, cool_const, dt, E0, R0, eps_B, eps_e, &
             B, g1, g2, g2_const, gmin, gmax, d_lum, eps_g2, G0, L_e, mu_obs, &
-            numax, numin, pind, Q0, tmax, tstep, uB, z
+            numax, numin, pind, Q0, tmax, tstep, uB, z, nu
       real(dp), allocatable, dimension(:) :: t, t_obs, r, Gbulk, Bbulk, D, &
-            gamma_e, Qinj, nu, nu_obs, t_dy, zeros
-      real(dp), allocatable, dimension(:,:) :: dotg, n_e, jnut, anut, Fnu_SPN98
+            gamma_e, Qinj, nu_obs, t_dy, zeros
+      real(dp), allocatable, dimension(:,:) :: dotg, n_e, jnut, anut, jbroken!, Fnu_SPN98
       character(len=256) :: output_file
 
       output_file = "afterglow_test.h5"
 
       numg = 200
       numf = 200
-      numt = 400
+      numt = 200
 
-      allocate(gamma_e(numg), nu(numf), t(0:numt), Gbulk(0:numt), Bbulk(0:numt),&
+      allocate(gamma_e(numg), t(0:numt), Gbulk(0:numt), Bbulk(0:numt),&
             r(0:numt), t_obs(numt), D(0:numt), nu_obs(numf), &
             t_dy(numt))
       allocate(zeros(numg))
       allocate(n_e(numg, 0:numt), dotg(numg, 0:numt), jnut(numf, numt), &
-            anut(numf, numt), Fnu_SPN98(numf, numt))
+            anut(numf, numt), jbroken(numf, numt))!Fnu_SPN98(numf, numt))
       zeros = zeros1D(numg, .true.)
 
       ! SPN98 parameters
       pind = 2.5d0
-      eps_g2 = 1d0
+      z = 0d0
+      eps_g2 = 1d-1
       d_lum = 1d28
-      G0 = 400d0
+      G0 = 200d0
       E0 = 1d52
-      tstep = 1d-3
+      tstep = 1d-2
       tmax = 1d4
-      mu_obs = 1d0
+      theta_obs = 0d0
+      mu_obs = dcos(theta_obs)
       n_ext = 1d0
-      eps_e = 5d-2
+      eps_e = 1d-2
       eps_B = 1d-5
       t(0) = 0d0
 
@@ -315,24 +317,17 @@ contains
       D(0) = Doppler(Gbulk(0), mu_obs)
 
       !--->  Magnetic field
-      B = dsqrt(32d0 * pi * mass_p * eps_B * n_ext) * Gbulk(0) * cLight
-      uB = B**2 / (8d0 * pi)
-      cool_const = 4d0 * sigmaT * cLight / (3d0 * energy_e)
-      dotg(:, 0) = cool_const * uB * (Gbulk(0) * gamma_e)**2
+      B = dsqrt(32d0 * pi * energy_p * eps_B * n_ext * (Gbulk(0) - 1d0) * Gbulk(0))
 
       !---> Minimum and maximum Lorentz factors of the particles distribution
-      g1 = eps_e * 610d0 * Gbulk(0) ! eq. (1) in SPN98
+      g1 = eps_e * mass_p * (pind - 2d0) * (Gbulk(0) - 1d0) / ((pind - 1d0) * mass_e)
       g2_const = dsqrt(6d0 * pi * eCharge * eps_g2 / sigmaT)
       g2 = g2_const / dsqrt(B)
 
-      !---> Fraction of accreted kinetic energy injected into non-thermal electrons
-      L_e = 4d0 * eps_e * Gbulk(0)**2 * n_ext * energy_p
-      Q0 = L_e / ( g1**(2d0 - pind) * Pinteg(g2 / g1, pind - 1d0, 1d-6) * energy_e )
-
       gmin = 1.0001d0
       gmax = g2 * 2d0
-      numin = 1e10
-      numax = 1e20
+      numin = 1e8
+      numax = 1e18
 
       build_f: do i = 1, numf
          nu_obs(i) = numin * (numax / numin)**(dble(i - 1) / dble(numf - 1))
@@ -342,8 +337,16 @@ contains
          gamma_e(i) = gmin * (gmax / gmin)**(dble(i - 1) / dble(numg - 1))
       end do build_g
 
+      !---> Fraction of accreted kinetic energy injected into non-thermal electrons
+      L_e = 4d0 * eps_e * (Gbulk(0) - 1d0) * Gbulk(0) * n_ext * energy_p
+      Q0 = L_e * pwl_norm(energy_e, pind - 1d0, g1, g2)
       Qinj = injection_pwl(t(0), 1d200, gamma_e, g1, g2, pind, Q0)
       n_e(:, 0) = Qinj
+      dotg(:, 0) = sigmaT * B**2 * gamma_e**2 / (6d0 * pi * mass_e * cLight)
+
+      write(*, *) ''
+      write(*, "('--> Calculating the emission')")
+      write(*, *) screan_head
 
       ! ###### #    #  ####  #      #    # ##### #  ####  #    #
       ! #      #    # #    # #      #    #   #   # #    # ##   #
@@ -351,10 +354,8 @@ contains
       ! #      #    # #    # #      #    #   #   # #    # #  # #
       ! #       #  #  #    # #      #    #   #   # #    # #   ##
       ! ######   ##    ####  ######  ####    #   #  ####  #    #
-      write(*, "('--> Calculating the emission')")
-      write(*, *) screan_head
       do i = 1, numt
-         t_obs(i) = tstep * (tmax / tstep)**(dble(i) / dble(numt))
+         t_obs(i) = tstep * (tmax / tstep)**(dble(i - 1) / dble(numt - 1))
          call blastwave_approx_SPN98(G0, E0, n_ext, t_obs(i), Gbulk(i), r(i), .true.)
          t_dy(i) = sec2dy(t_obs(i))
          dr = r(i) - r(i - 1)
@@ -364,31 +365,37 @@ contains
                (1d0 / (Bbulk(i - 1) * Gbulk(i - 1))) ) / cLight
          dt = t(i) - t(i - 1)
 
-         call FP_FinDif_difu(dt, gamma_e, n_e(:, i - 1), n_e(:, i), &
-               dotg(:, i - 1), zeros, Qinj, 1d200, 1d0)
+         call FP_FinDif_difu(dt, &
+               &             gamma_e, &
+               &             n_e(:, i - 1), &
+               &             n_e(:, i), &
+               &             dotg(:, i - 1), &
+               &             zeros, &
+               &             Qinj, &
+               &             (0.25d0 * r(i - 1) / Gbulk(i - 1)) / cLight, &
+               &             1d0)
 
          !--->  Magnetic field
-         B = dsqrt(32d0 * pi * mass_p * eps_B * n_ext) * Gbulk(i) * cLight
-         uB = B**2 / (8d0 * pi)
-         cool_const = 4d0 * sigmaT * cLight / (3d0 * energy_e)
-         dotg(:, i) = cool_const * uB * (Gbulk(i) * gamma_e)**2
+         B = dsqrt(32d0 * pi * energy_p * eps_B * n_ext * (Gbulk(i) - 1d0) * Gbulk(i))
 
          !---> Minimum and maximum Lorentz factors of the particles distribution
-         g1 = eps_e * 610d0 * Gbulk(i) ! eq. (1) in SPN98
-         g2_const = dsqrt(6d0 * pi * eCharge * eps_g2 / sigmaT)
+         g1 = eps_e * mass_p * (pind - 2d0) * (Gbulk(i) - 1d0) / ((pind - 1d0) * mass_e)
          g2 = g2_const / dsqrt(B)
 
          !---> Fraction of accreted kinetic energy injected into non-thermal electrons
-         L_e = 4d0 * eps_e * Gbulk(i)**2 * n_ext * energy_p
-         Q0 = L_e / ( g1**(2d0 - pind) * Pinteg(g2 / g1, pind - 1d0, 1d-6) * energy_e )
+         L_e = 4d0 * eps_e * (Gbulk(i) - 1d0) * Gbulk(i) * n_ext * energy_p
+         Q0 = L_e * pwl_norm(energy_e, pind - 1d0, g1, g2)
          Qinj = injection_pwl(t(i), 1d200, gamma_e, g1, g2, pind, Q0)
+         dotg(:, i) = sigmaT * B**2 * gamma_e**2 / (6d0 * pi * mass_e * cLight)
 
-         !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) PRIVATE(j)
+         !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) PRIVATE(j, nu)
          do j = 1, numf
-            nu(j) = nu_com_f(nu_obs(j), z, D(i))
-            call syn_emissivity(jnut(j, i), nu(j), gamma_e, n_e(:, i), B)
-            call syn_absorption(anut(j, i), nu(j), gamma_e, n_e(:, i), B)
-            call syn_afterglow_SPN98(nu_obs(j), t_obs(i), E0, eps_e, eps_B, G0, pind, n_ext, d_lum, .true., Fnu_SPN98(j, i))
+            nu = nu_com_f(nu_obs(j), z, D(i))
+            call syn_emissivity(jnut(j, i), nu, gamma_e, n_e(:, i), B)
+            call syn_absorption(anut(j, i), nu, gamma_e, n_e(:, i), B)
+            call syn_broken(nu, t_obs(i), r(i), Gbulk(i), g1, pind, B, eps_e, n_ext, z, theta_obs, jbroken(j, i))
+            ! call syn_afterglow_SPN98(nu_obs(j), t_obs(i), E0, eps_e, eps_B, G0, pind, n_ext, d_lum, .true., Fnu_SPN98(j, i))
+            ! Fnu_SPN98(j, i) = Jy2erg(Fnu_SPN98(j, i) * 1e-6)
          end do
          !$OMP END PARALLEL DO
 
@@ -423,6 +430,7 @@ contains
       call h5io_wdble0(group_id, 'tstep',       tstep, herror)
       call h5io_wdble0(group_id, 'd_lum',       d_lum, herror)
       call h5io_wdble0(group_id, 'redshift',    z, herror)
+      call h5io_wdble0(group_id, 'theta_obs',   theta_obs, herror)
       call h5io_wdble0(group_id, 'Gamma_bulk0', G0, herror)
       call h5io_wdble0(group_id, 'gamma_min',   gmin, herror)
       call h5io_wdble0(group_id, 'gamma_max',   gmax, herror)
@@ -444,7 +452,6 @@ contains
       call h5io_wdble1(group_id, 'r',       r(1:), herror)
       call h5io_wdble1(group_id, 'Gamma',   Gbulk(1:), herror)
       call h5io_wdble1(group_id, 'Doppler', D(1:), herror)
-      call h5io_wdble1(group_id, 'nu',      nu, herror)
       call h5io_wdble1(group_id, 'nu_obs',  nu_obs, herror)
       call h5io_wdble1(group_id, 'gamma_e', gamma_e, herror)
       call h5io_wdble2(group_id, 'jnut',    jnut, herror)
@@ -453,8 +460,9 @@ contains
       call h5io_wdble2(group_id, 'dotg',    dotg(:, 1:), herror)
       call h5io_closeg(group_id, herror)
       ! ------  Saving SPN98 data  ------
-      call h5io_createg(file_id, "SPN98", group_id, herror)
-      call h5io_wdble2(group_id, "Flux", Fnu_SPN98, herror)
+      call h5io_createg(file_id, "Analytic", group_id, herror)
+      ! call h5io_wdble2(group_id, "FluxSPN98", Fnu_SPN98, herror)
+      call h5io_wdble2(group_id, "emiss_broken", jbroken, herror)
       call h5io_wdble1(group_id, 't_dy', t_dy, herror)
       call h5io_closeg(group_id, herror)
       ! ------  Closing output file  ------

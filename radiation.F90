@@ -167,8 +167,7 @@ contains
 
 
    !============================================================================
-   ! ::::: The RMA function :::::
-   ! RMAfit(x) = Rsync(x) = 0.5 pi x CS(x)
+   !> The RMA function: RMAfit(x) = Rsync(x) = 0.5 pi x CS(x)
    function RMA_new(chi, g) result(res)
       implicit none
       real(dp), intent(in) :: chi, g
@@ -388,6 +387,37 @@ contains
       if ( jnu < 1d-200 ) jnu = 0d0
    end subroutine syn_emissivity
 
+
+   !> Synchrotron emissivity following eq. (22) in Ryan G., van Eerten H., Piro L., Troja E., 2020, ApJ, 896, 166
+   subroutine syn_broken(nu, to, r, Gbulk, gm, p, B, eps_e, n0, z, tho, emiss)
+      implicit none
+      real(dp), intent(in) :: nu, p, Gbulk, B, gm, eps_e, n0, to, r, z, tho
+      real(dp), intent(out) :: emiss
+      real(dp) :: num, nuc, epsP, xiN, t, eth, gc, n
+      xiN = 1d0
+      t = (r * dcos(tho) / cLight) + (to / (1d0 + z))
+      n = 4d0 * n0 * Gbulk * xiN
+      ! eth = (Gbulk - 1d0) * n * energy_p
+      ! B = dsqrt(8d0 * pi * eth * eps_B)
+      gc = 6d0 * pi * Gbulk * mass_e * cLight / (sigmaT * B**2 * t)
+      num = 3d0 * eCharge * B * gm**2 / (fourpi * mass_e * cLight)
+      nuc = 3d0 * eCharge * B * gc**2 / (fourpi * mass_e * cLight)
+      if ( nu < num .and. num < nuc ) then
+         emiss = (nu / num)**(1d0 / 3d0)
+      else if ( num <= nu .and. nu < nuc ) then
+         emiss = (nu / num)**(-0.5d0 * (p - 1d0))
+      else if ( num < nuc .and. nuc <= nu ) then
+         emiss = (nuc / num)**(-0.5d0 * (p - 1d0)) * (nu / nuc)**(-0.5d0 * p)
+      else if ( nu < nuc .and. nuc < num ) then
+         emiss = (nu / nuc)**(1d0 / 3d0)
+      else if ( nuc <= nu .and. nu < num ) then
+         emiss = (nu / nuc)**(-0.5d0)
+      else
+         emiss = (num / nuc)**(-0.5d0) * (nu / num)**(-0.5d0 * p)
+      end if
+      epsP = 0.5d0 * (p - 1d0) * dsqrt(3d0) * eCharge**3 * xiN * n * B / energy_e
+      emiss = emiss * epsP
+   end subroutine syn_broken
 
    !    ##   #####   ####   ####  #####  #####  ##### #  ####  #    #
    !   #  #  #    # #      #    # #    # #    #   #   # #    # ##   #

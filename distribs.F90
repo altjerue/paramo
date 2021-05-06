@@ -127,9 +127,11 @@ contains
    end function injection_hyb
 
 
-   !
-   !   ----------{    Power-law distribution Normalization    }----------
-   !
+   !> Normalization of a power-law distribution Normalization
+   !! @parameter norm real normalization factor
+   !! @parameter index real power-law index, assuming x**(-index)
+   !! @parameter e1 real lower limit
+   !! @parameter e2 real upper limit
    function pwl_norm(norm, index, e1, e2) result(k)
       implicit none
       real(dp), intent(in) :: norm, index, e1, e2

@@ -225,9 +225,7 @@ contains
     end function nu_obs_v
 
 
-   !
-   !     ::::::  Frequency in the comoving frame  ::::::
-   !
+   !> Frequency in the comoving frame
    function nu_com_s(nuobs, z, dopp) result(nucom)
       implicit none
       real(dp), intent(in) :: nuobs, z, dopp
@@ -244,10 +242,7 @@ contains
    end function nu_com_v
 
 
-   !
-   !     ::::::  Time in the observer frame  ::::::
-   !
-   !
+   !> Time in the observer frame (scalar)
    function t_obs_s(tcom, z, gamma, xcom, muo) result(tobs)
       implicit none
       real(dp), intent(in) :: tcom, z, gamma, xcom, muo
@@ -255,6 +250,7 @@ contains
       tobs = (1d0 + z) * ((tcom / Doppler(gamma, muo)) + (gamma * xcom * (bofg(gamma) - muo)) / cLight)
    end function t_obs_s
 
+   !> Time in the observer frame (array)
    function t_obs_v(tcom, z, gamma, xcom, muo) result(tobs)
       implicit none
       real(dp), intent(in) :: z, gamma, xcom, muo
@@ -264,11 +260,8 @@ contains
    end function t_obs_v
 
 
-   !
-   !     ::::::  Time in the co-moving frame  ::::::
-   !
-   ! NOTE: Argument 'x' is the position in the comoving frame
-   !
+   !> Time in the co-moving frame  ::::::
+   !! @parameter x Position in the comoving frame (x')
    function t_com_s(tobs, z, gamma, xcom, muo) result(tcom)
       implicit none
       real(dp), intent(in) :: tobs, z, gamma, xcom, muo
