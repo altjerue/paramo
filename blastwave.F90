@@ -55,7 +55,6 @@ contains
       real(dp), intent(in) :: E0, epsB, epse, G0, n, d_lum, pind, t_o, nu_o
       logical :: adiab
       real(dp), intent(out) :: flux
-      integer :: j
       real(dp) :: E52, d28, G2, Fmax, nu_c, nu_m, t0, tdy
 
       E52 = E0 / 1d52
@@ -254,7 +253,8 @@ contains
       integer :: i, io
       real(dp) :: x, y, vx,vy
       ! real(dp), allocatable, dimension(:) :: v
-      if ( nlines /= count_lines(filename) ) call an_error("bw_mezcal: nlines and number of lines in "//trim(filename)//"are not the same")
+      if ( nlines /= count_lines(filename) ) &
+            call an_error("bw_mezcal: nlines and number of lines in "//trim(filename)//"are not the same")
       call realloc(r, nlines)
       ! call realloc(v, nlines)
       call realloc(theta, nlines)

@@ -22,10 +22,7 @@ program tests
    use specialf
    use blastwave
    implicit none
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   ! TODO:
-   !   - blast wave test: Numerical vs Sari, Piran & Narayan (1998)
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 #if TEST_CHOICE == 1
    call steady_state
 #elif TEST_CHOICE == 2
@@ -40,17 +37,16 @@ program tests
 
 contains
 
+   !> This subroutine produces the steady state solutions of the kinetic equation.
    subroutine steady_state
-      !> This subroutine produces the steady state solutions of the kinetic
-      !! equation.
       implicit none
-      integer :: i, k, numg, numt, herror, numf, j
+      integer :: i, k, numg, numt, numf, j
       real(dp) :: g1, g2, gmin, gmax, tmax, tstep, qind, tacc, tesc, R, B, numax, numin, uB
       real(dp), allocatable, dimension(:) :: t, g, Q0, D0, C0, aux0, dt, dg, &
          Ntot1, Ntot2, Ntot3, Ntot4, Ntot5, Ntot6, zero1, zero2, freqs, &
          Inu1, Inu4, Inu5, Inu6
-      real(dp), allocatable, dimension(:, :) :: n1, n2, n3, n4, n5, n6
-      real(dp), allocatable, dimension(:, :) :: jmbs1, ambs1, jssc1, jmbs4, ambs4, jssc4, jmbs5, ambs5, jssc5, jmbs6, ambs6, jssc6
+      real(dp), allocatable, dimension(:,:) :: n1, n2, n3, n4, n5, n6
+      real(dp), allocatable, dimension(:,:) :: jmbs1, ambs1, jssc1, jmbs4, ambs4, jssc4, jmbs5, ambs5, jssc5, jmbs6, ambs6, jssc6
 
       numg = 128
       numt = 300
@@ -273,12 +269,12 @@ contains
       integer(HID_T) :: file_id, group_id, herror
 #endif
       integer :: numg, numf, numt, i, j
-      real(dp) :: theta_obs, n_ext, dr, cool_const, dt, E0, R0, eps_B, eps_e, &
-            B, g1, g2, g2_const, gmin, gmax, d_lum, eps_g2, G0, L_e, mu_obs, &
-            numax, numin, pind, Q0, tmax, tstep, uB, z, nu
+      real(dp) :: theta_obs, n_ext, dr, dt, E0, eps_B, eps_e, B, g1, g2, g2_const, gmin, gmax, d_lum, eps_g2, G0, L_e, mu_obs, &
+            numax, numin, pind, Q0, tmax, tstep, z, nu, tlc
       real(dp), allocatable, dimension(:) :: t, t_obs, r, Gbulk, Bbulk, D, &
             gamma_e, Qinj, nu_obs, t_dy, zeros
-      real(dp), allocatable, dimension(:,:) :: dotg, n_e, jnut, anut, jbroken!, Fnu_SPN98
+      real(dp), allocatable, dimension(:,:) :: dotg, n_e, jnut, anut, jbroken, &
+            Fnu_SPN98
       character(len=256) :: output_file
 
       output_file = "afterglow_test.h5"
@@ -288,11 +284,10 @@ contains
       numt = 200
 
       allocate(gamma_e(numg), t(0:numt), Gbulk(0:numt), Bbulk(0:numt),&
-            r(0:numt), t_obs(numt), D(0:numt), nu_obs(numf), &
-            t_dy(numt))
+            r(0:numt), t_obs(numt), D(0:numt), nu_obs(numf), t_dy(numt))
       allocate(zeros(numg))
       allocate(n_e(numg, 0:numt), dotg(numg, 0:numt), jnut(numf, numt), &
-            anut(numf, numt), jbroken(numf, numt))!Fnu_SPN98(numf, numt))
+            anut(numf, numt), jbroken(numf, numt), Fnu_SPN98(numf, numt))
       zeros = zeros1D(numg, .true.)
 
       ! SPN98 parameters
@@ -302,7 +297,7 @@ contains
       d_lum = 1d28
       G0 = 200d0
       E0 = 1d52
-      tstep = 1d-2
+      tstep = 1d-3
       tmax = 1d4
       theta_obs = 0d0
       mu_obs = dcos(theta_obs)
@@ -338,8 +333,10 @@ contains
       end do build_g
 
       !---> Fraction of accreted kinetic energy injected into non-thermal electrons
-      L_e = 4d0 * eps_e * (Gbulk(0) - 1d0) * Gbulk(0) * n_ext * energy_p
-      Q0 = L_e * pwl_norm(energy_e, pind - 1d0, g1, g2)
+      ! L_e = 4d0 * eps_e * Gbulk(0) * n_ext * energy_p * (Gbulk(0) - 1d0)
+      ! Q0 = L_e * pwl_norm(energy_e, pind - 1d0, g1, g2)
+      L_e = 4d0 * Gbulk(0) * n_ext * eps_e
+      Q0 = L_e * pwl_norm(1d0, pind, g1, g2)
       Qinj = injection_pwl(t(0), 1d200, gamma_e, g1, g2, pind, Q0)
       n_e(:, 0) = Qinj
       dotg(:, 0) = sigmaT * B**2 * gamma_e**2 / (6d0 * pi * mass_e * cLight)
@@ -364,6 +361,7 @@ contains
          t(i) = t(i - 1) + 0.5d0 * dr * ( (1d0 / (Bbulk(i) * Gbulk(i))) + &
                (1d0 / (Bbulk(i - 1) * Gbulk(i - 1))) ) / cLight
          dt = t(i) - t(i - 1)
+         tlc = r(i - 1) / (12d0 * Gbulk(i - 1) * cLight)
 
          call FP_FinDif_difu(dt, &
                &             gamma_e, &
@@ -372,8 +370,8 @@ contains
                &             dotg(:, i - 1), &
                &             zeros, &
                &             Qinj, &
-               &             (0.25d0 * r(i - 1) / Gbulk(i - 1)) / cLight, &
-               &             1d0)
+               &             tlc, &!1d200, &!
+               &             tlc)
 
          !--->  Magnetic field
          B = dsqrt(32d0 * pi * energy_p * eps_B * n_ext * (Gbulk(i) - 1d0) * Gbulk(i))
@@ -383,8 +381,10 @@ contains
          g2 = g2_const / dsqrt(B)
 
          !---> Fraction of accreted kinetic energy injected into non-thermal electrons
-         L_e = 4d0 * eps_e * (Gbulk(i) - 1d0) * Gbulk(i) * n_ext * energy_p
-         Q0 = L_e * pwl_norm(energy_e, pind - 1d0, g1, g2)
+         ! L_e = 4d0 * eps_e * Gbulk(i) * n_ext * energy_p * (Gbulk(i) - 1d0)
+         ! Q0 = L_e * pwl_norm(energy_e, pind - 1d0, g1, g2)
+         L_e = 4d0 * Gbulk(i) * n_ext * eps_e
+         Q0 = L_e * pwl_norm(1d0, pind, g1, g2)
          Qinj = injection_pwl(t(i), 1d200, gamma_e, g1, g2, pind, Q0)
          dotg(:, i) = sigmaT * B**2 * gamma_e**2 / (6d0 * pi * mass_e * cLight)
 
@@ -394,7 +394,7 @@ contains
             call syn_emissivity(jnut(j, i), nu, gamma_e, n_e(:, i), B)
             call syn_absorption(anut(j, i), nu, gamma_e, n_e(:, i), B)
             call syn_broken(nu, t_obs(i), r(i), Gbulk(i), g1, pind, B, eps_e, n_ext, z, theta_obs, jbroken(j, i))
-            ! call syn_afterglow_SPN98(nu_obs(j), t_obs(i), E0, eps_e, eps_B, G0, pind, n_ext, d_lum, .true., Fnu_SPN98(j, i))
+            call syn_afterglow_SPN98(nu_obs(j), t_obs(i), E0, eps_e, eps_B, G0, pind, n_ext, d_lum, .true., Fnu_SPN98(j, i))
             ! Fnu_SPN98(j, i) = Jy2erg(Fnu_SPN98(j, i) * 1e-6)
          end do
          !$OMP END PARALLEL DO
@@ -442,7 +442,7 @@ contains
       call h5io_wdble0(group_id, 'nu_min',      numin, herror)
       call h5io_wdble0(group_id, 'nu_max',      numax, herror)
       call h5io_wdble0(group_id, 'E0',          E0, herror)
-      call h5io_wdble0(group_id, 'R0',          R0, herror)
+      ! call h5io_wdble0(group_id, 'R0',          R0, herror)
       call h5io_wdble0(group_id, 'n_ext',       n_ext, herror)
       call h5io_closeg(group_id, herror)
       ! ------  Saving Numerical data  ------
@@ -461,7 +461,7 @@ contains
       call h5io_closeg(group_id, herror)
       ! ------  Saving SPN98 data  ------
       call h5io_createg(file_id, "Analytic", group_id, herror)
-      ! call h5io_wdble2(group_id, "FluxSPN98", Fnu_SPN98, herror)
+      call h5io_wdble2(group_id, "FluxSPN98", Fnu_SPN98, herror)
       call h5io_wdble2(group_id, "emiss_broken", jbroken, herror)
       call h5io_wdble1(group_id, 't_dy', t_dy, herror)
       call h5io_closeg(group_id, herror)
