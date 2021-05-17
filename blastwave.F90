@@ -195,8 +195,8 @@ contains
          ! Rb = Rbw / Gbulk
          ! Rb = Rbw / (Gbulk * 12d0)
          Rb = Rbw / (12d0 * (Gbulk + 0.75d0))
-         volume = 4d0 * pi * Rbw**2 * Rb
-         csa = 4d0 * pi * Rbw**2
+         volume = Oj * Rbw**2 * Rb
+         csa = Oj * Rbw**2
 
       end if iso_or_beamed
 

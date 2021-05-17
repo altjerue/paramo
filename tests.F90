@@ -260,21 +260,23 @@ contains
    subroutine syn_afterglow
       implicit none
       integer, parameter :: nmod = 50
-      character(len=*), parameter :: screan_head = &
-         '| Iteration | Obser. time |   BW radius |  gamma_bulk |      Bfield |'&
-         //new_line('A')//&
-         ' ---------------------------------------------------------------------',&
-         on_screen = "(' | ', I9, ' | ', ES11.4, ' | ', ES11.4, ' | ', ES11.4, ' | ', ES11.4, ' |')"
+      character(len=*), parameter :: horiz_line = &
+            & '---------------------------------------------------------------------',&
+            &screan_head = horiz_line//new_line('A')//&
+            &' | Iteration | Obser. time |   BW radius |  gamma_bulk |      Bfield |'&
+            &//new_line('A')//' '//horiz_line, &
+            &on_screen = "(' | ', I9, ' | ', ES11.4, ' | ', ES11.4, ' | ', ES11.4, ' | ', ES11.4, ' |')"
 #ifdef HDF5
       integer(HID_T) :: file_id, group_id, herror
 #endif
       integer :: numg, numf, numt, i, j
-      real(dp) :: theta_obs, n_ext, dr, dt, E0, eps_B, eps_e, B, g1, g2, g2_const, gmin, gmax, d_lum, eps_g2, G0, L_e, mu_obs, &
-            numax, numin, pind, Q0, tmax, tstep, z, nu, tlc
+      real(dp) :: theta_obs, n_ext, dr, dt, E0, eps_B, eps_e, B, g1, g2, &
+            g2_const, gmin, gmax, d_lum, eps_g2, G0, L_e, mu_obs, numax, numin,&
+            pind, Q0, tmax, tstep, z, tlc, rb, b_const
       real(dp), allocatable, dimension(:) :: t, t_obs, r, Gbulk, Bbulk, D, &
             gamma_e, Qinj, nu_obs, t_dy, zeros
-      real(dp), allocatable, dimension(:,:) :: dotg, n_e, jnut, anut, jbroken, &
-            Fnu_SPN98
+      real(dp), allocatable, dimension(:,:) :: dotg, n_e, jnut, anut, jnut_b, &
+            Fnu_SPN98, Fnu, nuFnu, nu, Fnu_b, nuFnu_b
       character(len=256) :: output_file
 
       output_file = "afterglow_test.h5"
@@ -283,17 +285,19 @@ contains
       numf = 200
       numt = 200
 
-      allocate(gamma_e(numg), t(0:numt), Gbulk(0:numt), Bbulk(0:numt),&
+      allocate(gamma_e(numg), t(0:numt), Gbulk(0:numt), Bbulk(0:numt), &
             r(0:numt), t_obs(numt), D(0:numt), nu_obs(numf), t_dy(numt))
       allocate(zeros(numg))
       allocate(n_e(numg, 0:numt), dotg(numg, 0:numt), jnut(numf, numt), &
-            anut(numf, numt), jbroken(numf, numt), Fnu_SPN98(numf, numt))
+            anut(numf, numt), jnut_b(numf, numt), Fnu_SPN98(numf, numt), &
+            Fnu(numf, numt), nuFnu(numf, numt), Fnu_b(numf, numt), &
+            nuFnu_b(numf, numt), nu(numf, numt))
       zeros = zeros1D(numg, .true.)
 
       ! SPN98 parameters
       pind = 2.5d0
       z = 0d0
-      eps_g2 = 1d-1
+      eps_g2 = 1d0
       d_lum = 1d28
       G0 = 200d0
       E0 = 1d52
@@ -305,9 +309,10 @@ contains
       eps_e = 1d-2
       eps_B = 1d-5
       t(0) = 0d0
+      dt = 0.1d0
 
       ! n_swept = fourpi * r(0)**3 * n_ext / 3d0 ! Total number of swept-up particles
-      call blastwave_approx_SPN98(G0, E0, n_ext, tstep, Gbulk(0), r(0), .true.)
+      call blastwave_approx_SPN98(G0, E0, n_ext, tstep * dt, Gbulk(0), r(0), .true.)
       Bbulk(0) = bofg(Gbulk(0))
       D(0) = Doppler(Gbulk(0), mu_obs)
 
@@ -317,10 +322,11 @@ contains
       !---> Minimum and maximum Lorentz factors of the particles distribution
       g1 = eps_e * mass_p * (pind - 2d0) * (Gbulk(0) - 1d0) / ((pind - 1d0) * mass_e)
       g2_const = dsqrt(6d0 * pi * eCharge * eps_g2 / sigmaT)
+      b_const = cLight * sigmaT / (6d0 * pi * energy_e)
       g2 = g2_const / dsqrt(B)
 
       gmin = 1.0001d0
-      gmax = g2 * 2d0
+      gmax = g2 * 10d0
       numin = 1e8
       numax = 1e18
 
@@ -333,16 +339,30 @@ contains
       end do build_g
 
       !---> Fraction of accreted kinetic energy injected into non-thermal electrons
-      ! L_e = 4d0 * eps_e * Gbulk(0) * n_ext * energy_p * (Gbulk(0) - 1d0)
-      ! Q0 = L_e * pwl_norm(energy_e, pind - 1d0, g1, g2)
-      L_e = 4d0 * Gbulk(0) * n_ext * eps_e
-      Q0 = L_e * pwl_norm(1d0, pind, g1, g2)
+      L_e = eps_e * 4d0 * pi * r(0)**2 * n_ext * energy_p * cLight * Bbulk(0) * Gbulk(0) * (Gbulk(0) - 1d0)
+      Q0 = L_e * pwl_norm(4d0 * pi * r(0)**3 * energy_e / (12d0 * (Gbulk(0) + 0.75d0)), pind - 1d0, g1, g2)
+      ! Q0 = L_e / ( ( g1**(2d0 - pind) * Pinteg(g2 / g1, pind - 1d0, 1d-6) &
+      !       - g1**(1d0 - pind) * Pinteg(g2 / g1, pind, 1d-6) ) &
+      !       * (4d0 * pi * r(0)**3 / 3d0) * energy_e )
+      ! L_e = 4d0 * Gbulk(0) * n_ext * eps_e
+      ! Q0 = L_e * pwl_norm(4d0 * pi * r(0)**3 / 3d0, pind, g1, g2)
       Qinj = injection_pwl(t(0), 1d200, gamma_e, g1, g2, pind, Q0)
       n_e(:, 0) = Qinj
-      dotg(:, 0) = sigmaT * B**2 * gamma_e**2 / (6d0 * pi * mass_e * cLight)
+      dotg(:, 0) = (b_const * B**2 * gamma_e + cLight * Bbulk(0) * Gbulk(0) / r(0)) * gamma_e
 
       write(*, *) ''
-      write(*, "('--> Calculating the emission')")
+      write(*, "('---> Blast-wave parameters')")
+      write(*, "('mu_obs   =', ES15.7)") mu_obs
+      write(*, "('Gamma_0  =', ES15.7)") G0
+      write(*, "('n_ext    =', ES15.7)") n_ext
+      write(*, "('pind     =', ES15.7)") pind
+      write(*, "('E_0      =', ES15.7)") E0
+      write(*, "('eps_e    =', ES15.7)") eps_e
+      write(*, "('eps_B    =', ES15.7)") eps_B
+      write(*, "('d_lum    =', ES15.7)") d_lum
+      write(*, "('redshift =', ES15.7)") z
+      ! write(*, *) ''
+      write(*, "('---> Calculating the emission')")
       write(*, *) screan_head
 
       ! ###### #    #  ####  #      #    # ##### #  ####  #    #
@@ -351,17 +371,17 @@ contains
       ! #      #    # #    # #      #    #   #   # #    # #  # #
       ! #       #  #  #    # #      #    #   #   # #    # #   ##
       ! ######   ##    ####  ######  ####    #   #  ####  #    #
-      do i = 1, numt
+      do i=1, numt
          t_obs(i) = tstep * (tmax / tstep)**(dble(i - 1) / dble(numt - 1))
          call blastwave_approx_SPN98(G0, E0, n_ext, t_obs(i), Gbulk(i), r(i), .true.)
          t_dy(i) = sec2dy(t_obs(i))
          dr = r(i) - r(i - 1)
          D(i) = Doppler(Gbulk(i), mu_obs)
          Bbulk(i) = bofg(Gbulk(i))
-         t(i) = t(i - 1) + 0.5d0 * dr * ( (1d0 / (Bbulk(i) * Gbulk(i))) + &
-               (1d0 / (Bbulk(i - 1) * Gbulk(i - 1))) ) / cLight
+         call rk2_arr(t(i-1), 1d0 / (Bbulk(i-1:i) * Gbulk(i-1:i) * cLight), dr, t(i))
          dt = t(i) - t(i - 1)
-         tlc = r(i - 1) / (12d0 * Gbulk(i - 1) * cLight)
+         rb = r(i) / (12d0 * (Gbulk(i) + 0.75d0))
+         tlc = rb / cLight
 
          call FP_FinDif_difu(dt, &
                &             gamma_e, &
@@ -370,7 +390,7 @@ contains
                &             dotg(:, i - 1), &
                &             zeros, &
                &             Qinj, &
-               &             tlc, &!1d200, &!
+               &             tlc, &
                &             tlc)
 
          !--->  Magnetic field
@@ -381,21 +401,24 @@ contains
          g2 = g2_const / dsqrt(B)
 
          !---> Fraction of accreted kinetic energy injected into non-thermal electrons
-         ! L_e = 4d0 * eps_e * Gbulk(i) * n_ext * energy_p * (Gbulk(i) - 1d0)
-         ! Q0 = L_e * pwl_norm(energy_e, pind - 1d0, g1, g2)
-         L_e = 4d0 * Gbulk(i) * n_ext * eps_e
-         Q0 = L_e * pwl_norm(1d0, pind, g1, g2)
+         L_e = eps_e * 4d0 * pi * r(i)**2 * n_ext * energy_p * cLight * Bbulk(i) * Gbulk(i) * (Gbulk(i) - 1d0)
+         Q0 = L_e * pwl_norm(4d0 * pi * r(i)**3 * energy_e / (12d0 * (Gbulk(i) + 0.75d0)), pind - 1d0, g1, g2)
+         ! Q0 = L_e / ((g1**(2d0 - pind) * Pinteg(g2 / g1, pind - 1d0, 1d-6) &
+         !       - g1**(1d0 - pind) * Pinteg(g2 / g1, pind, 1d-6)) &
+         !       * (4d0 * pi * r(i)**3 / (12d0 * (Gbulk(i) + 0.75d0))) * energy_e)
+         ! L_e = 4d0 * Gbulk(i) * n_ext * eps_e
+         ! Q0 = L_e * pwl_norm(1d0, pind, g1, g2)
          Qinj = injection_pwl(t(i), 1d200, gamma_e, g1, g2, pind, Q0)
-         dotg(:, i) = sigmaT * B**2 * gamma_e**2 / (6d0 * pi * mass_e * cLight)
+         dotg(:, i) = (b_const * B**2 * gamma_e + cLight * Bbulk(i) * Gbulk(i) / r(i)) * gamma_e
 
-         !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) PRIVATE(j, nu)
-         do j = 1, numf
-            nu = nu_com_f(nu_obs(j), z, D(i))
-            call syn_emissivity(jnut(j, i), nu, gamma_e, n_e(:, i), B)
-            call syn_absorption(anut(j, i), nu, gamma_e, n_e(:, i), B)
-            call syn_broken(nu, t_obs(i), r(i), Gbulk(i), g1, pind, B, eps_e, n_ext, z, theta_obs, jbroken(j, i))
-            call syn_afterglow_SPN98(nu_obs(j), t_obs(i), E0, eps_e, eps_B, G0, pind, n_ext, d_lum, .true., Fnu_SPN98(j, i))
-            ! Fnu_SPN98(j, i) = Jy2erg(Fnu_SPN98(j, i) * 1e-6)
+         !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) PRIVATE(j)
+         do j=1, numf
+            nu(j, i) = nu_com_f(nu_obs(j), z, D(i))
+            call syn_emissivity(jnut(j, i), nu(j, i), gamma_e, n_e(:, i), B)
+            call syn_absorption(anut(j, i), nu(j, i), gamma_e, n_e(:, i), B)
+            call syn_broken(nu(j, i), t_obs(i), r(i), Gbulk(i), g1, pind, B, n_ext, z, theta_obs, jnut_b(j, i))
+            call syn_afterglow_SPN98(nu_obs(j), t_obs(i), E0, eps_e, eps_B, G0,&
+                  pind, 4d0 * Gbulk(i) * n_ext, d_lum, .true., Fnu_SPN98(j, i))
          end do
          !$OMP END PARALLEL DO
 
@@ -410,14 +433,23 @@ contains
 
       end do
 
+      write(*, *) horiz_line
+      ! write(*, *) ''
+      write(*, "('---> Calculating fluxes')")
+      call observed_Fnu(r(1:), D(1:), jnut, z, d_lum, Fnu)
+      ! nuFnu = observed_nuFnu(r(1:), D(1:), jnut, nu, d_lum, nuFnu_b)
+      call observed_Fnu(r(1:), D(1:), jnut_b, z, d_lum, Fnu_b)
+      ! nuFnu_b = observed_nuFnu(r(1:), D(1:), jnut_b, nu, d_lum, nuFnu_b)
+
       !  ####    ##   #    # # #    #  ####
       ! #       #  #  #    # # ##   # #    #
       !  ####  #    # #    # # # #  # #
       !      # ###### #    # # #  # # #  ###
       ! #    # #    #  #  #  # #   ## #    #
       !  ####  #    #   ##   # #    #  ####
-      write(*, "('--> Saving')")
 #ifdef HDF5
+      ! write(*, *) ''
+      write(*, "('---> Creating HDF5')")
       ! ------  Opening output file  ------
       call h5open_f(herror)
       call h5io_createf(output_file, file_id, herror)
@@ -442,7 +474,6 @@ contains
       call h5io_wdble0(group_id, 'nu_min',      numin, herror)
       call h5io_wdble0(group_id, 'nu_max',      numax, herror)
       call h5io_wdble0(group_id, 'E0',          E0, herror)
-      ! call h5io_wdble0(group_id, 'R0',          R0, herror)
       call h5io_wdble0(group_id, 'n_ext',       n_ext, herror)
       call h5io_closeg(group_id, herror)
       ! ------  Saving Numerical data  ------
@@ -454,23 +485,28 @@ contains
       call h5io_wdble1(group_id, 'Doppler', D(1:), herror)
       call h5io_wdble1(group_id, 'nu_obs',  nu_obs, herror)
       call h5io_wdble1(group_id, 'gamma_e', gamma_e, herror)
+      call h5io_wdble2(group_id, 'nu',      nu, herror)
       call h5io_wdble2(group_id, 'jnut',    jnut, herror)
       call h5io_wdble2(group_id, 'anut',    anut, herror)
+      call h5io_wdble2(group_id, 'Fnu',     Fnu, herror)
+      call h5io_wdble2(group_id, 'nuFnu',   nuFnu, herror)
       call h5io_wdble2(group_id, 'n_e',     n_e(:, 1:), herror)
       call h5io_wdble2(group_id, 'dotg',    dotg(:, 1:), herror)
       call h5io_closeg(group_id, herror)
       ! ------  Saving SPN98 data  ------
       call h5io_createg(file_id, "Analytic", group_id, herror)
-      call h5io_wdble2(group_id, "FluxSPN98", Fnu_SPN98, herror)
-      call h5io_wdble2(group_id, "emiss_broken", jbroken, herror)
-      call h5io_wdble1(group_id, 't_dy', t_dy, herror)
+      call h5io_wdble2(group_id, "FluxSPN98",    Fnu_SPN98, herror)
+      call h5io_wdble2(group_id, "emiss_broken", jnut_b, herror)
+      call h5io_wdble2(group_id, 'flux_broken',  Fnu_b, herror)
+      call h5io_wdble2(group_id, 'nuFnu_broken', nuFnu_b, herror)
+      call h5io_wdble1(group_id, 't_dy',         t_dy, herror)
       call h5io_closeg(group_id, herror)
       ! ------  Closing output file  ------
       call h5io_closef(file_id, herror)
       call h5close_f(herror)
 #endif
+      ! write(*,*) ''
       write(*, "('==========  FINISHED  ==========')")
-      write(*,*) ''
    end subroutine syn_afterglow
 
 end program tests

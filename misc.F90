@@ -240,8 +240,8 @@ contains
       ns = ns - 1
       do m = 1, n - 1
          den(1:n - m) = ho(1:n - m) - ho(1 + m:n)
-         if ( any( dabs(den(1:n - m)) == 0d0 ) ) then !&
-            print*,x,xa
+         if ( any( dabs(den(1:n - m)) == 0d0 ) ) then
+            write(*, *) x, xa
             call an_error('polint: calculation failure')
          end if
          den(1:n - m) = (c(2:n - m + 1) - d(1:n - m)) / den(1:n - m)
@@ -282,23 +282,23 @@ contains
    end subroutine linint
 
    !> Chebychev evaluation
-   function chebev(x,coef,num_coefs,xmin,xmax) result(res)
+   function chebev(x, coef, num_coefs, xmin, xmax) result(res)
       implicit none
       integer, intent(in) :: num_coefs
       real(dp), intent(in) :: x,xmin,xmax
       real(dp), intent(in), dimension(:) :: coef
       integer :: j
       real(dp) :: d,dd,y,y2,sv,res
-      if ((x-xmin)*(x-xmax) > 0d0) then
-         print*,x,xmin,xmax
-         write(*,*)'x is not in rage in chebev'
+      if ( (x - xmin) * (x - xmax) > 0d0 ) then
+         print*, x, xmin, xmax
+         write(*, *) 'x is not in rage in chebev'
          stop
       end if
       d = 0d0
       dd = 0d0
       y = (2d0 * x - xmin - xmax) / (xmax - xmin)
       y2 = 2d0 * y
-      do j=num_coefs,2,-1
+      do j=num_coefs, 2, -1
          sv = dd
          dd = d
          d = y2 * dd - sv + coef(j)
@@ -306,29 +306,26 @@ contains
       res = y * d - dd + 0.5d0 * coef(1)
    end function chebev
 
-   !> Tridiagonal matrix solver
-   subroutine tridag_ser(a,b,c,r,u)
-      !  Description:
-      !     Solver of a tridiagonal matrix. Based on the code in
-      !     "Numberical Recipes".
+   !> Solver of a tridiagonal matrix. Based on the code in "Numberical Recipes".
+   subroutine tridag_ser(a, b, c, r, u)
       implicit none
-      real(dp),dimension(:),intent(in) :: a,b,c,r
-      real(dp),dimension(:),intent(out) :: u
-      real(dp),dimension(size(b)) :: gam
-      integer :: n,j
+      real(dp), dimension(:), intent(in) :: a, b, c, r
+      real(dp), dimension(:), intent(out) :: u
+      real(dp), dimension(size(b)) :: gam
+      integer :: n, j
       real(dp) :: bet
-      n=assert_eq((/ size(a)+1,size(b),size(c)+1,size(r),size(u) /),'tridag_ser')
-      bet=b(1)
-      if (bet==0.0d0) call an_error('tridag_ser: error at code stage 1')
-      u(1)=r(1)/bet
-      do j=2,n
-         gam(j)=c(j-1)/bet
-         bet=b(j)-a(j-1)*gam(j)
-         if (bet==0.0d0) call an_error('tridag_ser: error at code stage 2')
-         u(j)=(r(j)-a(j-1)*u(j-1))/bet
+      n = assert_eq((/ size(a) + 1, size(b), size(c) + 1, size(r), size(u) /), 'tridag_ser')
+      bet = b(1)
+      if ( bet == 0.0d0 ) call an_error('tridag_ser: error at code stage 1')
+      u(1) = r(1) / bet
+      do j=2, n
+         gam(j) = c(j - 1) / bet
+         bet = b(j) - a(j - 1) * gam(j)
+         if ( bet == 0.0d0 ) call an_error('tridag_ser: error at code stage 2')
+         u(j) = (r(j) - a(j - 1) * u(j - 1)) /bet
       end do
-      do j=n-1,1,-1
-         u(j)=u(j)-gam(j+1)*u(j+1)
+      do j = n-1, 1, -1
+         u(j) = u(j) - gam(j + 1) * u(j + 1)
       end do
    end subroutine tridag_ser
 
@@ -343,18 +340,18 @@ contains
             use data_types
             real(dp), intent(in) :: pp
             real(dp), dimension(:), intent(in) :: x
-            real(dp), dimension(size(x,dim=1)) :: res
+            real(dp), dimension(size(x, dim=1)) :: res
          end function func
       end interface
       integer :: it
-      real(dp) :: del,fsum
-      if (n==1) then
-         s=0.5d0*(b-a)*sum(func((/ a,b /), p))
+      real(dp) :: del, fsum
+      if ( n == 1 ) then
+         s = 0.5d0 * (b - a)*  sum(func( (/ a, b /), p) )
       else
-         it=2**(n-2)
-         del=(b-a)/it
-         fsum=sum(func(arth(a+0.5d0*del,del,it),p))
-         s=0.5d0*(s+del*fsum)
+         it = 2**(n - 2)
+         del =(b - a) / it
+         fsum = sum( func(arth(a + 0.5d0 * del, del, it), p) )
+         s = 0.5d0 * (s + del * fsum)
       end if
    end subroutine trapzd_w2arg
 
@@ -371,23 +368,84 @@ contains
             real(dp), dimension(size(x, dim=1)) :: res
          end function func
       end interface
-      integer, parameter :: jmax=20,jmaxp=jmax+1,k=5,km=k-1
+      integer, parameter :: jmax=20, jmaxp=jmax+1, k=5, km=k-1
       real(dp), parameter :: eps=1d-5
       integer :: j
       real(dp) :: dqromb
-      real(dp), dimension(jmaxp) :: h,s
-      h(1)=1d0
-      do j=1,jmax
-         call trapzd_w2arg(func,a,b,s(j),j,p)
+      real(dp), dimension(jmaxp) :: h, s
+      h(1) = 1d0
+      do j=1, jmax
+         call trapzd_w2arg(func, a, b, s(j), j, p)
          if ( j >= k ) then
-            call polint(h(j-km:j),s(j-km:j),0.0d0,qromb,dqromb)
-            if (dabs(dqromb) <= eps*dabs(qromb)) return
+            call polint(h(j - km:j), s(j - km:j), 0.0d0, qromb, dqromb)
+            if ( dabs(dqromb) <= eps * dabs(qromb) ) return
          end if
-         s(j+1)=s(j)
-         h(j+1)=0.25d0*h(j)
+         s(j + 1)=s(j)
+         h(j + 1) = 0.25d0 * h(j)
       end do
       call an_error('qromb: too many steps')
    end function qromb_w2arg
+
+   !> Trapezoidal rule with arrays
+   subroutine trapzd_arr(x, a, b, f, s, n)
+      implicit none
+      integer, intent(in) :: n
+      real(dp), intent(in) :: a, b
+      real(dp), intent(in), dimension(:) :: f, x
+      real(dp), intent(inout) :: s
+      integer :: it, i
+      real(dp) :: del, fsum, fa, fb, df, xx, fx
+      if ( n == 1 ) then
+         call polint(x, f, a, fa, df)
+         call polint(x, f, b, fb, df)
+         s = 0.5d0 * (b - a) * (fa + fb)
+      else
+         it = 2**(n - 2)
+         del = (b - a) / dble(it)
+         xx = a + 0.5d0 * del
+         fsum = 0d0
+         do i=1, it
+            call polint(x, f, xx, fx, df)
+            fsum = fsum + fa
+            xx = xx + del
+         end do
+         s = 0.5d0 * (s + del * fsum)
+      end if
+   end subroutine trapzd_arr
+
+   !> Romberg integrator with arrays
+   function qromb_arr(x, a, b, f) result(res)
+      implicit none
+      real(dp), intent(in) :: a, b
+      real(dp), intent(in), dimension(:) :: x, f
+      integer, parameter :: jmax=30, jmaxp=jmax+1, k=10, km=k-1
+      real(dp), parameter :: eps=1d-6
+      integer :: j
+      real(dp) :: dqromb, res
+      real(dp), dimension(jmaxp) :: h, s
+      h(1)=1d0
+      do j=1, jmax
+         call trapzd_arr(x, a, b, f, s(j), j)
+         if ( j >= k ) then
+            call polint(h(j-km:j), s(j-km:j), 0.0d0, res, dqromb)
+            if ( dabs(dqromb) <= eps * dabs(res) ) return
+         end if
+         s(j + 1) = s(j)
+         h(j + 1) = 0.25d0 * h(j)
+      end do
+      call an_error('qromb_flux: too many steps')
+   end function qromb_arr
+
+   !> 2nd order Runge-Kutta for arrays
+   subroutine rk2_arr(y, dydx, h, yout)
+      implicit none
+      real(dp), intent(in) :: h, y
+      real(dp), dimension(:), intent(in) :: dydx
+      real(dp), intent(out) :: yout
+      integer :: ndum
+      ndum = size(dydx)
+      yout = y + 0.5d0 * h * (dydx(ndum-1) + dydx(ndum))
+   end subroutine rk2_arr
 
    !> 4th order Runge-Kutta
    subroutine rk4(y, dydx, x, h, yout, derivs)

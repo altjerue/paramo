@@ -268,7 +268,7 @@ subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob
                + (1d0 / (bofg(gamma_bulk(i - 1)) * gamma_bulk(i - 1))) ) / cLight
          end if
          dt = t(i) - t(i - 1)
-      else if( radius_evol ) then
+      else if ( radius_evol ) then
          R(i) = R0 * ( (Rmax / R0)**(dble(i) / dble(numdt)) )
          dr = R(i) - R(i - 1)
          gamma_bulk(i) = adiab_blast_wave(R(i), gamma_bulk0, E0, Aw, with_wind, sind)

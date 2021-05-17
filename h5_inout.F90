@@ -289,7 +289,7 @@ contains
    subroutine h5io_wdble2(num_id, dname, buf, error)
       implicit none
       integer(HID_T), intent(in) :: num_id
-      real(dp), intent(in), dimension(:, :) :: buf
+      real(dp), intent(in), dimension(:,:) :: buf
       character(len=*), intent(in) :: dname
       integer, intent(inout) :: error
       integer, dimension(2) :: dims
@@ -305,7 +305,7 @@ contains
       integer(HID_T), intent(in) :: num_id
       character(len=*), intent(in) :: dname
       integer, intent(inout) :: error
-      real(dp), intent(out), dimension(:, :) :: buf
+      real(dp), intent(out), dimension(:,:) :: buf
       integer, dimension(2) :: dims
       dims(1) = size(buf, dim=1)
       dims(2) = size(buf, dim=2)

@@ -90,7 +90,7 @@ contains
       real(dp) :: j_nu, uB, nu0
       uB = B**2 / 8d0 / pi
       nu0 = 3d0 * B * nuconst / 2d0
-      if (nu.ge.nu0*g1**2.and.nu.le.nu0*g2**2) then
+      if ( (nu >= nu0 * g1**2) .and. (nu <= nu0* g2**2) ) then
          j_nu = 4d0 * cLight * (eCharge**2 / (mass_e * cLight**2))**2 * uB * &
                n0 * nu0**((q - 3d0) / 2d0) * nu**((1d0 - q) / 2d0) / 9d0
       else
@@ -120,9 +120,8 @@ contains
       integer, intent(in) :: n
       real(dp), intent(in) :: theta_a, theta_b, beta, gam, chi
       real(dp), intent(inout) :: s
-      integer :: it,i
-      real(dp) :: del,fsum,fa,fb,th
-
+      integer :: it, i
+      real(dp) :: del, fsum, fa, fb, th
       if (n == 1) then
          fa = P81_eq8(beta, gam, theta_a, chi)
          fb = P81_eq8(beta, gam, theta_b, chi)
@@ -138,7 +137,6 @@ contains
          end do
          s = 5d-1 * (s + del * fsum)
       end if
-
    end subroutine P81_trapzd
 
 
@@ -146,8 +144,8 @@ contains
    function P81_qromb(theta_a,theta_b,beta,gam,chi)
       implicit none
       real(dp), intent(in) :: theta_a, theta_b, beta, gam, chi
-      integer, parameter :: JMAX = 20, JMAXP = JMAX + 1, K = 5, KM = K - 1
-      real(dp), parameter :: EPS = 1d-12
+      integer, parameter :: JMAX=20, JMAXP=JMAX+1, K=5, KM=K-1
+      real(dp), parameter :: EPS=1d-12
       integer :: j
       real(dp) :: P81_qromb, dqromb
       real(dp), dimension(JMAXP) :: h, s
@@ -156,7 +154,7 @@ contains
          call P81_trapzd(theta_a, theta_b, beta, gam, chi, s(j), j)
          if (j >= K) then
             call polint(h(j - KM:j), s(j - KM:j), 0d0, P81_qromb, dqromb)
-            if (abs(dqromb).le.EPS*abs(P81_qromb)) return
+            if (abs(dqromb) <= EPS * abs(P81_qromb)) return
          end if
          s(j+1) = s(j)
          h(j+1) = 0.25d0 * h(j)
@@ -389,16 +387,14 @@ contains
 
 
    !> Synchrotron emissivity following eq. (22) in Ryan G., van Eerten H., Piro L., Troja E., 2020, ApJ, 896, 166
-   subroutine syn_broken(nu, to, r, Gbulk, gm, p, B, eps_e, n0, z, tho, emiss)
+   subroutine syn_broken(nu, to, r, Gbulk, gm, p, B, n0, z, tho, emiss)
       implicit none
-      real(dp), intent(in) :: nu, p, Gbulk, gm, eps_e, n0, to, r, z, tho, B
+      real(dp), intent(in) :: nu, p, Gbulk, gm, n0, to, r, z, tho, B
       real(dp), intent(out) :: emiss
-      real(dp) :: num, nuc, epsP, xiN, t, gc, n!, eth
+      real(dp) :: num, nuc, epsP, xiN, t, gc, n
       xiN = 1d0
       t = (r * dcos(tho) / cLight) + (to / (1d0 + z))
       n = 4d0 * n0 * Gbulk
-      ! eth = (Gbulk - 1d0) * n * energy_p
-      ! B = dsqrt(8d0 * pi * eth * eps_B)
       gc = 6d0 * pi * Gbulk * mass_e * cLight / (sigmaT * B**2 * t)
       num = 3d0 * eCharge * B * gm**2 / (fourpi * mass_e * cLight)
       nuc = 3d0 * eCharge * B * gc**2 / (fourpi * mass_e * cLight)
@@ -1293,5 +1289,59 @@ contains
       call tridag_ser(a(2:), b, c(:Ng1), r, nout)
 
    end subroutine Kompaneets_FinDif
+
+
+   ! ######                #######
+   ! #     #   ##   #####  #       #      #    # #    #
+   ! #     #  #  #  #    # #       #      #    #  #  #
+   ! ######  #    # #    # #####   #      #    #   ##
+   ! #   #   ###### #    # #       #      #    #   ##
+   ! #    #  #    # #    # #       #      #    #  #  #
+   ! #     # #    # #####  #       ######  ####  #    #
+   subroutine observed_Fnu(r, doppler, jnut, z, dlum, flux)
+      implicit none
+      real(dp), intent(in) :: z, dlum
+      real(dp), intent(in), dimension(:) :: r, doppler
+      real(dp), intent(in), dimension(:,:) :: jnut
+      real(dp), intent(out), dimension(:,:) :: flux
+      integer :: i, j, numf, numr
+      numf = size(jnut, dim=1)
+      numr = size(jnut, dim=2)
+      !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) PRIVATE(i, j)
+      do j=1, numf
+         do i=2, numr
+            flux(j, i) = dmax1(1d-200, (1d0 + z) * &
+                  qromb_arr(r(:i), r(1), r(i), jnut(j, :i) * (r(:i) * doppler(:i))**2) &
+                  / (fourpi * dlum**2))
+         end do
+      end do
+      !$OMP END PARALLEL DO
+   end subroutine observed_Fnu
+
+   subroutine observed_nuFnu(r, doppler, jnut, nu, dlum, flux)
+      implicit none
+      real(dp), intent(in) :: dlum
+      real(dp), intent(in), dimension(:) :: r, doppler
+      real(dp), intent(in), dimension(:,:) :: jnut, nu
+      integer :: i, j, numf, numr
+      real(dp), dimension(size(jnut, dim=1), size(jnut, dim=2)) :: flux
+      numf = size(jnut, dim=1)
+      numr = size(jnut, dim=2)
+      flux = 1d-200
+      !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) PRIVATE(i, j)
+      do j=1, numf
+         do i=2, numr
+            flux(j, i) = dmax1(1d-200, &
+                  qromb_arr(r(:i), r(1), r(i), nu(j, :i) * jnut(j, :i) * r(:i)**2 * doppler(:i)**3) / (fourpi * dlum**2))
+         end do
+      end do
+      !$OMP END PARALLEL DO
+   end subroutine observed_nuFnu
+
+   ! function observed_flux_struc(r, doppler, th, phi, jnut, dlum, z) result(flux)
+   !    implicit none
+   !    real(dp) :: r, doppler, th, phi, jnut, dlum, z
+   !    real(dp) :: flux
+   ! end function observed_flux_struc
 
 end module radiation
