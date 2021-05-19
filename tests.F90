@@ -302,7 +302,7 @@ contains
       G0 = 200d0
       E0 = 1d52
       tstep = 1d-3
-      tmax = 1d4
+      tmax = 1d5
       theta_obs = 0d0
       mu_obs = dcos(theta_obs)
       n_ext = 1d0

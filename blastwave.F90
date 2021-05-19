@@ -246,27 +246,24 @@ contains
    !! @param theta output direction of the shock
    !! @param Gbulk output bulk Lorentz factor
    !! @param nlines output total number of directions
-   subroutine bw_mezcal(filename, nlines, r, theta, Gbulk)
+   subroutine bw_mezcal(filename, r, th, vr, vh, Gbulk, rho)
       implicit none
-      integer, intent(in) :: nlines
       character(len=*), intent(in) :: filename
-      real(dp), intent(out), allocatable, dimension(:) :: r, theta, Gbulk
-      integer :: i, io
-      real(dp) :: x, y, vx,vy
-      ! real(dp), allocatable, dimension(:) :: v
-      if ( nlines /= count_lines(filename) ) &
-            call an_error("bw_mezcal: nlines and number of lines in "//trim(filename)//"are not the same")
+      real(dp), intent(out), allocatable, dimension(:) :: r, th, Gbulk, rho, vr, vh
+      integer :: i, io, nlines
+      real(dp) :: v
+      nlines = count_lines(filename)
       call realloc(r, nlines)
-      ! call realloc(v, nlines)
-      call realloc(theta, nlines)
+      call realloc(v, nlines)
+      call realloc(th, nlines)
       call realloc(Gbulk, nlines)
       ! allocate(r(nlines), v(nlines), theta(nlines), Gbulk(nlines))
       open(77, file=trim(filename), iostat=io, status='old', action='read')
-      if (io /= 0) stop "Cannot open file!"
+      if (io /= 0) call an_error("bw_mezcal: file "//trim(filename)//" can not be opened")
       do i=1, nlines
-         read(77, *) x, y, vx, vy, theta(i), Gbulk(i)
-         r(i) = dsqrt(x**2 + y**2)
-         ! v(i) = dsqrt(vx**2 + vy**2)
+         read(77, *) r(i), th(i), vr(i), vh(i), rho(i)
+         v = dsqrt(vr(i)**2 + vh(i)**2)
+         Gbulk(i) = gofb(v / cLight)
       end do
       close(77)
    end subroutine bw_mezcal

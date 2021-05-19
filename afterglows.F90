@@ -40,7 +40,7 @@ subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob
    character(len=*), parameter :: screan_head = &
       '---------------------------------------------------------------------'&
       //new_line('A')//&
-      ' | Iteration | Obser. time |   BW radius |  gamma_bulk |      Bfield |'&
+      '| Iteration | Obser. time |   BW radius |  gamma_bulk |      Bfield |'&
       //new_line('A')//&
       ' ---------------------------------------------------------------------', &
       on_screen = "(' | ', I9, ' | ', ES11.4, ' | ', ES11.4, ' | ', ES11.4, ' | ', ES11.4, ' |')"
@@ -187,10 +187,9 @@ subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob
 
    !---> Magnetic field
    b_const = dsqrt(32d0 * pi * eps_B * mass_p) * cLight
-   !B = b_const * dsqrt(n_ext) * gamma_bulk(0)
+   ! B = b_const * dsqrt(n_ext) * gamma_bulk(0)
    !B = b_const * dsqrt(n_ext * (gamma_bulk(0) - 1d0) * gamma_bulk(0))
-   !B = b_const * dsqrt(n_ext * (gamma_bulk(0) - 1d0) * (gamma_bulk(0) + 0.75d0))
-   B = b_const * dsqrt(n_ext * (gamma_bulk(0) - 1d0) * gamma_bulk(0) / 2d0)
+   B = b_const * dsqrt(n_ext * (gamma_bulk(0) - 1d0) * (gamma_bulk(0) + 0.75d0))
    uB = B**2 / (8d0 * pi)
 
    !---> Radiation fields
@@ -277,7 +276,7 @@ subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob
          beta_bulk(i) = bofg(gamma_bulk(i))
          call rk2_arr(t(i - 1), 1d0 / (beta_bulk(i - 1:i) * gamma_bulk(i - 1:i) * cLight), dr, t(i))
          dt = t(i) - t(i - 1)
-      else
+         else
          R(i) = R0 * (Rmax / R0)**(dble(i) / dble(numt))
          dr = R(i) - R(i - 1)
          if ( numerical ) then
@@ -316,10 +315,9 @@ subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob
       n_ext = Aw * R(i)**(-sind)
 
       !-----> Magnetic field assuming equipartition
-      !B = b_const * dsqrt(n_ext) * gamma_bulk(i)
+      ! B = b_const * dsqrt(n_ext) * gamma_bulk(i)
       !B = b_const * dsqrt(n_ext * (gamma_bulk(i) - 1d0) * gamma_bulk(i))
-      !B = b_const * dsqrt(n_ext * (gamma_bulk(i) - 1d0) * (gamma_bulk(i) + 0.75d0))
-      B = b_const * dsqrt(n_ext * (gamma_bulk(i) - 1d0) * gamma_bulk(i) / 2d0)
+      B = b_const * dsqrt(n_ext * (gamma_bulk(i) - 1d0) * (gamma_bulk(i) + 0.75d0))
       uB = B**2 / (8d0 * pi)
 
       !-----> Radiation fields
@@ -558,10 +556,11 @@ subroutine mezcal(params_file, output_file, with_ic, KNcool, assume_blob)
    use blastwave
    use specialf
    implicit none
+
    character(len=*), intent(in) :: params_file
    logical, intent(in) :: assume_blob, KNcool, with_ic
    character(len=*),intent(inout) :: output_file
-   integer, parameter :: nmod=50
+   integer, parameter :: nmod = 50
    character(len=*), parameter :: screan_head = &
       '| Iteration | Obser. time |   BW radius |  gamma_bulk |      Bfield |'&
       //new_line('A')//&
@@ -782,7 +781,7 @@ subroutine mezcal(params_file, output_file, with_ic, KNcool, assume_blob)
             jnut(l, :, i) = jsyn(l, :, i)
          end if
 
-      end do derroteros_loop
+   end do derroteros_loop
 
       if ( mod(i, nmod) == 0 .or. i == 1 ) &
             write(*, on_screen) i, t_lab(i), r(i, 0)
@@ -806,18 +805,18 @@ subroutine mezcal(params_file, output_file, with_ic, KNcool, assume_blob)
    call h5io_wint0 (group_id, 'NF',        numf, herror)
    call h5io_wint0 (group_id, 'NG',        numg, herror)
    call h5io_wint0 (group_id, 'NH',        numh, herror)
-   call h5io_wdble0(group_id, 'd_lum',     d_lum, herror)
-   call h5io_wdble0(group_id, 'redshift',  z, herror)
+   call h5io_wdble0(group_id, 'd_lum', d_lum, herror)
+   call h5io_wdble0(group_id, 'redshift', z, herror)
    call h5io_wdble0(group_id, 'gamma_min', gmin, herror)
    call h5io_wdble0(group_id, 'gamma_max', gmax, herror)
-   call h5io_wdble0(group_id, 'gamma_1',   g1, herror)
-   call h5io_wdble0(group_id, 'gamma_2',   g2, herror)
+   call h5io_wdble0(group_id, 'gamma_1', g1, herror)
+   call h5io_wdble0(group_id, 'gamma_2', g2, herror)
    call h5io_wdble0(group_id, 'pwl-index', pind, herror)
    call h5io_wdble0(group_id, 'epsilon_e', eps_e, herror)
    call h5io_wdble0(group_id, 'epsilon_B', eps_B, herror)
-   call h5io_wdble0(group_id, 'nu_min',    numin, herror)
-   call h5io_wdble0(group_id, 'nu_max',    numax, herror)
-   call h5io_wdble0(group_id, 'E0',        E0, herror)
+   call h5io_wdble0(group_id, 'nu_min', numin, herror)
+   call h5io_wdble0(group_id, 'nu_max', numax, herror)
+   call h5io_wdble0(group_id, 'E0', E0, herror)
    call h5io_closeg(group_id, herror)
    ! ------  Saving data  ------
    call h5io_wdble1(file_id, 't_lab',      t_lab, herror)
