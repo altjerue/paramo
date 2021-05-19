@@ -16,7 +16,7 @@ contains
    !  #     # #       #    ## #     # #     #
    !   #####  #       #     #  #####   #####
    !
-   !> Evolution model of a blast-wave as in eqs. (9) and (10) of Sari, Piran &
+   !> Evolution model of a blast-wave as in eqs. (9) and (10) of Sari, Piran & 
    !! Narayan (1998)
    subroutine blastwave_approx_SPN98(G0, E0, n, tobs, Gshk, Rshk, adiabatic)
       implicit none
@@ -130,10 +130,10 @@ contains
          Gshk = (x + G0 * M0) / dsqrt(M0**2 + 2d0 * G0 * M0 * x + x**2)
       case(2)
          if ( .not. present(s) ) call an_error("deceleration_radius: Wind index s not declared")
-        !---> Eqs. (4)-(5) in PK00
-         R0 = ( (3d0 - s) * E0 / (4d0 * pi * mass_p * cLight**2 * Aw * G0**2))**(1d0 / (3d0 - s) )
-         x = Rshk / R0
-         Gshk = 0.5d0 * x**(s - 3d0) * G0 * ( dsqrt( 4d0 * x**(3d0 - s) + 1d0 + (2d0 * x**(3d0 - s) / G0)**2 ) - 1d0 )
+      !---> Eqs. (4)-(5) in PK00
+      R0 = ( (3d0 - s) * E0 / (4d0 * pi * mass_p * cLight**2 * Aw * G0**2))**(1d0 / (3d0 - s) )
+      x = Rshk / R0
+      Gshk = 0.5d0 * x**(s - 3d0) * G0 * ( dsqrt( 4d0 * x**(3d0 - s) + 1d0 + (2d0 * x**(3d0 - s) / G0)**2 ) - 1d0 )
       case(3)
          ! Numerical interpolation for a blast wave using an external file (ASCII)
          if ( .not. (present(Npts) .or. present(filename)) ) then
@@ -164,19 +164,19 @@ contains
    end function adiab_blastwave
 
 
-   !> Depending on the model, the blast wave cross sectional area may be
+   !> Depending on the model, the blast wave cross sectional area may be 
    !! isotropic or beamed. This subroutine returns the the cross sectional area,
    !! volume, radius/thickness and Omega_j of the emitting region. The emitting
    !! region may be a blob or a slab.
    subroutine bw_crossec_area(beam_kind, blob, Rbw, Gbulk, theta_j0, Rb, volume, csa, Oj)
       implicit none
-      integer, intent(in) :: beam_kind
+      integer, intent(in)   :: beam_kind
       real(dp), intent(in) :: Rbw, theta_j0, Gbulk
-      logical, intent(in) :: blob
+      logical, intent(in)   :: blob
       real(dp), intent(out) :: csa, volume, Rb, Oj
-      real(dp) :: theta_j
+      real(dp)              :: theta_j
       !---> Uniform isotropic or beamed?
-      select case( beam_kind )
+         select case( beam_kind )
          case(0)!> Isotropic blast-wave
             theta_j = pi
          case(1)!> Half blob
@@ -191,16 +191,16 @@ contains
             theta_j = theta_j0 + 1d0 / Gbulk
          case default
             call an_error("bw_crossec_area: wrong value of beam_kind")
-      end select
-      Oj = 2d0 * pi * (1d0 - dcos(theta_j))
+         end select
+         Oj = 2d0 * pi * (1d0 - dcos(theta_j))
       csa = Oj * Rbw**2
-      if ( blob ) then
-         Rb = Rbw * theta_j
-         volume = 4d0 * pi * Rb**3 / 3d0
+         if ( blob ) then
+            Rb = Rbw * theta_j
+            volume = 4d0 * pi * Rb**3 / 3d0
       else
          Rb = Rbw / (12d0 * Gbulk)
-         volume = csa * Rb
-      end if
+            volume = csa * Rb
+         end if
    end subroutine bw_crossec_area
 
 #if 0
