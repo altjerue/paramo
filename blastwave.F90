@@ -124,24 +124,27 @@ contains
 
 
    !> Analytic solution for the adiabatic blast wave.
-   function adiab_blast_wave(Rshk, G0, E0, Aw, with_wind, s) result(Gshk)
+   function adiab_bw(Rshk, G0, E0, n_ext) result(Gshk)
+      implicit none
+      real(dp), intent(in) :: Rshk, G0, E0, n_ext
+      real(dp) :: M0, x, Gshk
+      !---> Eqs. (9)-(10) in CD99
+      M0 = E0 / (G0 * cLight**2)
+      x = 4d0 * pi * mass_p * n_ext * Rshk**3 / 3d0
+      Gshk = (x + G0 * M0) / dsqrt(M0**2 + 2d0 * G0 * M0 * x + x**2)
+   end function adiab_bw
+
+
+   !> Analytic solution for the adiabatic blast wave with wind.
+   function adiab_bw_wind(Rshk, G0, E0, Aw, s) result(Gshk)
       implicit none
       real(dp), intent(in) :: Rshk, G0, E0, Aw, s
-      logical, intent(in) :: with_wind
-      real(dp) :: M0, x, Gshk, R0
-      if ( with_wind ) then
-         !---> Eqs. (4)-(5) in PK00
-         R0 = ( (3d0 - s) * E0 / (4d0 * pi * mass_p * cLight**2 * Aw * G0**2))**(1d0 / (3d0 - s) )
-         x = Rshk / R0
-         Gshk = 0.5d0 * x**(s - 3d0) * G0 * ( dsqrt( 4d0 * x**(3d0 - s) + 1d0 + (2d0 * x**(3d0 - s) / G0)**2 ) - 1d0 )
-      else
-         !---> Eqs. (9)-(10) in CD99
-         M0 = E0 / (G0 * cLight**2)
-         x = 4d0 * pi * mass_p * Aw * Rshk**3 / 3d0
-         Gshk = (x + G0 * M0) / dsqrt(M0**2 + 2d0 * G0 * M0 * x + x**2)
-      end if
-   end function adiab_blast_wave
-
+      real(dp) :: x, Gshk, R0
+      !---> Eqs. (4)-(5) in PK00
+      R0 = ( (3d0 - s) * E0 / (4d0 * pi * mass_p * cLight**2 * Aw * G0**2))**(1d0 / (3d0 - s) )
+      x = Rshk / R0
+      Gshk = 0.5d0 * x**(s - 3d0) * G0 * ( dsqrt( 4d0 * x**(3d0 - s) + 1d0 + (2d0 * x**(3d0 - s) / G0)**2 ) - 1d0 )
+   end function adiab_bw_wind
 
    !> Depending on the model, the blast wave cross sectional area may be 
    !! isotropic or beamed. This subroutine returns the the cross sectional area,
@@ -245,26 +248,26 @@ contains
    !! @param theta output direction of the shock
    !! @param Gbulk output bulk Lorentz factor
    !! @param nlines output total number of directions
-   subroutine bw_mezcal(filename, r, th, vr, vh, Gbulk, rho)
-      implicit none
-      character(len=*), intent(in) :: filename
-      real(dp), intent(out), allocatable, dimension(:) :: r, th, Gbulk, rho, vr, vh
-      integer :: i, io, nlines
-      real(dp) :: v
-      nlines = count_lines(filename)
-      call realloc(r, nlines)
-      call realloc(v, nlines)
-      call realloc(th, nlines)
-      call realloc(Gbulk, nlines)
-      ! allocate(r(nlines), v(nlines), theta(nlines), Gbulk(nlines))
-      open(77, file=trim(filename), iostat=io, status='old', action='read')
-      if (io /= 0) call an_error("bw_mezcal: file "//trim(filename)//" can not be opened")
-      do i=1, nlines
-         read(77, *) r(i), th(i), vr(i), vh(i), rho(i)
-         v = dsqrt(vr(i)**2 + vh(i)**2)
-         Gbulk(i) = gofb(v / cLight)
-      end do
-      close(77)
-   end subroutine bw_mezcal
+   ! subroutine bw_mezcal(filename, r, th, vr, vh, Gbulk, rho)
+   !    implicit none
+   !    character(len=*), intent(in) :: filename
+   !    real(dp), intent(out), allocatable, dimension(:) :: r, th, Gbulk, rho, vr, vh
+   !    integer :: i, io, nlines
+   !    real(dp) :: v
+   !    nlines = count_lines(filename)
+   !    call realloc(r, nlines)
+   !    call realloc(v, nlines)
+   !    call realloc(th, nlines)
+   !    call realloc(Gbulk, nlines)
+   !    ! allocate(r(nlines), v(nlines), theta(nlines), Gbulk(nlines))
+   !    open(77, file=trim(filename), iostat=io, status='old', action='read')
+   !    if (io /= 0) call an_error("bw_mezcal: file "//trim(filename)//" can not be opened")
+   !    do i=1, nlines
+   !       read(77, *) r(i), th(i), vr(i), vh(i), rho(i)
+   !       v = dsqrt(vr(i)**2 + vh(i)**2)
+   !       Gbulk(i) = gofb(v / cLight)
+   !    end do
+   !    close(77)
+   ! end subroutine bw_mezcal
 
 end module blastwave

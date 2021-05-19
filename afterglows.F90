@@ -19,7 +19,7 @@ subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob
    use SRtoolkit
    use distribs
    use radiation
-   use pairs
+   ! use pairs
    use blastwave
    use specialf
    implicit none
@@ -150,7 +150,7 @@ subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob
       t(0) = R(0) / (beta_bulk * gamma_bulk(0) * cLight)
    else
       R(0) = R0
-      gamma_bulk(0) = adiab_blast_wave(R(0), gamma_bulk0, E0, Aw, with_wind, sind)
+      gamma_bulk(0) = adiab_bw_wind(R(0), gamma_bulk0, E0, Aw, sind)
       beta_bulk = bofg(gamma_bulk(0))
       D(0) = Doppler(gamma_bulk(0), mu_obs)
       t_obs(0) = (1d0 + z) * R(0) / (beta_bulk * gamma_bulk(0) * cLight * D(0))
@@ -271,7 +271,7 @@ subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob
       else if ( radius_evol ) then
          R(i) = R0 * ( (Rmax / R0)**(dble(i) / dble(numdt)) )
          dr = R(i) - R(i - 1)
-         gamma_bulk(i) = adiab_blast_wave(R(i), gamma_bulk0, E0, Aw, with_wind, sind)
+         gamma_bulk(i) = adiab_bw_wind(R(i), gamma_bulk0, E0, Aw, sind)
          D(i) = Doppler(gamma_bulk(i), mu_obs)
          beta_bulk = bofg(gamma_bulk(i))
          if ( pwl_over_trpzd_integ ) then
