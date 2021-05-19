@@ -419,7 +419,7 @@ contains
       real(dp), intent(in) :: a, b
       real(dp), intent(in), dimension(:) :: x, f
       integer, parameter :: jmax=30, jmaxp=jmax+1, k=10, km=k-1
-      real(dp), parameter :: eps=1d-6
+      real(dp), parameter :: eps=1d-5
       integer :: j
       real(dp) :: dqromb, res
       real(dp), dimension(jmaxp) :: h, s

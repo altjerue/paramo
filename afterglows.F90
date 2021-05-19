@@ -538,6 +538,11 @@ subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob
 end subroutine bw1D_afterglow
 
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
 ! #    # ###### ######  ####    ##   #
 ! ##  ## #          #  #    #  #  #  #
 ! # ## # #####     #   #      #    # #
@@ -668,25 +673,10 @@ subroutine mezcal(params_file, output_file, KNcool, assume_blob, with_ic)
    !!!TODO: Calculated the trigonometric relations between theta_obs and theta_jet
 
    !-----> Initializing blast wave
-   ! theta_j0 = 0.2d0
-   ! beta_bulk = bofg(gamma_bulk(:, 0))
-   ! call bw_crossec_area(gamma_bulk0, R0, gamma_bulk0, theta_j0, flow_kind, blob, Rb(0), volume(0), cs_area, Omega_j)
    !!!NOTE Each crossectional area will be given by the corresponding element of arc = \Delta\phi * r
    !!!IDEA Consider each direction of propagation as an individual jet
    !!!QUESTION What is the proper crossectional area?
-
-   !-----> External medium
-   ! sind = 0d0
-   ! Aw = n_ext0
-   ! n_ext = n_ext0
-
-   ! call deceleration_radius(Rd, Rd2, E0, gamma_bulk0, Aw, with_wind, sind)
-   ! td = (1d0 + z) * Rd / (4d0 * gamma_bulk(:, 0)**2 * cLight)
-
-   !---> True outflow energy and decceleration radius
-   !!!NOTE: The energy of the blast-wave will be different for each direction.
-   !!!TODO: Setup properly the initial energy of the blast-wave for each direction
-   Ejet = E0 * Omega_j / (4d0 * pi)
+   call bw_mezcal("gaus_shock.000.out", r(:, 0), theta, Gbulk(:, 0), rho(:, 0))
 
    !---> Locating the emission region
    !!!NOTE: If we are going to calculate the Doppler factor here, we must take into account the observer viewing angle. For each direaction of motion, the same observer will have a different viewing angle at each time-step
