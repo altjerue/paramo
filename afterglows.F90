@@ -34,7 +34,8 @@ subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob
       ' ---------------------------------------------------------------------', &
       on_screen = "(' | ', I9, ' | ', ES11.4, ' | ', ES11.4, ' | ', ES11.4, ' | ', ES11.4, ' |')"
 #ifdef HDF5
-   integer(HID_T) :: file_id, group_id, herror
+   integer(HID_T) :: file_id, group_id
+   integer :: herror
 #endif
    integer :: i, j, k, numbins, numdf, numdt, time_grid, flow_kind
    real(dp) :: uB, uext, L_j, gmin, gmax, numin, numax, pind, B, R0, Rmax, &
@@ -584,8 +585,9 @@ subroutine mezcal(params_file, output_file, KNcool, assume_blob, with_ic)
       on_screen = "(' | ', I9, ' | ', ES11.4, ' | ', ES11.4, ' | ', ES11.4, ' | ', ES11.4, ' |')"
 #ifdef HDF5
    integer(HID_T) :: file_id, group_id
+   integer :: herror
 #endif
-   integer :: i, j, k, l, numt, numf, numg, numd, herror
+   integer :: i, j, k, l, numt, numf, numg, numd
    real(dp) :: uB, uext, L_j, gmin, gmax, numin, numax, pind, B, R0, Rmax, &
          tinj, g1, g2, tstep, Q0, tmax, d_lum, z, n_ext, urad_const, Aw, sind, &
          theta_obs, mu_obs, nu_ext, tesc_e, uext0, eps_e, tlc, g1_const, Rd2, &

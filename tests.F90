@@ -23,6 +23,11 @@ program tests
    use blastwave
    implicit none
 
+#ifdef HDF5
+   integer(HID_T) :: file_id, group_id
+   integer :: herror
+#endif
+
 #if TEST_CHOICE == 1
    call steady_state
 #elif TEST_CHOICE == 2
@@ -266,9 +271,6 @@ contains
             &' | Iteration |  Lab. time  |   BW radius |  gamma_bulk |      Bfield |'&
             &//new_line('A')//' '//horiz_line, &
             &on_screen = "(' | ', I9, ' | ', ES11.4, ' | ', ES11.4, ' | ', ES11.4, ' | ', ES11.4, ' |')"
-#ifdef HDF5
-      integer(HID_T) :: file_id, group_id, herror
-#endif
       integer :: numg, numf, numt, i, j
       real(dp) :: n_ext, dr, dt, E0, eps_B, eps_e, B, g1, g2, g2_const, gmin, &
             gmax, eps_g2, G0, L_e, numax, numin, pind, Q0, tmax, tstep, tlc, &

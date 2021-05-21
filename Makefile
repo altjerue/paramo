@@ -47,10 +47,18 @@ endif
 
 ################################################################################
 #  servers and libraries level
-# SERVER: 0 (UNIX PC) 1 (Brown@Purdue)
+# SERVER: 0 (UNIX PC) 1 (Brown@Purdue) 2 (RC@RIT)
 SERVER = 0
 ifeq ($(SERVER),1)
-LIBS+=-L/usr/lib64
+LIBS:=-L/usr/lib64
+endif
+
+ifeq ($(SERVER),2)
+ifeq ($(USEHDF5),1)
+LIBS:=-L/.autofs/tools/spack/opt/spack/linux-rhel7-skylake_avx512/gcc-7.4.0/hdf5-1.10.5-cplfsiocth2wt5a24qp7uasw4tz5vyjm/lib
+INCL:=-I/.autofs/tools/spack/opt/spack/linux-rhel7-skylake_avx512/gcc-7.4.0/hdf5-1.10.5-cplfsiocth2wt5a24qp7uasw4tz5vyjm/include
+FC=h5pfc
+endif
 
 endif
 
