@@ -19,5 +19,5 @@ __pycache__
 .idea
 *.txt
 *.log
-.vscode*
+*.code-workspace
 *.out

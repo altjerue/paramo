@@ -570,17 +570,19 @@ subroutine mezcal(params_file, output_file, with_ic, KNcool, assume_blob)
    integer(HID_T) :: file_id, group_id
    integer :: herror
 #endif
-   integer :: i, j, l, numt, numf, numg, numh
-   real(dp) :: gmin, gmax, numin, numax, b_const, g1_const, eps_g2, g2_const, &
-         E0, eps_B, eps_e, R0, g1, g2, pind, Q0, L_e, uB, tlc, rb, dr, dt, &
-         d_lum, z, theta_los, cs_area, Omega_j, dth
-   real(dp), allocatable, dimension(:) :: nu_com, gamma_e, theta, t_lab, &
-         zeros_arr, Inu
-   real(dp), allocatable, dimension(:,:) :: Dopp, gamma_bulk, r, volume, rho, &
-         beta_bulk, Bfield, r_mu_obs, v_mu_obs, Qinj, dotg, t_com
-   real(dp), allocatable, dimension(:,:,:) :: jnut, anut, jsyn, jssc, n_e
-   character(len=8) :: fmt = '(I3.3)'
-   character(len=256) :: ifile, mezcal_file
+   integer :: i, j, k, l, numt, numf, numg, numd
+   real(dp) :: uB, uext, L_j, gmin, gmax, numin, numax, pind, B, R0, Rmax, &
+         tinj, g1, g2, tstep, Q0, tmax, d_lum, z, n_ext, urad_const, Aw, sind, &
+         theta_obs, mu_obs, nu_ext, tesc_e, uext0, eps_e, tlc, g1_const, Rd2, &
+         Ejet, eps_B, E0, gamma_bulk0, L_e, nu_ext0, tmin, td, Rd, dr, &
+         b_const, beta_bulk, eps_g2, theta_j0, cs_area, n_ext0, g2_const, &
+         Omega_j, dt, f_esc
+   real(dp), allocatable, dimension(:) :: freqs, t, Inu, gamma_e, urad, &
+         nu_obs, t_obs, gamma_bulk, R, tcool, Rb, volume, dotg_tmp
+   real(dp), allocatable, dimension(:,:) :: dotg, n_e, jnut, jmbs, jssc, jeic, &
+         ambs, anut, Qinj, tau_gg, pow_syn, Ddiff, Dopp
+   logical :: full_rad_cool, bw_approx, radius_evol, pwl_over_trpzd_integ
+   ! type(blast_wave), allocatable, dimension(:) :: bw
 
    !--->  Params
    call read_params(params_file)
