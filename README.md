@@ -13,12 +13,22 @@ Paramo stands for: PArticles and RAdiation MOnitor. In a few words: this code so
 
 ## How to run it
 
+### Customize `Makefile`
+
+The `Makefile` has a sereies of variables that allow to compile to our convenience.
+
+- `COMPILER`: 0 for GCC and 1 for Intel compilers
+- `DEBUGGING`: Compile in debugging or optimized mode
+- `USEHDF5`: Compile with HDF5 libraries and save data in that format. **NOTE**: Not all problems are 
+
+### Compile and run
+
 - Clone the repository
 - Create parameters file
 - `make`
 - Run executable
 
-### Example
+## Example
 
 A fast way to run `Paramo` can be done by downloading/copy the file [`runGRB190114C.py`](https://bitbucket.org/comala/workspace/snippets/LpLgGL/afterglow-of-grb190114c#file-runGRB190114C.py) from the [snippets](https://bitbucket.org/comala/workspace/snippets/). Running this file will:
 
@@ -26,7 +36,7 @@ A fast way to run `Paramo` can be done by downloading/copy the file [`runGRB1901
 - Compile `Paramo` for an afterglow simulation
 - Run the executable
 
-for you. **Note**: The code can be run from another directory. This can be done by specifying in `runGRB190114C.py` its full address, as well `Paramo`'s.
+**Note**: The code can be run from another directory. This can be done by specifying in `runGRB190114C.py` its full address, as well `Paramo`'s.
 
 # References
 

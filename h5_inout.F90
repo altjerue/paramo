@@ -313,6 +313,36 @@ contains
    end subroutine h5io_rdble2
 
 
+      !   ----->   write double precision 3D array
+   subroutine h5io_wdble3(num_id, dname, buf, error)
+      implicit none
+      integer(HID_T), intent(in) :: num_id
+      real(dp), intent(in), dimension(:,:,:) :: buf
+      character(len=*), intent(in) :: dname
+      integer, intent(inout) :: error
+      integer, dimension(3) :: dims
+      dims(1) = size(buf, dim=1)
+      dims(2) = size(buf, dim=2)
+      dims(3) = size(buf, dim=3)
+      call h5io_write_double(num_id, dname, 3, dims, buf, error)
+   end subroutine h5io_wdble3
+
+
+   !   ----->   read double precision 3D array
+   subroutine h5io_rdble3(num_id, dname, buf, error)
+      implicit none
+      integer(HID_T), intent(in) :: num_id
+      character(len=*), intent(in) :: dname
+      integer, intent(inout) :: error
+      real(dp), intent(out), dimension(:,:,:) :: buf
+      integer, dimension(3) :: dims
+      dims(1) = size(buf, dim=1)
+      dims(2) = size(buf, dim=2)
+      dims(3) = size(buf, dim=3)
+      call h5io_read_double(num_id, dname, 3, dims, buf, error)
+   end subroutine h5io_rdble3
+
+
    !   ----->   write double precision in general
    subroutine h5io_write_double(num_id, dname, num_dims, dims, buf, error)
       implicit none
