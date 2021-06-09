@@ -124,10 +124,10 @@ contains
 
       select case( sol_kind )
       case(1)
-         !---> Eqs. (9)-(10) in CD99
-         M0 = E0 / (G0 * cLight**2)
+      !---> Eqs. (9)-(10) in CD99
+      M0 = E0 / (G0 * cLight**2)
          x = 4d0 * pi * mass_p * Aw * Rshk**3 / 3d0
-         Gshk = (x + G0 * M0) / dsqrt(M0**2 + 2d0 * G0 * M0 * x + x**2)
+      Gshk = (x + G0 * M0) / dsqrt(M0**2 + 2d0 * G0 * M0 * x + x**2)
       case(2)
          if ( .not. present(s) ) call an_error("deceleration_radius: Wind index s not declared")
       !---> Eqs. (4)-(5) in PK00
@@ -176,7 +176,7 @@ contains
       real(dp), intent(out) :: csa, volume, Rb, Oj
       real(dp)              :: theta_j
       !---> Uniform isotropic or beamed?
-         select case( beam_kind )
+      select case( beam_kind )
          case(0)!> Isotropic blast-wave
             theta_j = pi
          case(1)!> Half blob
@@ -184,23 +184,23 @@ contains
          case(2)!> Classic beamed jet
             theta_j = 1d0 / Gbulk
          case(3)!> Beamed jet with initial opening angle theta_j0
-            theta_j = theta_j0
+         theta_j = theta_j0
          case(4)
-            theta_j = theta_j0 + 1d0 / (Gbulk * dsqrt(3d0))
+         theta_j = theta_j0 + 1d0 / (Gbulk * dsqrt(3d0))
          case(5)
-            theta_j = theta_j0 + 1d0 / Gbulk
-         case default
-            call an_error("bw_crossec_area: wrong value of beam_kind")
-         end select
-         Oj = 2d0 * pi * (1d0 - dcos(theta_j))
+         theta_j = theta_j0 + 1d0 / Gbulk
+      case default
+         call an_error("bw_crossec_area: wrong value of beam_kind")
+      end select
+      Oj = 2d0 * pi * (1d0 - dcos(theta_j))
       csa = Oj * Rbw**2
-         if ( blob ) then
-            Rb = Rbw * theta_j
-            volume = 4d0 * pi * Rb**3 / 3d0
+      if ( blob ) then
+         Rb = Rbw * theta_j
+         volume = 4d0 * pi * Rb**3 / 3d0
       else
-         Rb = Rbw / (12d0 * Gbulk)
-            volume = csa * Rb
-         end if
+         Rb = Rbw / (12d0 * (Gbulk + 0.75d0))
+         volume = csa * Rb
+      end if
    end subroutine bw_crossec_area
 
 #if 0
@@ -246,27 +246,39 @@ contains
    !! @param theta output direction of the shock
    !! @param Gbulk output bulk Lorentz factor
    !! @param nlines output total number of directions
-   subroutine bw_mezcal(filename, r, th, vr, vh, Gbulk, rho)
+   subroutine bw_mezcal(filename, th_los, l_los, r, th, Gbulk, rho, mu_obs)
       implicit none
+      real(dp), intent(in) :: th_los, l_los
       character(len=*), intent(in) :: filename
-      real(dp), intent(out), allocatable, dimension(:) :: r, th, Gbulk, rho, vr, vh
+      real(dp), intent(out), dimension(:) :: r, th, Gbulk, rho, mu_obs
       integer :: i, io, nlines
-      real(dp) :: v
+      real(dp) :: v, vr, vh, th_v, l_v
       nlines = count_lines(filename)
-      call realloc(r, nlines)
-      call realloc(v, nlines)
-      call realloc(th, nlines)
-      call realloc(Gbulk, nlines)
+      ! call realloc(r, nlines)
+      ! call realloc(v, nlines)
+      ! call realloc(th, nlines)
+      ! call realloc(Gbulk, nlines)
       ! allocate(r(nlines), v(nlines), theta(nlines), Gbulk(nlines))
       open(77, file=trim(filename), iostat=io, status='old', action='read')
       if (io /= 0) call an_error("bw_mezcal: file "//trim(filename)//" can not be opened")
       do i=1, nlines
-         read(77, *) r(i), th(i), vr(i), vh(i), rho(i)
-         v = dsqrt(vr(i)**2 + vh(i)**2)
-         Gbulk(i) = gofb(v / cLight)
+         !! Reading columns
+         read(77, *) r(i), th(i), vr, vh, rho(i)
+         !! Calculating the bulk Lorentz factor
+         v = dsqrt(vr**2 + vh**2)
+         Gbulk(i) = gofb(v)
+         !! Calculating the observing viewing angle
+         if ( th(i) < th_los ) then
+            th_v = halfpi - (th_los - th(i))
+         else if ( th(i) == th_los ) then
+            th_v = th_los
+         else
+            th_v = th(i) - th_los
+         end if
+         l_v = l_los - r(i)
+         mu_obs(i) = ((vr * l_v) + (vh * th_v)) / (v * dsqrt(l_v**2 + th_v**2))
       end do
       close(77)
    end subroutine bw_mezcal
-#endif
 
 end module blastwave

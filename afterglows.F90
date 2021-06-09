@@ -48,7 +48,7 @@ subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob
    integer(HID_T) :: file_id, group_id
    integer :: herror
 #endif
-   integer :: i, j, k, numbins, numdf, numt, time_grid, flow_kind, bw_sol_type, Npts
+   integer :: i, j, k, numbins, numdf, numt, time_grid, flow_kind
    real(dp) :: uB, uext, L_j, gmin, gmax, numin, numax, pind, B, R0, Rmax, &
          tinj, g1, g2, tstep, Q0, tmax, d_lum, z, n_ext, urad_const, Aw, sind, &
          theta_obs, mu_obs, nu_ext, tesc_e, uext0, eps_e, tlc, g1_const, Rd2, &
@@ -783,7 +783,7 @@ subroutine mezcal(params_file, output_file, with_ic, KNcool, assume_blob)
             jnut(l, :, i) = jsyn(l, :, i)
          end if
 
-   end do derroteros_loop
+      end do derroteros_loop
 
       if ( mod(i, nmod) == 0 .or. i == 1 ) &
             write(*, on_screen) i, t_lab(i), r(i, 0)
@@ -807,18 +807,18 @@ subroutine mezcal(params_file, output_file, with_ic, KNcool, assume_blob)
    call h5io_wint0 (group_id, 'NF',        numf, herror)
    call h5io_wint0 (group_id, 'NG',        numg, herror)
    call h5io_wint0 (group_id, 'NH',        numh, herror)
-   call h5io_wdble0(group_id, 'd_lum', d_lum, herror)
-   call h5io_wdble0(group_id, 'redshift', z, herror)
+   call h5io_wdble0(group_id, 'd_lum',     d_lum, herror)
+   call h5io_wdble0(group_id, 'redshift',  z, herror)
    call h5io_wdble0(group_id, 'gamma_min', gmin, herror)
    call h5io_wdble0(group_id, 'gamma_max', gmax, herror)
-   call h5io_wdble0(group_id, 'gamma_1', g1, herror)
-   call h5io_wdble0(group_id, 'gamma_2', g2, herror)
+   call h5io_wdble0(group_id, 'gamma_1',   g1, herror)
+   call h5io_wdble0(group_id, 'gamma_2',   g2, herror)
    call h5io_wdble0(group_id, 'pwl-index', pind, herror)
    call h5io_wdble0(group_id, 'epsilon_e', eps_e, herror)
    call h5io_wdble0(group_id, 'epsilon_B', eps_B, herror)
-   call h5io_wdble0(group_id, 'nu_min', numin, herror)
-   call h5io_wdble0(group_id, 'nu_max', numax, herror)
-   call h5io_wdble0(group_id, 'E0', E0, herror)
+   call h5io_wdble0(group_id, 'nu_min',    numin, herror)
+   call h5io_wdble0(group_id, 'nu_max',    numax, herror)
+   call h5io_wdble0(group_id, 'E0',        E0, herror)
    call h5io_closeg(group_id, herror)
    ! ------  Saving data  ------
    call h5io_wdble1(file_id, 't_lab',      t_lab, herror)
