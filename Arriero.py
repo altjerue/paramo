@@ -100,9 +100,9 @@ class parameters(object):
             print(fortran_double(self.u_ext), ' ! external rad. field ener. density', file=f)
             print(fortran_double(self.numin), ' ! min frequency', file=f)
             print(fortran_double(self.numax), ' ! max frequency', file=f)
-            print(self.numbins, ' ! number of EED bins', file=f)
-            print(self.numdt, ' ! number of time steps', file=f)
-            print(self.numdf, ' ! number of frequencies', file=f)
+            print(self.NG, ' ! number of EED bins', file=f)
+            print(self.NT, ' ! number of time steps', file=f)
+            print(self.NF, ' ! number of frequencies', file=f)
             print(self.time_grid, ' ! kind of time grid', file=f)
             # print(self.file_label, ' ! label to identify each output', file=f)
         print("--> Parameters file: ", self.params_file)
@@ -125,7 +125,7 @@ class compiler(object):
         self.DBG = False        # compile for debugging
         self.HDF5 = False       # save data with HDF5
         self.server = 0         # 0 (UNIX PC) 1 (Brown@Purdue)
-        self.problem = 0        # 0 (tests), 1 (blazars), 2 (afterflow), 3 (turbulence)
+        self.problem = 0        # 0 (tests), 1 (blazars), 2 (afterflow), 3 (turbulence), 4 (Mezcal)
         self.compileDir = './'  # the path to Paramo... must end with '/'
 
     def __init__(self, **kwargs):
@@ -135,7 +135,7 @@ class compiler(object):
 
     def compile(self):
         print(strftime("\n\n%a, %d %b %Y %H:%M:%S %Z", localtime()))
-        make = ["make", "Paramo", "PROBLEM=" + str(self.problem), "COMPILER=" + str(self.COMP)]
+        make = ["make", "Paramo", "PROBLEM="+str(self.problem), "COMPILER="+str(self.COMP)]
         if self.OMP:
             make.append("OPENMP=1")
         else:
@@ -148,7 +148,7 @@ class compiler(object):
             make.append("USEHDF5=1")
         else:
             make.append("USEHDF5=0")
-        os.chdir(self.compile_dir)
+        os.chdir(self.compileDir)
         print("\nCompile dir: " + os.getcwd())
         print("--> Running Makefile\n ", " ".join(make), "\n")
         try:
@@ -164,9 +164,143 @@ class compiler(object):
         print("Working dir: " + os.getcwd())
 
     def cleanup(self):
-        os.chdir(self.compile_dir)
+        os.chdir(self.compileDir)
         os.system("make clean")
         os.chdir(self.cwd)
+
+
+#  #####  #    # #    #
+#  #    # #    # ##   #
+#  #    # #    # # #  #
+#  #####  #    # #  # #
+#  #   #  #    # #   ##
+#  #    #  ####  #    #
+class Runner(object):
+    '''This class sets up the exectuable instructions.
+    '''
+
+    def __init__(self, flabel='DriverTest', par_kw={}, comp_kw={}):
+        self.par = parameters(**par_kw)
+        self.par.wParams()
+        self.cwd = os.getcwd()
+        self.comp_kw = comp_kw
+        self.flabel = flabel  # a label to identify each output
+
+    def run_test(self, clean=False):
+        comp = compiler(rules='xTests', **self.comp_kw)
+        if clean:
+            comp.cleanup()
+        comp.compile()
+        run_cmd = '{0}xTests'.format(comp.compileDir)
+        print("\n--> Running:\n  ", run_cmd, "\n")
+        os.system(run_cmd)
+        print("\n--> Finished")
+
+    # ----->   BlazMag compilation and run
+    def run_blazMag(self, cmd_args=(None, None), pream=None, clean=False, cl=False):
+        if cmd_args[0] is None or cmd_args[0] is False:
+            in1 = 'F'
+        else:
+            in1 = 'T'
+        if cmd_args[1] is None or cmd_args[1] is False:
+            in2 = 'F'
+        else:
+            in2 = 'T'
+        comp = compiler(problem=1, **self.comp_kw)
+        if clean:
+            comp.cleanup()
+        comp.compile()
+        outfile = self.flabel + '.jp.h5'
+        if pream is None:
+            run_cmd = '{0}Paramo {1} {2} {3} {4}'.format(comp.compileDir, self.par.params_file, outfile, in1, in2)
+        else:
+            run_cmd = '{0} {1}Paramo {2} {3} {4} {5}'.format(pream, comp.compileDir, self.par.params_file, outfile, in1, in2)
+        print("\n--> Parameters:")
+        os.system("cat -n " + self.par.params_file)
+        if cl:
+            print("\n--> Running:\n  ", run_cmd, "\n")
+            return run_cmd
+        else:
+            print("\n--> Running:\n  ", run_cmd, "\n")
+            os.system(run_cmd)
+            print("\n--> Finished")
+
+    #####
+    def run_Aglow(self, cmd_args=(False, False, False), pream=None, clean=False, cl=False, wMezcal=False):
+        '''Aglow compilation and run.
+
+        Params:
+        cmd_arg
+        pream
+        clean
+        cl
+        wMezcal
+        '''
+        if cmd_args[0] is None or cmd_args[0] is False:
+            in1 = 'F'
+        else:
+            in1 = 'T'
+        if cmd_args[1] is None or cmd_args[1] is False:
+            in2 = 'F'
+        else:
+            in2 = 'T'
+        if cmd_args[2] is None or cmd_args[2] is False:
+            in3 = 'F'
+        else:
+            in3 = 'T'
+        if wMezcal:
+            comp = compiler(problem=4, **self.comp_kw)
+        else:
+            comp = compiler(problem=2, **self.comp_kw)
+        if clean:
+            comp.cleanup()
+        comp.compile()
+        outfile = self.flabel + '.jp.h5'
+        if pream is None:
+            run_cmd = '{0}Paramo {1} {2} {3} {4} {5}'.format(comp.compileDir, self.par.params_file, outfile, in1, in2, in3)
+        else:
+            run_cmd = '{0} {1}Paramo {2} {3} {4} {5} {6}'.format(pream, comp.compileDir, self.par.params_file, outfile, in1, in2, in3)
+        print("\n--> Parameters:")
+        os.system("cat -n " + self.par.params_file)
+        if cl:
+            print("\n--> Running:\n  ", run_cmd, "\n")
+            return run_cmd
+        else:
+            print("\n--> Running:\n  ", run_cmd, "\n")
+            os.system(run_cmd)
+            print("\n--> Finished")
+
+    # ----->   turbulence compilation and run
+    def run_turb(self, cmd_args=(None, None), pream=None, clean=False, cl=False):
+        if cmd_args[0] is None or cmd_args[0] is False:
+            wCool = False
+        else:
+            wCool = True
+        if cmd_args[1] is None or cmd_args[1] is False:
+            wAbs = False
+        else:
+            wAbs = True
+
+        comp = compiler(rules='xTurBlaz', **self.comp_kw)
+
+        if clean:
+            comp.cleanup()
+        comp.compile()
+        outfile = self.flabel + '.jp.h5'
+
+        if pream is None:
+            run_cmd = '{0}xTurBlaz {1} {2} {3} {4}'.format(comp.compileDir, self.par.params_file, wCool, wAbs, outfile)
+        else:
+            run_cmd = '{0} {1}xTurBlaz {2} {3} {4} {5}'.format(pream, comp.compileDir, self.par.params_file, wCool, wAbs, outfile)
+        print("\n--> Parameters:")
+        os.system("cat -n " + self.par.params_file)
+        if cl:
+            print("\n--> Running:\n  ", run_cmd, "\n")
+            return run_cmd
+        else:
+            print("\n--> Running:\n  ", run_cmd, "\n")
+            os.system(run_cmd)
+            print("\n--> Finished")
 
 
 #  #####  #####   ####     ###### # #      ######
@@ -270,137 +404,3 @@ def SlurmFile(jname, qname, xcmd, depen=None, nodes=None, cores=None, mail=None,
         print("\n# RUN", file=f)
         print(xcmd, file=f)
     return sname
-
-
-#  #####  #    # #    #
-#  #    # #    # ##   #
-#  #    # #    # # #  #
-#  #####  #    # #  # #
-#  #   #  #    # #   ##
-#  #    #  ####  #    #
-class Runner(object):
-    '''This class sets up the exectuable instructions.
-    '''
-
-    def __init__(self, flabel='DriverTest', par_kw={}, comp_kw={}):
-        self.par = parameters(**par_kw)
-        self.par.wParams()
-        self.cwd = os.getcwd()
-        self.comp_kw = comp_kw
-        self.flabel = flabel  # a label to identify each output
-
-    def run_test(self, clean=False):
-        comp = compiler(rules='xTests', **self.comp_kw)
-        if clean:
-            comp.cleanup()
-        comp.compile()
-        run_cmd = '{0}xTests'.format(comp.compile_dir)
-        print("\n--> Running:\n  ", run_cmd, "\n")
-        os.system(run_cmd)
-        print("\n--> Finished")
-
-    # ----->   BlazMag compilation and run
-    def run_blazMag(self, cmd_args=(None, None), pream=None, clean=False, cl=False):
-        if cmd_args[0] is None or cmd_args[0] is False:
-            in1 = 'F'
-        else:
-            in1 = 'T'
-        if cmd_args[1] is None or cmd_args[1] is False:
-            in2 = 'F'
-        else:
-            in2 = 'T'
-        comp = compiler(problem=1, **self.comp_kw)
-        if clean:
-            comp.cleanup()
-        comp.compile()
-        outfile = self.flabel + '.jp.h5'
-        if pream is None:
-            run_cmd = '{0}Paramo {1} {2} {3} {4}'.format(comp.compile_dir, self.par.params_file, outfile, in1, in2)
-        else:
-            run_cmd = '{0} {1}Paramo {2} {3} {4} {5}'.format(pream, comp.compile_dir, self.par.params_file, outfile, in1, in2)
-        print("\n--> Parameters:")
-        os.system("cat -n " + self.par.params_file)
-        if cl:
-            print("\n--> Running:\n  ", run_cmd, "\n")
-            return run_cmd
-        else:
-            print("\n--> Running:\n  ", run_cmd, "\n")
-            os.system(run_cmd)
-            print("\n--> Finished")
-
-    #####
-    def run_Aglow(self, cmd_args=(False, False, True), pream=None, clean=False, cl=False, wMezcal=False):
-        '''Aglow compilation and run.
-
-        Params:
-        cmd_arg
-        pream
-        clean
-        cl
-        wMezcal
-        '''
-        if cmd_args[0] is None or cmd_args[0] is False:
-            in1 = 'F'
-        else:
-            in1 = 'T'
-        if cmd_args[1] is None or cmd_args[1] is False:
-            in2 = 'F'
-        else:
-            in2 = 'T'
-        if cmd_args[2] is None or cmd_args[2] is False:
-            in3 = 'F'
-        else:
-            in3 = 'T'
-        if wMezcal:
-            comp = compiler(problem=4, **self.comp_kw)
-        else:
-            comp = compiler(problem=2, **self.comp_kw)
-        if clean:
-            comp.cleanup()
-        comp.compile()
-        outfile = self.flabel + '.jp.h5'
-        if pream is None:
-            run_cmd = '{0}Paramo {1} {2} {3} {4} {5}'.format(comp.compile_dir, self.par.params_file, outfile, in1, in2, in3)
-        else:
-            run_cmd = '{0} {1}Paramo {2} {3} {4} {5} {6}'.format(pream, comp.compile_dir, self.par.params_file, outfile, in1, in2, in3)
-        print("\n--> Parameters:")
-        os.system("cat -n " + self.par.params_file)
-        if cl:
-            print("\n--> Running:\n  ", run_cmd, "\n")
-            return run_cmd
-        else:
-            print("\n--> Running:\n  ", run_cmd, "\n")
-            os.system(run_cmd)
-            print("\n--> Finished")
-
-    # ----->   turbulence compilation and run
-    def run_turb(self, cmd_args=(None, None), pream=None, clean=False, cl=False):
-        if cmd_args[0] is None or cmd_args[0] is False:
-            wCool = False
-        else:
-            wCool = True
-        if cmd_args[1] is None or cmd_args[1] is False:
-            wAbs = False
-        else:
-            wAbs = True
-
-        comp = compiler(rules='xTurBlaz', **self.comp_kw)
-
-        if clean:
-            comp.cleanup()
-        comp.compile()
-        outfile = self.flabel + '.jp.h5'
-
-        if pream is None:
-            run_cmd = '{0}xTurBlaz {1} {2} {3} {4}'.format(comp.compile_dir, self.par.params_file, wCool, wAbs, outfile)
-        else:
-            run_cmd = '{0} {1}xTurBlaz {2} {3} {4} {5}'.format(pream, comp.compile_dir, self.par.params_file, wCool, wAbs, outfile)
-        print("\n--> Parameters:")
-        os.system("cat -n " + self.par.params_file)
-        if cl:
-            print("\n--> Running:\n  ", run_cmd, "\n")
-            return run_cmd
-        else:
-            print("\n--> Running:\n  ", run_cmd, "\n")
-            os.system(run_cmd)
-            print("\n--> Finished")

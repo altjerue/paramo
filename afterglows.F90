@@ -175,7 +175,7 @@ subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob
    !---> Magnetic field
    b_const = dsqrt(32d0 * pi * eps_B * mass_p) * cLight
    ! B = b_const * dsqrt(n_ext) * gamma_bulk(0)
-   B = b_const * dsqrt(n_ext * (gamma_bulk(0) - 1d0) * (gamma_bulk(0) + 0.75d0))
+   B = b_const * dsqrt(n_ext * (gamma_bulk(0) - 1d0) * gamma_bulk(0))
    uB = B**2 / (8d0 * pi)
 
    !---> Radiation fields
@@ -343,7 +343,7 @@ subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob
 
       !-----> Magnetic field assuming equipartition
       ! B = b_const * dsqrt(n_ext) * gamma_bulk(i)
-      B = b_const * dsqrt(n_ext * (gamma_bulk(i) - 1d0) * (gamma_bulk(i) + 0.75d0))
+      B = b_const * dsqrt(n_ext * (gamma_bulk(i) - 1d0) * gamma_bulk(i))
       uB = B**2 / (8d0 * pi)
 
       !-----> Radiation fields
@@ -601,7 +601,7 @@ subroutine mezcal(params_file, output_file, with_ic, KNcool, assume_blob)
    real(dp), allocatable, dimension(:) :: nu_com, gamma_e, theta, t_lab, &
          zeros_arr, Inu
    real(dp), allocatable, dimension(:,:) :: Dopp, gamma_bulk, r, volume, rho, &
-         beta_bulk, Bfield, mu_obs, Qinj, dotg, t_com
+         beta_bulk, Bfield, r_mu_obs, v_mu_obs, Qinj, dotg, t_com
    real(dp), allocatable, dimension(:,:,:) :: jnut, anut, jsyn, jssc, n_e
    character(len=8) :: fmt = '(I3.3)'
    character(len=256) :: ifile, mezcal_file
@@ -622,7 +622,7 @@ subroutine mezcal(params_file, output_file, with_ic, KNcool, assume_blob)
    R0 = par_R0
    E0 = par_E0
    write(ifile, fmt) 0
-   mezcal_file = "gaus_shock."//trim(ifile)//".out"
+   mezcal_file = "rads/iso_shock."//trim(ifile)//".out"!"gaus_shock."//trim(ifile)//".out"
    numh = count_lines(mezcal_file)
    dt = 0.1d0
 
@@ -633,7 +633,7 @@ subroutine mezcal(params_file, output_file, with_ic, KNcool, assume_blob)
    allocate(r(numh, 0:numt), gamma_bulk(numh, 0:numt), Dopp(numh, 0:numt), &
          t_com(numh, 0:numt), volume(numh, 0:numt), dotg(numg, numh), &
          rho(numh, 0:numt), beta_bulk(numh, 0:numt), Bfield(numh, 0:numt), &
-         mu_obs(numh, 0:numt), Qinj(numg, numh))
+         r_mu_obs(numh, 0:numt), v_mu_obs(numh, 0:numt), Qinj(numg, numh))
    allocate(n_e(numg, numh, 0:numt), jnut(numf, numh, numt), &
          jssc(numf, numh, numt), anut(numf, numh, numt))
    zeros_arr = zeros1D(numg, .true.)
@@ -647,6 +647,9 @@ subroutine mezcal(params_file, output_file, with_ic, KNcool, assume_blob)
    ! bw_approx = .true.
    ! radius_evol = .false.
    ! pwl_over_trpzd_integ = .false.
+   b_const = dsqrt(32d0 * pi * eps_B) * cLight
+   g1_const = eps_e * mass_p * (pind - 2d0) / ((pind - 1d0) * mass_e)
+   g2_const = dsqrt(6d0 * pi * eCharge * eps_g2 / sigmaT)
    t_lab(0) = 0d0
 
    build_f: do i = 1, numf
@@ -657,14 +660,14 @@ subroutine mezcal(params_file, output_file, with_ic, KNcool, assume_blob)
       gamma_e(i) = gmin * (gmax / gmin)**(dble(i - 1) / dble(numg - 1))
    end do build_g
 
-   call bw_mezcal(mezcal_file, theta_los, d_lum, r(:, 0), theta, gamma_bulk(:, 0), rho(:, 0), mu_obs(:, 0))
+   call bw_mezcal(mezcal_file, theta_los, d_lum, r(:, 0), theta, gamma_bulk(:, 0), rho(:, 0), r_mu_obs(:, 0), v_mu_obs(:, 0))
    beta_bulk(:, 0) = bofg(gamma_bulk(:, 0))
+   t_lab(0) = r(1, 0) / beta_bulk(1, 0) * cLight
+   ! TODO: setup time in the lab frame
 
-   b_const = dsqrt(32d0 * pi * eps_B) * cLight
-   g1_const = eps_e * mass_p * (pind - 2d0) / ((pind - 1d0) * mass_e)
-   g2_const = dsqrt(6d0 * pi * eCharge * eps_g2 / sigmaT)
    do l=1,numh
 
+      !> Element of arc
       if ( l == 1 ) then
          dth = 0.5d0 * (theta(2) + theta(1))
       else if ( l == numh ) then
@@ -673,17 +676,19 @@ subroutine mezcal(params_file, output_file, with_ic, KNcool, assume_blob)
          dth = 0.5d0 * (theta(l + 1) - theta(l - 1))
       end if
 
-      call bw_crossec_area(1, assume_blob, r(l, 0), gamma_bulk(l, 0), dth, rb, volume(l, 0), cs_area, Omega_j)
+      !> Crossectional area
+      call bw_crossec_area(1, assume_blob, r(l, 0), gamma_bulk(l, 0), dth, &! IN
+            rb, volume(l, 0), cs_area, Omega_j)                             ! OUT
 
-      !--->  Magnetic field
+      !> Magnetic field
       Bfield(l, 0) = b_const * dsqrt(rho(l, 0) * (gamma_bulk(l, 0) - 1d0) * gamma_bulk(l, 0))
       uB = Bfield(l, 0)**2 / (8d0 * pi)
 
-      !--->  Minimum and maximum Lorentz factors of the particles distribution
+      !> Minimum and maximum Lorentz factors of the particles distribution
       g2 = g2_const / dsqrt(Bfield(l, 0))
       g1 = g1_const * (gamma_bulk(l, 0) - 1d0)
 
-      !--->  Fraction of accreted kinetic energy injected into non-thermal electrons
+      !> Fraction of accreted kinetic energy injected into non-thermal electrons
       L_e = eps_e * cs_area * rho(l, 0) * cLight**3 * beta_bulk(l, 0) * gamma_bulk(l, 0) * (gamma_bulk(l, 0) - 1d0)
       Q0 = L_e * pwl_norm(volume(l, 0) * energy_e, pind - 1d0, g1, g2)
       ! Q0 = L_e / ( ( g1**(2d0 - pind) * Pinteg(g2 / g1, pind - 1d0, 1d-6) &
@@ -692,6 +697,7 @@ subroutine mezcal(params_file, output_file, with_ic, KNcool, assume_blob)
       ! L_e = 4d0 * gamma_bulk(l, 0) * rho(l, 0) * cLight**2
       ! Q0 = L_e * pwl_norm(volume(l, 0), pind, g1, g2)
       n_e(:, l, 0) = injection_pwl(t_com(l, 0), 1d200, gamma_e, g1, g2, pind, Q0)
+
    end do
 
    write(*,"('--> Calculating the emission')")
@@ -710,24 +716,37 @@ subroutine mezcal(params_file, output_file, with_ic, KNcool, assume_blob)
    write(*, *) screan_head
 
 
-   !--->  Evolution
-   time_loop: do i = 1, numt
+   !>  Evolution
+   time_loop: do i=1, numt
 
       write(ifile, fmt) i
-      mezcal_file = "gaus_shock."//trim(ifile)//".out"
-      call bw_mezcal(mezcal_file, theta_los, d_lum, r(:, i), theta, gamma_bulk(:, i), rho(:, i), mu_obs(:, i))
+      mezcal_file = "rads/iso_shock."//trim(ifile)//".out"!"gaus_shock."//trim(ifile)//".out"
+      call bw_mezcal(mezcal_file, theta_los, d_lum, r(:, i), theta, gamma_bulk(:, i), rho(:, i), r_mu_obs(:, i), v_mu_obs(:, i))
 
       derroteros_loop: do l=1, numh
-         dr = r(l, i) - r(l, i - 1)
-         Dopp(l, i) = Doppler(gamma_bulk(l, i), mu_obs(l, i))
-         beta_bulk = bofg(gamma_bulk(l, i))
-         call rk2_arr(t_com(l, i - 1), 1d0 / (beta_bulk(l, i - 1:i) * gamma_bulk(l, i-1:i) * cLight), dr, t_com(l, i))
-         call rk2_arr(t_lab(i-1), 1d0 / (beta_bulk(l, i-1:i) * cLight), dr, t_lab(i))
-         dt = t_com(l, i) - t_com(l, i - 1)
-         rb = r(l, i) / (12d0 * (gamma_bulk(l, i) + 0.75d0))
-         tlc = rb / cLight
 
-         !--->  EED
+         dr = r(l, i) - r(l, i - 1)
+         !> Element of arc
+         if ( l == 1 ) then
+            dth = 0.5d0 * (theta(2) + theta(1))
+         else if ( l == numh ) then
+            dth = halfpi - 0.5d0 * (theta(numh) + theta(numh - 1))
+         else
+            dth = 0.5d0 * (theta(l + 1) - theta(l - 1))
+         end if
+
+         !> Crossectional area
+         call bw_crossec_area(1, assume_blob, r(l, i), gamma_bulk(l, i), dth, &! IN
+               rb, volume(l, i), cs_area, Omega_j)                             ! OUT
+
+         Dopp(l, i) = Doppler(gamma_bulk(l, i), v_mu_obs(l, i))
+         beta_bulk(l, i) = bofg(gamma_bulk(l, i))
+         call rk2_arr(t_com(l, i - 1), 1d0 / (beta_bulk(l, i - 1:i) * gamma_bulk(l, i-1:i) * cLight), dr, t_com(l, i))
+         dt = t_com(l, i) - t_com(l, i - 1)
+         rb = r(l, i) / (12d0 * gamma_bulk(l, i))
+         tlc = rb / cLight
+   
+         !> Solving the Fokker-Planck eq.
          call FP_FinDif_difu(dt, &
                &             gamma_e, &
                &             n_e(:, l, i - 1), &
@@ -738,17 +757,17 @@ subroutine mezcal(params_file, output_file, with_ic, KNcool, assume_blob)
                &             1d200, &
                &             tlc)
 
-         !--->  Magnetic field
+         !> Magnetic field
          Bfield(l, i) = b_const * dsqrt(rho(l, i) * (gamma_bulk(l, i) - 1d0) * gamma_bulk(l, i))
          uB = Bfield(l, i)**2 / (8d0 * pi)
 
-         !--->  Minimum and maximum Lorentz factors of the particles distribution
+         !> Minimum and maximum Lorentz factors of the particles distribution
          g2 = g2_const / dsqrt(Bfield(l, i))
          g1 = g1_const * (gamma_bulk(l, i) - 1d0)
 
-         !--->  Fraction of accreted kinetic energy injected into non-thermal electrons
+         !> Fraction of accreted kinetic energy injected into non-thermal electrons
          L_e = eps_e * 4d0 * pi * r(l, i)**2 * rho(l, i) * cLight**3 * beta_bulk(l, i) * gamma_bulk(l, i) * (gamma_bulk(l, i) - 1d0)
-         Q0 = L_e * pwl_norm(4d0 * pi * r(l, i)**3 * energy_e / (12d0 * (gamma_bulk(l, i) + 0.75d0)), pind - 1d0, g1, g2)
+         Q0 = L_e * pwl_norm(4d0 * pi * r(l, i)**3 * energy_e / (12d0 * gamma_bulk(l, i)), pind - 1d0, g1, g2)
          ! Q0 = L_e / ( ( g1**(2d0 - pind) * Pinteg(g2 / g1, pind - 1d0, 1d-6) &
          !       - g1**(1d0 - pind) * Pinteg(g2 / g1, pind, 1d-6) ) &
          !       * (4d0 * pi * r(l, i)**3 / 3d0) * energy_e )
@@ -756,9 +775,9 @@ subroutine mezcal(params_file, output_file, with_ic, KNcool, assume_blob)
          ! Q0 = L_e * pwl_norm(4d0 * pi * r(l, i)**3 / 3d0, pind, g1, g2)
          Qinj(:, l) = injection_pwl(t_com(l, i), 1d200, gamma_e, g1, g2, pind, Q0)
          n_e(:, l, i) = Qinj(:, l)
-         !---> Synchrotron cooling
+         !> Synchrotron cooling
          dotg(:, l) = b_const * Bfield(l, i)**2 * gamma_e**2 &
-         !---> Adiabatic cooling
+         !> Adiabatic cooling
 #if( ADIABATIC_COOLING_TYPE == ADIABATIC_MSB00 )
                + cLight * beta_bulk(l, i) * gamma_bulk(l, i) * gamma_e / r(l, i)
 #elif( ADIABATIC_COOLING_TYPE == ADIABATIC_VOL_EVOL )
@@ -767,7 +786,7 @@ subroutine mezcal(params_file, output_file, with_ic, KNcool, assume_blob)
                + 0d0
 #endif
 
-         !--->  Radiation
+         !> Radiation
          !$OMP PARALLEL DO SCHEDULE(AUTO) DEFAULT(SHARED) PRIVATE(j)
          do j = 1, numf
             call syn_emissivity(jsyn(l, j, i), nu_com(j), gamma_e, n_e(:, l, i), Bfield(l, i))
@@ -789,6 +808,10 @@ subroutine mezcal(params_file, output_file, with_ic, KNcool, assume_blob)
          end if
    
       end do derroteros_loop
+
+      if ( mod(i, nmod) == 0 .or. i == 1 ) &
+            write(*, on_screen) i, t_obs(i), R(i), Gbulk(i), B
+
    end do time_loop
 
    !  ####    ##   #    # # #    #  ####
@@ -822,13 +845,18 @@ subroutine mezcal(params_file, output_file, with_ic, KNcool, assume_blob)
    call h5io_wdble0(group_id, 'E0',        E0, herror)
    call h5io_closeg(group_id, herror)
    ! ------  Saving data  ------
+   call h5io_wdble1(file_id, 't_lab',      t_lab, herror)
+   call h5io_wdble1(file_id, 'theta',      theta, herror)
    call h5io_wdble1(file_id, 'nu_com',     nu_com, herror)
-   call h5io_wdble1(file_id, 'gamma_e',      gamma_e, herror)
-   call h5io_wdble2(file_id, 'time',       t_com, herror)
+   call h5io_wdble1(file_id, 'gamma_e',    gamma_e, herror)
+   call h5io_wdble2(file_id, 't_com',      t_com, herror)
    call h5io_wdble2(file_id, 'radius',     r, herror)
    call h5io_wdble2(file_id, 'volume',     volume, herror)
    call h5io_wdble2(file_id, 'Gamma_bulk', gamma_bulk, herror)
    call h5io_wdble2(file_id, 'Doppler',    Dopp, herror)
+   call h5io_wdble2(file_id, 'r_mu_obs',   r_mu_obs, herror)
+   call h5io_wdble2(file_id, 'v_mu_obs',   v_mu_obs, herror)
+   call h5io_wdble2(file_id, 'density',    rho, herror)
    call h5io_wdble3(file_id, 'jnut',       jnut, herror)
    call h5io_wdble3(file_id, 'jsyn',       jsyn, herror)
    call h5io_wdble3(file_id, 'jssc',       jssc, herror)
