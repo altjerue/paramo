@@ -113,7 +113,7 @@ endif
 
 ifndef PROBLEM
 # PROBLEM: 0 (tests), 1 (blazars), 2 (afterflow 1D blast-wave), 3 (turbulence),
-#          4 (afterglow wit Mezcal)
+#          4 (afterglow wit Mezcal) 5 (Interacting Jets)
 PROBLEM=0
 endif
 
@@ -138,6 +138,11 @@ endif
 ifeq ($(PROBLEM),4)
 OBJECTS+=pairs.o blastwave.o afterglows.o afterglow_main.o
 DEFS+=-DMEZCAL
+endif
+
+ifeq ($(PROBLEM),5)
+OBJECTS+=interJets.o blazMag_main.o
+DEFS+=-DINTERJETS
 endif
 
 # BENCH_OBJ=transformers.o misc.o pwl_integ.o SRtoolkit.o specialf.o\
