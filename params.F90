@@ -3,14 +3,15 @@ module params
    use misc
    implicit none
 
-   integer :: par_numbins, par_numdt, par_numdf, par_time_grid
+   integer :: par_NG, par_NT, par_NF, par_time_grid
    real(dp) :: par_R, par_R0, par_d_lum, par_z, par_gamma_bulk, par_theta_obs, &
          par_sigma, par_b_index, par_theta_e, par_zetae, par_L_j, par_eps_e, &
          par_tstep, par_tmax, par_tmin, par_eps_B, par_tvar, par_frec, par_pind,&
          par_g1, par_g2, par_gmin, par_gmax, par_nu_ext, par_uext, par_numin, &
          par_numax, par_E0, par_n_ext, par_B, par_mu_mag, par_eta_j, par_fesc, &
          par_eps_acc
-   public :: par_numbins, par_numdt, par_numdf, par_time_grid
+
+   public :: par_NG, par_NT, par_NF, par_time_grid
    public :: par_R, par_R0, par_d_lum, par_z, par_gamma_bulk, par_theta_obs, &
          par_sigma, par_b_index, par_theta_e, par_zetae, par_L_j, par_eps_e, &
          par_tstep, par_tmax, par_tmin, par_eps_B, par_tvar, par_frec, par_pind,&
@@ -58,9 +59,9 @@ contains
       read(77, *) par_uext
       read(77, *) par_numin
       read(77, *) par_numax
-      read(77, *) par_numbins
-      read(77, *) par_numdt
-      read(77, *) par_numdf
+      read(77, *) par_NG
+      read(77, *) par_NT
+      read(77, *) par_NF
       read(77, *) par_time_grid
       close(77)
    end subroutine read_params

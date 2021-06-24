@@ -24,8 +24,9 @@ subroutine turBlaz(params_file, output_file, cool_withKN, with_abs)
       on_screen="(' | ',I9,' | ',ES11.4,' | ',ES11.4,' | ',ES11.4,' | ',ES11.4,' |')"
 #ifdef HDF5
    integer(HID_T) :: file_id,group_id
+   integer :: error
 #endif
-   integer :: i,j,k,numbins,numdf,numdt,time_grid,herror
+   integer :: i,j,k,numbins,numdf,numdt,time_grid
    integer :: l,mtb_case
    real(dp) :: uB,R,gmin,gmax,numin,numax,pind,D,g1,g2,tstep,Qnth,tmax,&
          d_lum,z,tinj,gamma_bulk,theta_obs,Rdis,mu_obs,nu_ext,tesc,tlc,&

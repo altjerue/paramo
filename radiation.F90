@@ -387,15 +387,14 @@ contains
 
 
    !> Synchrotron emissivity following eq. (22) in Ryan G., van Eerten H., Piro L., Troja E., 2020, ApJ, 896, 166
-   subroutine syn_broken(nu, to, r, Gbulk, gm, p, B, n0, z, tho, emiss)
+   subroutine syn_broken(nu, tc, Gbulk, gm, p, B, n0, emiss)
       implicit none
-      real(dp), intent(in) :: nu, p, Gbulk, gm, n0, to, r, z, tho, B
+      real(dp), intent(in) :: nu, p, Gbulk, gm, n0, tc, B
       real(dp), intent(out) :: emiss
-      real(dp) :: num, nuc, epsP, xiN, t, gc, n
+      real(dp) :: num, nuc, epsP, xiN, gc, n
       xiN = 1d0
-      t = (r * dcos(tho) / cLight) + (to / (1d0 + z))
       n = 4d0 * n0 * Gbulk
-      gc = 6d0 * pi * Gbulk * mass_e * cLight / (sigmaT * B**2 * t)
+      gc = 6d0 * pi * Gbulk * mass_e * cLight / (sigmaT * B**2 * tc)
       num = 3d0 * eCharge * B * gm**2 / (fourpi * mass_e * cLight)
       nuc = 3d0 * eCharge * B * gc**2 / (fourpi * mass_e * cLight)
       if ( nu < num .and. num < nuc ) then
