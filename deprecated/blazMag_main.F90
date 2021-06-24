@@ -31,8 +31,11 @@ program blazMag_main
       end if
    end do
 
+#ifdef INTERJETS
+   call interJets(trim(args(1)), args(2))
+#else
    call blazMag(trim(args(1)), args(2), with_arg(1), with_arg(2))
-
+#endif
 end program blazMag_main
 
 

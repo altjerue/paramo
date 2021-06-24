@@ -113,7 +113,7 @@ endif
 
 ifndef CONFIG
 # CONFIG: 0 (tests), 1 (blazars), 2 (afterflow 1D blast-wave), 3 (turbulence),
-#         4 (afterglow wit Mezcal)
+#         4 (afterglow wit Mezcal) 5 (Interacting Jets)
 CONFIG=0
 endif
 
@@ -141,6 +141,11 @@ endif
 ifeq ($(CONFIG),4)
 OBJECTS+=pairs.o blastwave.o afterglows.o main.o #afterglow_main.o
 DEFS+=-DMEZCAL
+endif
+
+ifeq ($(CONFIG),5)
+OBJECTS+=interJets.o blazMag_main.o
+DEFS+=-DINTERJETS
 endif
 
 # BENCH_OBJ=transformers.o misc.o pwl_integ.o SRtoolkit.o specialf.o\
