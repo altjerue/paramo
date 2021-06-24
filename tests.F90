@@ -3,7 +3,6 @@
 #define BLACK_BODY    (3)
 #define SYN_AFTERGLOW (4)
 #define ODE_SOLVER    (5)
-
 #define TEST_CHOICE (SYN_AFTERGLOW)
 
 program tests
@@ -337,7 +336,7 @@ contains
 
       !---> Fraction of accreted kinetic energy injected into non-thermal electrons
       L_e = eps_e * 4d0 * pi * r(0)**2 * n_ext * energy_p * cLight * Bbulk(0) * Gbulk(0) * (Gbulk(0) - 1d0)
-      Q0 = L_e * pwl_norm(4d0 * pi * r(0)**3 * energy_e / (12d0 * (Gbulk(0) + 0.75d0)), pind - 1d0, g1, g2)
+      Q0 = L_e * pwl_norm(4d0 * pi * r(0)**3 * energy_e / (12d0 * Gbulk(0)), pind - 1d0, g1, g2)
       ! Q0 = L_e / ( ( g1**(2d0 - pind) * Pinteg(g2 / g1, pind - 1d0, 1d-6) &
       !       - g1**(1d0 - pind) * Pinteg(g2 / g1, pind, 1d-6) ) &
       !       * (4d0 * pi * r(0)**3 / 3d0) * energy_e )
@@ -373,7 +372,7 @@ contains
          call rk2_arr(t(i-1), 1d0 / (Bbulk(i-1:i) * Gbulk(i-1:i) * cLight), dr, t(i))
          call rk2_arr(t_lab(i-1), 1d0 / (Bbulk(i-1:i) * cLight), dr, t_lab(i))
          dt = t(i) - t(i - 1)
-         rb = r(i) / (12d0 * (Gbulk(i) + 0.75d0))
+         rb = r(i) / (12d0 * Gbulk(i))
          tlc = rb / cLight
 
          call FP_FinDif_difu(dt, &
@@ -398,7 +397,7 @@ contains
          Q0 = L_e * pwl_norm(4d0 * pi * r(i)**2 * energy_e * rb, pind - 1d0, g1, g2)
          ! Q0 = L_e / ((g1**(2d0 - pind) * Pinteg(g2 / g1, pind - 1d0, 1d-6) &
          !       - g1**(1d0 - pind) * Pinteg(g2 / g1, pind, 1d-6)) &
-         !       * (4d0 * pi * r(i)**3 / (12d0 * (Gbulk(i) + 0.75d0))) * energy_e)
+         !       * (4d0 * pi * r(i)**3 / (12d0 * Gbulk(i))) * energy_e)
          ! L_e = 4d0 * Gbulk(i) * n_ext * eps_e
          ! Q0 = L_e * pwl_norm(1d0, pind, g1, g2)
          Qinj = injection_pwl(t(i), 1d200, gamma_e, g1, g2, pind, Q0)

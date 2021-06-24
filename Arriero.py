@@ -55,9 +55,9 @@ class parameters(object):
         self.u_ext = 1e-4               # external radiation field ener. dens.
         self.numin = 1e7                # minimum frequency
         self.numax = 1e15               # maximum frequency
-        self.NG = 128                   # number of EED bins
-        self.NT = 300                   # number of time steps
-        self.NF = 256                   # number of frequencies
+        self.NG = 128              # number of EED bins
+        self.NT = 300                # number of time steps
+        self.NF = 256                # number of frequencies
         self.time_grid = 1              # kind of cooling
         self.params_file = 'input.par'  # name of the parameters file
 

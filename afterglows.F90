@@ -5,7 +5,7 @@
 
 !!!NOTE
 !!! To keep indices clean the order is:
-!!!
+!!! 
 
 ! #####  #        ##    ####  #####       #    #   ##   #    # ######
 ! #    # #       #  #  #        #         #    #  #  #  #    # #
@@ -620,11 +620,11 @@ subroutine mezcal(params_file, output_file, with_ic, KNcool, assume_blob)
    call K2_init
 
    !!!TODO: Transform all these into arguments of the subroutine
-!   with_ic = .true.
-!   full_rad_cool = .true.
-!   bw_approx = .true.
-!   radius_evol = .false.
-!   pwl_over_trpzd_integ = .false.
+   ! with_ic = .true.
+   ! full_rad_cool = .true.
+   ! bw_approx = .true.
+   ! radius_evol = .false.
+   ! pwl_over_trpzd_integ = .false.
    b_const = dsqrt(32d0 * pi * eps_B) * cLight
    g1_const = eps_e * mass_p * (pind - 2d0) / ((pind - 1d0) * mass_e)
    g2_const = dsqrt(6d0 * pi * eCharge * eps_g2 / sigmaT)
@@ -721,7 +721,7 @@ subroutine mezcal(params_file, output_file, with_ic, KNcool, assume_blob)
          dt = t_com(l, i) - t_com(l, i - 1)
          rb = r(l, i) / (12d0 * gamma_bulk(l, i))
          tlc = rb / cLight
-
+   
          !> Solving the Fokker-Planck eq.
          call FP_FinDif_difu(dt, &
                &             gamma_e, &
@@ -782,7 +782,7 @@ subroutine mezcal(params_file, output_file, with_ic, KNcool, assume_blob)
          else
             jnut(l, :, i) = jsyn(l, :, i)
          end if
-
+   
       end do derroteros_loop
 
       if ( mod(i, nmod) == 0 .or. i == 1 ) &
