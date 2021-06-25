@@ -63,14 +63,13 @@ subroutine interJets(params_file, output_file)
    NT = par_NT
    NF = par_NF
    f_esc = par_fesc
-
+   with_cool = .false.
 
    allocate(t(0:NT), freqs(NF), Ntot(NT), Inu(NF), dt(NT), nu_obs(NF), &
          t_obs(NT), dg(NG), urad(NG))
    allocate(nn(NG, 0:NT), dotg(NG, 0:NT), gg(NG), ambs(NF, NT), jmbs(NF, NT), &
          jnut(NF, NT), jssc(NF, NT), anut(NF, NT), jeic(NF, NT), Qinj(NG, NT), &
          Ddiff(NG, 0:NT))
-
 
    !   # #    # # #####     ####   ####  #    # #####
    !   # ##   # #   #      #    # #    # ##   # #    #
@@ -243,7 +242,7 @@ subroutine interJets(params_file, output_file)
          ! call bolometric_integ(freqs, 4d0 * pi * Inu / cLight, urad)
          ! call RadTrans_blob(Inu, R, jssc(:, i) + jeic(:, i), anut(:, i))
          call RadTrans_blob(Inu, R, jmbs(:, i), ambs(:, i))
-         call rad_cool(dotg(:, i), gg, freqs, 4d0 * pi * Inu / cLight, .false.)
+         call rad_cool_pwl(dotg(:, i), gg, freqs, 4d0 * pi * Inu / cLight, .false.)
       end if
       dotg(:, i) = dotg(:, i) + urad_const * (uB + uext) * pofg(gg)**2
 
@@ -276,7 +275,6 @@ subroutine interJets(params_file, output_file)
    call h5io_wdble0(group_id, 't_max', tmax, herror)
    call h5io_wdble0(group_id, 'tstep', tstep, herror)
    call h5io_wdble0(group_id, 'R_b', R, herror)
-   call h5io_wdble0(group_id, 'R_em', Rdis, herror)
    call h5io_wdble0(group_id, 'd_lum', d_lum, herror)
    call h5io_wdble0(group_id, 'redshift', z, herror)
    call h5io_wdble0(group_id, 'Gamma_bulk', gamma_bulk, herror)
@@ -296,15 +294,11 @@ subroutine interJets(params_file, output_file)
    !----->   Saving data
    call h5io_wdble0(file_id, 't_inj', tinj, herror)
    call h5io_wdble0(file_id, 't_esc', tesc, herror)
-
-   call h5io_createg(file_id, "electrons-energy", group_id, herror)
-   call h5io_wdble0(group_id, 'Bfield', B, herror)
-   call h5io_wdble0(group_id, 'L_B', L_B, herror)          ! Eq. (8)
-   call h5io_wdble0(group_id, 'uB', uB, herror)            ! Eq. (9)
-   call h5io_wdble0(group_id, 'L_e', L_e, herror)          ! Eq. (10)
-   call h5io_wdble0(group_id, 'L_e2', f_rec * L_B, herror) ! old, wrong L_e
-   call h5io_wdble0(group_id, 'Q_nth', Qnth, herror)       ! Eq. (13)
-   call h5io_closeg(group_id, herror)    
+   call h5io_wdble0(file_id, 'Bfield', B, herror)
+   call h5io_wdble0(file_id, 'L_B', L_B, herror)          ! Eq. (8)
+   call h5io_wdble0(file_id, 'uB', uB, herror)            ! Eq. (9)
+   call h5io_wdble0(file_id, 'L_e', L_e, herror)          ! Eq. (10)
+   call h5io_wdble0(file_id, 'Q_nth', Qnth, herror)       ! Eq. (13)
    call h5io_wdble1(file_id, 'time', t(1:), herror)
    call h5io_wdble1(file_id, 't_obs', t_obs, herror)
    call h5io_wdble1(file_id, 'nu', freqs, herror)
