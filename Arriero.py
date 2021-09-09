@@ -56,9 +56,9 @@ class parameters(object):
         self.u_ext = 1e-4               # external radiation field ener. dens.
         self.numin = 1e7                # minimum frequency
         self.numax = 1e15               # maximum frequency
-        self.NG = 128              # number of EED bins
-        self.NT = 300                # number of time steps
-        self.NF = 256                # number of frequencies
+        self.NG = 128                   # number of EED bins
+        self.NT = 300                   # number of time steps
+        self.NF = 256                   # number of frequencies
         self.time_grid = 1              # kind of cooling
         self.params_file = 'input.par'  # name of the parameters file
 
@@ -117,16 +117,36 @@ class parameters(object):
 #   ####   ####  #    # #      # ###### ######
 class compiler(object):
     '''This is the compilation class
-    '''
-    # -----  COMPILER FLAGS & RULES -----
+    This function sets the value of the compilation options. The value of these
+    options can be changed as argumens or kwargs of the compiler class.
 
+    Parameters
+    ----------
+    COMP : int, optional
+        Compiler to be used. 0 for GCC (default), 1 for Intel.
+    OMP : bool, optional
+        If True, compilation is done with OpenMP flag. Default False.
+    DBG : bool, optional
+        If True compilation is done with debugging flags. Default False.
+    HDF5 : bool, optional
+        If True (default), data saved in HDF5 data files. Default False.
+        Note: other formats need to be included
+    CONFIG : int, optional
+        Program to be compiled. 0 for tests, 1 for blazars, 2 for afterflow, 3 for turbulence, 4 for Mezcal
+    server : int, optional
+        Computer where code whill be compiled. 0 for unix PC, 1 for Brown (Purdue) server, 2 for SPORC (RC-RIT)
+    compileDir : str, optional
+        Full path where Paramo is located. Must end with '/'. Default is './'
+    '''
+
+    # -----  COMPILER FLAGS & RULES -----
     def flags(self):
         self.COMP = 0           # 0 (GCC), 1 (INTEL)
         self.OMP = False        # compile with OpenMP
         self.DBG = False        # compile for debugging
-        self.HDF5 = True       # save data with HDF5
-        self.server = 0         # 0 (UNIX PC) 1 (Brown@Purdue)
-        self.problem = 2        # 0 (tests), 1 (blazars), 2 (afterflow), 3 (turbulence), 4 (Mezcal)
+        self.HDF5 = True        # save data with HDF5
+        self.CONFIG = 0         # 0 (tests), 1 (blazars), 2 (afterflow), 3 (turbulence), 4 (Mezcal)
+        self.server = 0         # 0 (UNIX PC) 1 (Brown@Purdue) 2 (RC@RIT)
         self.compileDir = './'  # the path to Paramo... must end with '/'
 
     def __init__(self, **kwargs):
@@ -136,7 +156,7 @@ class compiler(object):
 
     def compile(self):
         print(strftime("\n\n%a, %d %b %Y %H:%M:%S %Z", localtime()))
-        make = ["make", "Paramo", "PROBLEM="+str(self.problem), "COMPILER="+str(self.COMP)]
+        make = ["make", "Paramo", "CONFIG="+str(self.problem), "COMPILER="+str(self.COMP)]
         if self.OMP:
             make.append("OPENMP=1")
         else:
@@ -177,7 +197,10 @@ class compiler(object):
 #  #   #  #    # #   ##
 #  #    #  ####  #    #
 class Runner(object):
-    '''This class sets up the exectuable instructions.
+    '''
+    Description
+    -----------
+    This class sets up the exectuable instructions.
     '''
 
     def __init__(self, flabel='DriverTest', par_kw={}, comp_kw={}):
@@ -228,9 +251,13 @@ class Runner(object):
 
     #####
     def run_Aglow(self, cmd_args=(False, False, False), pream=None, clean=False, cl=False, wMezcal=False):
-        '''Aglow compilation and run.
+        '''
+        Description
+        -----------
+        Aglow compilation and run.
 
-        Params:
+        Parameters
+        ----------
         cmd_arg
         pream
         clean
@@ -358,7 +385,10 @@ def PBSfile(jname, qname, xcmd, depen=None, nodes=None, cores=None, mail=None, h
 #  SLURM
 #
 def SlurmFile(jname, qname, xcmd, depen=None, nodes=None, cores=None, mail=None, htime=None, box=None):
-    '''This function generates the Slurm file to queue a simulation
+    '''
+    Description
+    -----------
+    This function generates the Slurm file to queue a simulation
     '''
     from datetime import timedelta as td
 

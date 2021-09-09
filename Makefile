@@ -70,33 +70,33 @@ ifeq ($(COMPILER),1)
 OPTIMIZATION=-g -debug all -check all -check nostack -warn all -fp-stack-check\
 	-heap-arrays -ftrapuv -free
 
-else
+else #COMPILER
 OPTIMIZATION=-g -Wall -ffree-form -ffree-line-length-none -fcheck=all\
 	-ffpe-trap=invalid,zero -fbacktrace -fbounds-check -fsignaling-nans\
 	-fno-unsafe-math-optimizations -frounding-math
 
-endif
+endif #COMPILER
 
-else
+else #DEBUGGING
 ifeq ($(COMPILER),1)
 OPTIMIZATION=-free -O3
 
 ifeq ($(OPENMP),1)
 OPTIMIZATION+=-qopenmp
 
-endif
+endif #OPENMP
 
-else
+else #COMPILER
 OPTIMIZATION=-O3 -ftree-vectorize -funroll-all-loops -ffree-form -fbacktrace\
 	-ffree-line-length-none
 ifeq ($(OPENMP),1)
 OPTIMIZATION+=-fopenmp
 
-endif
+endif #OPENMP
 
-endif
+endif #COMPILER
 
-endif
+endif #DEBUGGING
 
 COPT=-c $(OPTIMIZATION) -cpp -dU $(DEFS) $(INCL)
 LOPT=$(OPTIMIZATION) -cpp -dU $(DEFS) $(LIBS)
@@ -111,32 +111,35 @@ ifeq ($(USEHDF5), 1)
 OBJECTS+=h5_inout.o
 endif
 
-ifndef PROBLEM
-# PROBLEM: 0 (tests), 1 (blazars), 2 (afterflow 1D blast-wave), 3 (turbulence),
-#          4 (afterglow wit Mezcal)
-PROBLEM=0
+ifndef CONFIG
+# CONFIG: 0 (tests), 1 (blazars), 2 (afterflow 1D blast-wave), 3 (turbulence),
+#         4 (afterglow wit Mezcal)
+CONFIG=0
 endif
 
-ifeq ($(PROBLEM),0)
+ifeq ($(CONFIG),0)
 #  The test is specified in the macro TEST_CHOICE in the file tests.F90
 OBJECTS+=blastwave.o tests.o
+DEFS+=-DTEST
 endif
 
-ifeq ($(PROBLEM),1)
-OBJECTS+=blazMag.o blazMag_main.o
+ifeq ($(CONFIG),1)
+OBJECTS+=blazMag.o main.o #blazMag_main.o
+DEFS+=-DBLAZ
 endif
 
-ifeq ($(PROBLEM),2) 
-OBJECTS+=pairs.o blastwave.o afterglows.o afterglow_main.o
-DEFS+=-UMEZCAL
+ifeq ($(CONFIG),2)
+OBJECTS+=pairs.o blastwave.o afterglows.o main.o #afterglow_main.o
+DEFS+=-DAGLOW
 endif
 
-ifeq ($(PROBLEM),3)
-OBJECTS+=turBlaz.o turBlaz_main.o
+ifeq ($(CONFIG),3)
+OBJECTS+=turBlaz.o main.o #turBlaz_main.o
+DEFS+=-DTURB
 endif
 
-ifeq ($(PROBLEM),4)
-OBJECTS+=pairs.o blastwave.o afterglows.o afterglow_main.o
+ifeq ($(CONFIG),4)
+OBJECTS+=pairs.o blastwave.o afterglows.o main.o #afterglow_main.o
 DEFS+=-DMEZCAL
 endif
 
