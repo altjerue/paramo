@@ -580,11 +580,10 @@ subroutine mezcal(params_file, output_file, with_ic, KNcool, assume_blob)
    use blastwave
    use specialf
    implicit none
-
    character(len=*), intent(in) :: params_file
    logical, intent(in) :: assume_blob, KNcool, with_ic
    character(len=*),intent(inout) :: output_file
-   integer, parameter :: nmod = 50
+   integer, parameter :: nmod=50
    character(len=*), parameter :: screan_head = &
       '| Iteration | Obser. time |   BW radius |  gamma_bulk |      Bfield |'&
       //new_line('A')//&
@@ -677,8 +676,7 @@ subroutine mezcal(params_file, output_file, with_ic, KNcool, assume_blob)
       end if
 
       !> Crossectional area
-      call bw_crossec_area(1, assume_blob, r(l, 0), gamma_bulk(l, 0), dth, &! IN
-            rb, volume(l, 0), cs_area, Omega_j)                             ! OUT
+      call bw_crossec_area(1, assume_blob, r(l, 0), gamma_bulk(l, 0), dth, rb, volume(l, 0), cs_area, Omega_j)
 
       !> Magnetic field
       Bfield(l, 0) = b_const * dsqrt(rho(l, 0) * (gamma_bulk(l, 0) - 1d0) * gamma_bulk(l, 0))
@@ -736,8 +734,7 @@ subroutine mezcal(params_file, output_file, with_ic, KNcool, assume_blob)
          end if
 
          !> Crossectional area
-         call bw_crossec_area(1, assume_blob, r(l, i), gamma_bulk(l, i), dth, &! IN
-               rb, volume(l, i), cs_area, Omega_j)                             ! OUT
+         call bw_crossec_area(1, assume_blob, r(l, i), gamma_bulk(l, i), dth, rb, volume(l, i), cs_area, Omega_j)
 
          Dopp(l, i) = Doppler(gamma_bulk(l, i), v_mu_obs(l, i))
          beta_bulk(l, i) = bofg(gamma_bulk(l, i))
@@ -810,7 +807,7 @@ subroutine mezcal(params_file, output_file, with_ic, KNcool, assume_blob)
       end do derroteros_loop
 
       if ( mod(i, nmod) == 0 .or. i == 1 ) &
-            write(*, on_screen) i, t_obs(i), R(i), Gbulk(i), B
+            write(*, on_screen) i, t_lab(i), r(i, 0)
 
    end do time_loop
 

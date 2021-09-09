@@ -231,6 +231,7 @@ contains
       ! allocate(r(nlines), v(nlines), theta(nlines), Gbulk(nlines))
       open(77, file=trim(filename), status='old', action='read')
       read(77, *)
+      !!!TODO: Set the correct vectors, angles and trigonometry in general for the observer
       do i=1, nlines
          !! Reading columns
          read(77, *) r(i), th(i), vr, vh, rho(i)
@@ -238,6 +239,7 @@ contains
          !! Calculating the bulk Lorentz factor
          v = dsqrt(vr**2 + vh**2)
          Gbulk(i) = gofb(v)
+         Gsh(i) = Gbulk(i) * sqrt2
          !! Calculating the observing viewing angle
          if ( th(i) < th_los ) then
             th_v = halfpi - dabs(th_los - th(i))
