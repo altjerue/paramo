@@ -55,9 +55,9 @@ class parameters(object):
         self.u_ext = 1e-4               # external radiation field ener. dens.
         self.numin = 1e7                # minimum frequency
         self.numax = 1e15               # maximum frequency
-        self.NG = 128              # number of EED bins
-        self.NT = 300                # number of time steps
-        self.NF = 256                # number of frequencies
+        self.NG = 128                   # number of EED bins
+        self.NT = 300                   # number of time steps
+        self.NF = 256                   # number of frequencies
         self.time_grid = 1              # kind of cooling
         self.params_file = 'input.par'  # name of the parameters file
 
@@ -176,8 +176,11 @@ class compiler(object):
 #  #   #  #    # #   ##
 #  #    #  ####  #    #
 class Runner(object):
-    '''This class sets up the exectuable instructions.
-    '''
+    """
+    Description
+    -----------
+    This class sets up the exectuable instructions.
+    """
 
     def __init__(self, flabel='DriverTest', par_kw={}, comp_kw={}):
         self.par = parameters(**par_kw)
@@ -227,15 +230,19 @@ class Runner(object):
 
     #####
     def run_Aglow(self, cmd_args=(False, False, False), pream=None, clean=False, cl=False, wMezcal=False):
-        '''Aglow compilation and run.
+        """
+        Description
+        -----------
+        Aglow compilation and run.
 
-        Params:
+        Parameters
+        ----------
         cmd_arg
         pream
         clean
         cl
         wMezcal
-        '''
+        """
         if cmd_args[0] is None or cmd_args[0] is False:
             in1 = 'F'
         else:
@@ -357,8 +364,11 @@ def PBSfile(jname, qname, xcmd, depen=None, nodes=None, cores=None, mail=None, h
 #  SLURM
 #
 def SlurmFile(jname, qname, xcmd, depen=None, nodes=None, cores=None, mail=None, htime=None, box=None):
-    '''This function generates the Slurm file to queue a simulation
-    '''
+    """
+    Description
+    -----------
+    This function generates the Slurm file to queue a simulation
+    """
     from datetime import timedelta as td
 
     if htime is None:

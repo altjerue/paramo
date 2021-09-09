@@ -24,7 +24,7 @@ subroutine turBlaz(params_file, output_file, cool_withKN, with_abs)
       on_screen="(' | ',I9,' | ',ES11.4,' | ',ES11.4,' | ',ES11.4,' | ',ES11.4,' |')"
 #ifdef HDF5
    integer(HID_T) :: file_id,group_id
-   integer :: error
+   integer :: herror
 #endif
    integer :: i,j,k,numbins,numdf,numdt,time_grid
    integer :: l,mtb_case
@@ -59,9 +59,9 @@ subroutine turBlaz(params_file, output_file, cool_withKN, with_abs)
    gmax=par_gmax
    numin=par_numin
    numax=par_numax
-   numbins=par_numbins
-   numdt=par_numdt
-   numdf=par_numdf
+   numbins=par_NG
+   numdt=par_NT
+   numdf=par_NF
    time_grid=par_time_grid
 
 
@@ -327,7 +327,7 @@ subroutine turBlaz(params_file, output_file, cool_withKN, with_abs)
          tempnu(j-1)=(jmbs(j-1,i)+jmbs(j,i))*dfreq(j-1)/2d0
       end do
 
-   
+
       !   ####   ####   ####  #      # #    #  ####
       !  #    # #    # #    # #      # ##   # #    #
       !  #      #    # #    # #      # # #  # #

@@ -61,9 +61,9 @@ subroutine blazMag(params_file, output_file, cool_withKN, with_abs)
    pind = par_pind
    numin = par_numin
    numax = par_numax
-   numbins = par_numbins
-   numdt = par_numdt
-   numdf = par_numdf
+   numbins = par_NG
+   numdt = par_NT
+   numdf = par_NF
    time_grid = par_time_grid
    f_esc = par_fesc
 
@@ -258,7 +258,7 @@ subroutine blazMag(params_file, output_file, cool_withKN, with_abs)
          ! call bolometric_integ(freqs, 4d0 * pi * Inu / cLight, urad)
          ! call RadTrans_blob(Inu, R, jssc(:, i) + jeic(:, i), anut(:, i))
          call RadTrans_blob(Inu, R, jmbs(:, i), ambs(:, i))
-         call rad_cool(dotg(:, i), gg, freqs, 4d0 * pi * Inu / cLight, cool_withKN)
+         call rad_cool_pwl(dotg(:, i), gg, freqs, 4d0 * pi * Inu / cLight, cool_withKN)
       end if
       dotg(:, i) = dotg(:, i) + urad_const * (uB + uext) * pofg(gg)**2
 
@@ -323,7 +323,7 @@ subroutine blazMag(params_file, output_file, cool_withKN, with_abs)
    call h5io_wdble0(group_id, 'Q_nth2', Qnth2, herror)     ! old, wrong Q0
    call h5io_wdble0(group_id, 'Q_nth3', Qnth3, herror)     ! from full expresion of Eq. (12)
    call h5io_closeg(group_id, herror)
-   
+
    call h5io_wdble1(file_id, 'time', t(1:), herror)
    call h5io_wdble1(file_id, 't_obs', t_obs, herror)
    call h5io_wdble1(file_id, 'nu', freqs, herror)

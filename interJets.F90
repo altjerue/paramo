@@ -52,7 +52,7 @@ subroutine interJets(params_file, output_file)
    eps_acc = par_eps_acc
    f_rec = par_frec
    L_jet = par_L_j
-   gamma_bulk = par_gamma_bulk
+   gamma_bulk = par_gamma_bulkx
    sigma = par_sigma
    gmin = par_gmin
    gmax = par_gmax
@@ -206,29 +206,24 @@ subroutine interJets(params_file, output_file)
       !  #####  ###### #    # # ######   #   # #    # #  # #
       !  #   #  #    # #    # # #    #   #   # #    # #   ##
       !  #    # #    # #####  # #    #   #   #  ####  #    #
-      !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
-      !$OMP& PRIVATE(j)
+      !$omp parallel do collapse(1) schedule(auto) default(shared) &
+      !$omp& private(j)
       do j = 1, NF
          call syn_emissivity(jmbs(j, i), freqs(j), gg, nn(:, i), B)
          call syn_absorption(ambs(j, i), freqs(j), gg, nn(:, i), B)
       end do
-      !$OMP END PARALLEL DO
+      !$omp end parallel do
 
       call RadTrans_blob(Inu, R, jmbs(:, i), ambs(:, i))
 
-      !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) &
-      !$OMP& PRIVATE(j)
+      !$omp parallel do collapse(1) schedule(auto) default(shared) &
+      !$omp& private(j)
       do j = 1, NF
          call IC_iso_powlaw(jssc(j, i), freqs(j), freqs, Inu, nn(:, i), gg)
-         call IC_iso_monochrom(jeic(j, i), freqs(j), uext, nu_ext, nn(:, i), gg)
-         jnut(j, i) = jmbs(j, i) + jssc(j, i) + jeic(j, i)
+         jnut(j, i) = jmbs(j, i) + jssc(j, i)
          anut(j, i) = ambs(j, i)
-         ! Fmbs(j, i) = D**4 * volume * freqs(j) * jmbs(j, i) * opt_depth_blob(anut(j, i), R) / (4d0 * pi * d_lum**2)
-         ! Fssc(j, i) = D**4 * volume * freqs(j) * jssc(j, i) * opt_depth_blob(anut(j, i), R) / (4d0 * pi * d_lum**2)
-         ! Feic(j, i) = D**4 * volume * freqs(j) * jeic(j, i) * opt_depth_blob(anut(j, i), R) / (4d0 * pi * d_lum**2)
-         ! Fnut(j, i) = Fmbs(j, i) + Fssc(j, i) + Feic(j, i)
       end do
-      !$OMP END PARALLEL DO
+      !$omp end parallel do
 
 
       !   ####   ####   ####  #      # #    #  ####
