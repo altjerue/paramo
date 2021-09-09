@@ -6,18 +6,6 @@ module blastwave
    use SRtoolkit
    implicit none
 
-   !> blast-wave type
-   !! @param der course [derrotero]
-   !! @param t_com time (comoving)
-   !! @param r_lab position (lab)
-   !! @param Gbulk bulk Lorentz factor
-   !! @param cs cross-sectional area
-   !! @param vol volume of the shocked region
-   type blast_wave
-      real(dp) :: der, vol, cs
-      real(dp), allocatable, dimension(:) :: t, r, Gbulk
-   end type blast_wave
-
 contains
 
    !   #####  ######  #     #  #####   #####
@@ -124,82 +112,65 @@ contains
 
 
    !> Analytic solution for the adiabatic blast wave.
-   function adiab_blast_wave(Rshk, G0, E0, Aw, with_wind, s) result(Gshk)
+   function adiab_bw(Rshk, G0, E0, n_ext) result(Gshk)
+      implicit none
+      real(dp), intent(in) :: Rshk, G0, E0, n_ext
+      real(dp) :: M0, x, Gshk
+      !---> Eqs. (9)-(10) in CD99
+      M0 = E0 / (G0 * cLight**2)
+      x = 4d0 * pi * mass_p * n_ext * Rshk**3 / 3d0
+      Gshk = (x + G0 * M0) / dsqrt(M0**2 + 2d0 * G0 * M0 * x + x**2)
+   end function adiab_bw
+
+
+   !> Analytic solution for the adiabatic blast wave with wind.
+   function adiab_bw_wind(Rshk, G0, E0, Aw, s) result(Gshk)
       implicit none
       real(dp), intent(in) :: Rshk, G0, E0, Aw, s
-      logical, intent(in) :: with_wind
-      real(dp) :: M0, x, Gshk, R0
-      if ( with_wind ) then
-         !---> Eqs. (4)-(5) in PK00
-         R0 = ( (3d0 - s) * E0 / (4d0 * pi * mass_p * cLight**2 * Aw * G0**2))**(1d0 / (3d0 - s) )
-         x = Rshk / R0
-         Gshk = 0.5d0 * x**(s - 3d0) * G0 * ( dsqrt( 4d0 * x**(3d0 - s) + 1d0 + (2d0 * x**(3d0 - s) / G0)**2 ) - 1d0 )
-      else
-         !---> Eqs. (9)-(10) in CD99
-         M0 = E0 / (G0 * cLight**2)
-         x = 4d0 * pi * mass_p * Aw * Rshk**3 / 3d0
-         Gshk = (x + G0 * M0) / dsqrt(M0**2 + 2d0 * G0 * M0 * x + x**2)
-      end if
-   end function adiab_blast_wave
-
+      real(dp) :: x, Gshk, R0
+      !---> Eqs. (4)-(5) in PK00
+      R0 = ( (3d0 - s) * E0 / (4d0 * pi * mass_p * cLight**2 * Aw * G0**2))**(1d0 / (3d0 - s) )
+      x = Rshk / R0
+      Gshk = 0.5d0 * x**(s - 3d0) * G0 * ( dsqrt( 4d0 * x**(3d0 - s) + 1d0 + (2d0 * x**(3d0 - s) / G0)**2 ) - 1d0 )
+   end function adiab_bw_wind
 
    !> Depending on the model, the blast wave cross sectional area may be 
    !! isotropic or beamed. This subroutine returns the the cross sectional area,
    !! volume, radius/thickness and Omega_j of the emitting region. The emitting
    !! region may be a blob or a slab.
-   subroutine bw_crossec_area(beam_kind, blob, G0, Rbw, Gbulk, theta_j0, Rb, volume, csa, Oj)
+   subroutine bw_crossec_area(beam_kind, blob, Rbw, Gbulk, theta_j0, Rb, volume, csa, Oj)
       implicit none
       integer, intent(in)   :: beam_kind
-      real(dp), intent(in)  :: Rbw, theta_j0, Gbulk, G0
+      real(dp), intent(in)  :: Rbw, theta_j0, Gbulk
       logical, intent(in)   :: blob
       real(dp), intent(out) :: csa, volume, Rb, Oj
       real(dp)              :: theta_j
-
       !---> Uniform isotropic or beamed?
-      iso_or_beamed: if ( beam_kind >= 0 ) then
-
-         select case( beam_kind )
-         case(0)
-            theta_j = 1d0 / G0
-         case(1)
-            theta_j = theta_j0
-         case(2)
-            theta_j = theta_j0 + 1d0 / (Gbulk * dsqrt(3d0))
-         case(3)
-            theta_j = theta_j0 + 1d0 / Gbulk
-         case default
-            call an_error("bw_crossec_area: wrong value of beam_kind")
-         end select
-
-         Oj = 2d0 * pi * (1d0 - dcos(theta_j))
-
-         if ( blob ) then
-            Rb = Rbw * theta_j
-            volume = 4d0 * pi * Rb**3 / 3d0
-            if ( beam_kind == 0 ) then
-               csa = 2d0 * pi * Rb**2
-            else
-               csa = Oj * Rbw**2
-            end if
-         else
-            ! Rb = Rbw / (Gbulk * 12d0)
-            Rb = Rbw / (12d0 * (Gbulk + 0.75d0))
-            csa = Oj * Rbw**2
-            volume = csa * Rb
-         end if
-
+      select case( beam_kind )
+      case(0)!> Isotropic blast-wave
+         theta_j = pi
+      case(1)!> Half blob
+         theta_j = halfpi
+      case(2)!> Classic beamed jet
+         theta_j = 1d0 / Gbulk
+      case(3)!> Beamed jet with initial opening angle theta_j0
+         theta_j = theta_j0
+      case(4)
+         theta_j = theta_j0 + 1d0 / (Gbulk * dsqrt(3d0))
+      case(5)
+         theta_j = theta_j0 + 1d0 / Gbulk
+      case default
+         call an_error("bw_crossec_area: wrong value of beam_kind")
+      end select
+      Oj = 2d0 * pi * (1d0 - dcos(theta_j))
+      csa = Oj * Rbw**2
+      if ( blob ) then
+         Rb = Rbw * theta_j
+         volume = 4d0 * pi * Rb**3 / 3d0
       else
-
-         !--->  Isotropic spherical blast-wave
-         Oj = 4d0 * pi
-         ! Rb = Rbw / Gbulk
-         ! Rb = Rbw / (Gbulk * 12d0)
-         Rb = Rbw / (12d0 * (Gbulk + 0.75d0))
-         volume = Oj * Rbw**2 * Rb
-         csa = Oj * Rbw**2
-
-      end if iso_or_beamed
-
+         Rb = Rbw / (12d0 * Gbulk)
+         volume = csa * Rb
+      end if
    end subroutine bw_crossec_area
 
 #if 0
@@ -245,27 +216,41 @@ contains
    !! @param theta output direction of the shock
    !! @param Gbulk output bulk Lorentz factor
    !! @param nlines output total number of directions
-   subroutine bw_mezcal(filename, nlines, r, theta, Gbulk)
+   subroutine bw_mezcal(filename, th_los, l_los, r, th, Gbulk, rho, mu_obs_r, mu_obs_v)
       implicit none
-      integer, intent(in) :: nlines
+      real(dp), intent(in) :: th_los, l_los
       character(len=*), intent(in) :: filename
-      real(dp), intent(out), allocatable, dimension(:) :: r, theta, Gbulk
-      integer :: i, io
-      real(dp) :: x, y, vx,vy
-      ! real(dp), allocatable, dimension(:) :: v
-      if ( nlines /= count_lines(filename) ) &
-            call an_error("bw_mezcal: nlines and number of lines in "//trim(filename)//"are not the same")
-      call realloc(r, nlines)
+      real(dp), intent(out), dimension(:) :: r, th, Gbulk, rho, mu_obs_r, mu_obs_v
+      integer :: i, io, nlines
+      real(dp) :: v, vr, vh, th_v, l_v
+      nlines = count_lines(filename) - 1
+      ! call realloc(r, nlines)
       ! call realloc(v, nlines)
-      call realloc(theta, nlines)
-      call realloc(Gbulk, nlines)
+      ! call realloc(th, nlines)
+      ! call realloc(Gbulk, nlines)
       ! allocate(r(nlines), v(nlines), theta(nlines), Gbulk(nlines))
-      open(77, file=trim(filename), iostat=io, status='old', action='read')
-      if (io /= 0) stop "Cannot open file!"
+      open(77, file=trim(filename), status='old', action='read')
+      read(77, *)
+      !!!TODO: Set the correct vectors, angles and trigonometry in general for the observer
       do i=1, nlines
-         read(77, *) x, y, vx, vy, theta(i), Gbulk(i)
-         r(i) = dsqrt(x**2 + y**2)
-         ! v(i) = dsqrt(vx**2 + vy**2)
+         !! Reading columns
+         read(77, *) r(i), th(i), vr, vh, rho(i)
+         r(i) = r(i) * cLight
+         !! Calculating the bulk Lorentz factor
+         v = dsqrt(vr**2 + vh**2)
+         Gbulk(i) = gofb(v)
+         Gsh(i) = Gbulk(i) * sqrt2
+         !! Calculating the observing viewing angle
+         if ( th(i) < th_los ) then
+            th_v = halfpi - dabs(th_los - th(i))
+         else if ( th(i) == th_los ) then
+            th_v = th_los
+         else
+            th_v = th(i) - th_los
+         end if
+         l_v = dsqrt(l_los**2 + r(i)**2 - l_los * r(i) * (dsin(th(i)) * dsin(th_los) + dcos(th(i)) * dcos(th_los)))
+         mu_obs_r(i) = dsin(th(i)) * dsin(th_v) + dcos(th(i)) * dcos(th_v)
+         mu_obs_v(i) = (vr * l_v) / (v * dsqrt(l_v**2 + th_v**2))
       end do
       close(77)
    end subroutine bw_mezcal
