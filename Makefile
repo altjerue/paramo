@@ -144,7 +144,11 @@ DEFS+=-DMEZCAL
 endif
 
 ifeq ($(CONFIG),5)
+<<<<<<< HEAD
 OBJECTS+=interJets.o blazMag_main.o
+=======
+OBJECTS+=interJets.o main.o #blazMag_main.o
+>>>>>>> a48326b (Moving forward to unification)
 DEFS+=-DINTERJETS
 endif
 

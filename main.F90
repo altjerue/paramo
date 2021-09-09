@@ -15,6 +15,7 @@ program main
 #elif TURB
 #elif MEZCAL
       '  with IC         with inverse Compton? T/F (True/False)'//new_line('A')//&
+#elif INTERJETS
 #elif MEZCAL
 #endif
       '  KN cooling      Klein-Nishina cooling: T/F (True/False)'//new_line('A')//&
@@ -27,7 +28,7 @@ program main
    numArgs = command_argument_count()
    if ( numArgs /= 5 ) call an_error(args_error)
    call get_command_argument(0, program_name)
-   allocate(args(numArgs), with_arg(numArgs))
+   allocate(args(numArgs), with_arg(numArgs - 2))
    do i=1, numArgs
       call get_command_argument(i, args(i))
       if ( i > 2 ) then
@@ -49,6 +50,8 @@ program main
 #elif AGLOW
    call bw1D_afterglow(trim(args(1)), args(2), with_arg(1), with_arg(2), &
          with_arg(3))
+#elif INTERJETS
+   call interJets(trim(args(1)), args(2))
 #elif TURB
    call turBlaz(trim(args(1)), args(2), with_arg(1), with_arg(2))
 #endif
