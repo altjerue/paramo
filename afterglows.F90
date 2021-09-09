@@ -556,11 +556,10 @@ subroutine mezcal(params_file, output_file, with_ic, KNcool, assume_blob)
    use blastwave
    use specialf
    implicit none
-
    character(len=*), intent(in) :: params_file
    logical, intent(in) :: assume_blob, KNcool, with_ic
    character(len=*),intent(inout) :: output_file
-   integer, parameter :: nmod = 50
+   integer, parameter :: nmod=50
    character(len=*), parameter :: screan_head = &
       '| Iteration | Obser. time |   BW radius |  gamma_bulk |      Bfield |'&
       //new_line('A')//&
