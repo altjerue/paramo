@@ -6,7 +6,8 @@ import os
 import subprocess
 import sys
 from time import strftime, localtime
-from Eduviges.misc import fortran_double
+sys.path.append('/home/lcombi/Dropbox/repository/astrograv_tools/comala_new/eduviges/')
+from misc import fortran_double
 
 
 #
@@ -123,9 +124,9 @@ class compiler(object):
         self.COMP = 0           # 0 (GCC), 1 (INTEL)
         self.OMP = False        # compile with OpenMP
         self.DBG = False        # compile for debugging
-        self.HDF5 = False       # save data with HDF5
+        self.HDF5 = True       # save data with HDF5
         self.server = 0         # 0 (UNIX PC) 1 (Brown@Purdue)
-        self.problem = 0        # 0 (tests), 1 (blazars), 2 (afterflow), 3 (turbulence), 4 (Mezcal)
+        self.problem = 2        # 0 (tests), 1 (blazars), 2 (afterflow), 3 (turbulence), 4 (Mezcal)
         self.compileDir = './'  # the path to Paramo... must end with '/'
 
     def __init__(self, **kwargs):

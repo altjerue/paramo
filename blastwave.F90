@@ -124,12 +124,31 @@ contains
 
 
    !> Analytic solution for the adiabatic blast wave.
-   function adiab_blast_wave(Rshk, G0, E0, Aw, with_wind, s) result(Gshk)
+   function adiab_blast_wave(Rshk, G0, E0, Aw, with_wind, numerical, s) result(Gshk)
       implicit none
       real(dp), intent(in) :: Rshk, G0, E0, Aw, s
-      logical, intent(in) :: with_wind
+      logical, intent(in) :: with_wind, numerical
       real(dp) :: M0, x, Gshk, R0
-      if ( with_wind ) then
+      real(dp), dimension(1000) :: rshknum, gshknum 
+      integer :: i
+
+      if (numerical) then
+
+         open(444, file = '/home/lcombi/Dropbox/repository/astrograv_tools/comala/paramo/numerical_gshk.dat', status='old')
+         do i = 1,999
+           read(444,*) rshknum(i), gshknum(i)
+         end do
+         close(444)
+
+         i = 1
+         do while ( Rshk > rshknum(i) )
+            i = 1 + i
+         end do
+         
+         ! Interpolate
+         call linint( rshknum(i-1), rshknum(i), Rshk, gshknum(i-1), gshknum(i), Gshk)
+
+      else if ( with_wind ) then
          !---> Eqs. (4)-(5) in PK00
          R0 = ( (3d0 - s) * E0 / (4d0 * pi * mass_p * cLight**2 * Aw * G0**2))**(1d0 / (3d0 - s) )
          x = Rshk / R0
@@ -193,7 +212,7 @@ contains
          !--->  Isotropic spherical blast-wave
          Oj = 4d0 * pi
          ! Rb = Rbw / Gbulk
-         ! Rb = Rbw / (Gbulk * 12d0)
+         !Rb = Rbw / (Gbulk * 12d0)
          Rb = Rbw / (12d0 * (Gbulk + 0.75d0))
          volume = Oj * Rbw**2 * Rb
          csa = Oj * Rbw**2
