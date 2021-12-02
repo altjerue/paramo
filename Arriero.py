@@ -6,8 +6,8 @@ import os
 import subprocess
 import sys
 from time import strftime, localtime
-sys.path.append('/home/lcombi/Dropbox/repository/astrograv_tools/comala_new/eduviges/')
-from misc import fortran_double
+#sys.path.append('/home/lcombi/Dropbox/repository/astrograv_tools/comala_new/eduviges/')
+from eduviges_py.misc import fortran_double
 
 
 #
