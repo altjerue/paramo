@@ -420,6 +420,7 @@ contains
             qq = -dlog(nn(k + 1) / nn(k)) / dlog(gg(k + 1) / gg(k))
             if ( qq > 8d0 ) qq = 8d0
             if ( qq < -8d0 ) qq = -8d0
+            !!!TODO: RMA_new argument is hardcoded. Change this
             jnu = jnu + j_mb(freq, B, nn(k), gg(k), gg(k + 1), qq, RMA_new)
          end if
       end do calc_jnu
@@ -565,6 +566,7 @@ contains
             qq = -dlog(nn(k + 1) / nn(k)) / dlog(gg(k + 1) / gg(k))
             if ( qq > 8d0 ) qq = 8d0
             if ( qq < -8d0 ) qq = -8d0
+            !!!TODO: RMA_new argument is hardcoded. Change this
             anu = anu + a_mb(freq, B, nn(k), gg(k), gg(k + 1), qq, RMA_new)
          end if
       end do calc_anu

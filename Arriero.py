@@ -116,6 +116,27 @@ class parameters(object):
 #   ####   ####  #    # #      # ###### ######
 class compiler(object):
     '''This is the compilation class
+    This function sets the value of the compilation options. The value of these
+    options can be changed as argumens or kwargs of the compiler class.
+
+    Parameters
+    ----------
+    COMP : {'gcc', 'intel'}, optional
+        Compiler to be used. Default 'gcc'.
+    OMP : bool, optional
+        If True, compilation is done with OpenMP flag. Default False.
+    DBG : bool, optional
+        If True compilation is done with debugging flags. Default False.
+    HDF5 : bool, optional
+        If True (default), data saved in HDF5 data files. Default False.
+        Note: other formats need to be included
+    server : int, optional
+        Computer where code whill be compiled. 0 for unix PC, 1 for Brown (Purdue) server
+    problem : int, optional
+        Program to be compiled. 0 for tests, 1 for blazars, 2 for afterflow,
+        3 for turbulence, 4 for Mezcal
+    compileDir : str, optional
+        Full path where Paramo is located. Must end with '/'. Default is './'
     '''
     # -----  COMPILER FLAGS & RULES -----
 
@@ -123,7 +144,7 @@ class compiler(object):
         self.COMP = 0           # 0 (GCC), 1 (INTEL)
         self.OMP = False        # compile with OpenMP
         self.DBG = False        # compile for debugging
-        self.HDF5 = False       # save data with HDF5
+        self.HDF5 = True       # save data with HDF5
         self.server = 0         # 0 (UNIX PC) 1 (Brown@Purdue)
         self.problem = 0        # 0 (tests), 1 (blazars), 2 (afterflow), 3 (turbulence), 4 (Mezcal)
         self.compileDir = './'  # the path to Paramo... must end with '/'
