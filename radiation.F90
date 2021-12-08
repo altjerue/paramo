@@ -211,6 +211,47 @@ contains
    end function RMA_new
 
 
+   function RMA_nobreak(chi, g) result(res)
+      implicit none
+      real(dp), intent(in) :: chi, g
+      real(dp), parameter :: c1 = 3.2180900500625734d-4, &
+            c2 = 6.50532122717873d-1, c3 = 1.5579904689804556d1
+      real(dp) :: res, x
+      x = 2d0 * chi / (3d0 * g**2)
+      if ( x < c1 ) then
+         res = 1.8084180211028020864d0 * x**(1d0 / 3d0)
+      else if (x >= c1 .and. x <= c2) then
+         res = dexp( -0.7871626401625178d0 &
+               - 0.7050933708504841d0 * dlog(x) &
+               - 0.35531869295610624d0 * dlog(x)**2 &
+               - 0.06503312461868385d0 * dlog(x)**3 &
+               - 0.0060901233982264096d0 * dlog(x)**4 &
+               - 0.00022764616638053332d0 * dlog(x)**5 )
+         ! res = 10d0**( -0.35564612225908254d0 &
+         !       - 0.3421635631371654d0 * dlog10(x) &
+         !       - 0.18290602166517914d0 * dlog10(x)**2 &
+         !       - 0.03776013298031654d0 * dlog10(x)**3 &
+         !       - 0.004040039762244288d0 * dlog10(x)**4 &
+         !       - 0.0001732560180040394d0 * dlog10(x)**5 )
+      else if (x > c2 .and. x <= c3) then
+         res = dexp( -0.8236455154570651d0 &
+            - 0.831668613094906d0 * dlog(x) &
+            - 0.525630345887699d0 * dlog(x)**2 &
+            - 0.22039314697105414d0 * dlog(x)**3 &
+            + 0.01669179529512499d0 * dlog(x)**4 &
+            - 0.028650695862677572d0 * dlog(x)**5 )
+         ! res = 10d0**( -0.357998258501421d0 &
+         !       - 0.36360117602083497d0 * dlog10(x) &
+         !       - 0.21939774566168257d0 * dlog10(x)**2 &
+         !       - 0.10439150658509294d0 * dlog10(x)**3 &
+         !       + 0.010445217874656604d0 * dlog10(x)**4 &
+         !       - 0.012831897130695337d0 * dlog10(x)**5 )
+      else
+         res = 0.5d0 * pi * dexp(-x) * (1d0 - 11d0 / (18d0 * x))
+      end if
+   end function RMA_nobreak
+
+
    function RMA(chi, g) result(res)
       implicit none
       real(dp), intent(in) :: chi, g
@@ -1172,7 +1213,7 @@ contains
          end if
       end do
    end subroutine rad_cool_mono
- 
+
 
    !  ###### #    #  ####  #      #    # ##### #  ####  #    #
    !  #      #    # #    # #      #    #   #   # #    # ##   #
