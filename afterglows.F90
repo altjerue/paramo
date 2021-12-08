@@ -5,7 +5,7 @@
 
 !!!NOTE
 !!! To keep indices clean the order is:
-!!! 
+!!!
 
 ! #####  #        ##    ####  #####       #    #   ##   #    # ######
 ! #    # #       #  #  #        #         #    #  #  #  #    # #
@@ -40,7 +40,7 @@ subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob
    character(len=*), parameter :: screan_head = &
       '---------------------------------------------------------------------'&
       //new_line('A')//&
-      '| Iteration | Obser. time |   BW radius |  gamma_bulk |      Bfield |'&
+      ' | Iteration | Obser. time |   BW radius |  gamma_bulk |      Bfield |'&
       //new_line('A')//&
       ' ---------------------------------------------------------------------', &
       on_screen = "(' | ', I9, ' | ', ES11.4, ' | ', ES11.4, ' | ', ES11.4, ' | ', ES11.4, ' |')"
@@ -48,7 +48,7 @@ subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob
    integer(HID_T) :: file_id, group_id
    integer :: herror
 #endif
-   integer :: i, j, k, numbins, numdf, numt, time_grid, flow_kind
+   integer :: i, j, k, numbins, numdf, numt, time_grid, flow_kind, bw_sol_type, Npts
    real(dp) :: uB, uext, L_j, gmin, gmax, numin, numax, pind, B, R0, Rmax, &
          tinj, g1, g2, tstep, Q0, tmax, d_lum, z, n_ext, urad_const, Aw, sind, &
          theta_obs, mu_obs, nu_ext, tesc_e, uext0, eps_e, tlc, g1_const, Rd2, &
@@ -127,7 +127,7 @@ subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob
    pwl_over_trpzd_integ = .false.
    flow_kind = 0 !1
    ssa_boiler = .false.
-   numerical = .true.
+   numerical = .false.
    Npts = 200
 
    !-----> About the observer
@@ -187,7 +187,7 @@ subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob
 
    !---> Magnetic field
    b_const = dsqrt(32d0 * pi * eps_B * mass_p) * cLight
-   ! B = b_const * dsqrt(n_ext) * gamma_bulk(0)
+   !B = b_const * dsqrt(n_ext) * gamma_bulk(0)
    !B = b_const * dsqrt(n_ext * (gamma_bulk(0) - 1d0) * gamma_bulk(0))
    B = b_const * dsqrt(n_ext * (gamma_bulk(0) - 1d0) * (gamma_bulk(0) + 0.75d0))
    uB = B**2 / (8d0 * pi)
@@ -276,7 +276,7 @@ subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob
          beta_bulk(i) = bofg(gamma_bulk(i))
          call rk2_arr(t(i - 1), 1d0 / (beta_bulk(i - 1:i) * gamma_bulk(i - 1:i) * cLight), dr, t(i))
          dt = t(i) - t(i - 1)
-         else
+      else
          R(i) = R0 * (Rmax / R0)**(dble(i) / dble(numt))
          dr = R(i) - R(i - 1)
          if ( numerical ) then
@@ -315,7 +315,7 @@ subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob
       n_ext = Aw * R(i)**(-sind)
 
       !-----> Magnetic field assuming equipartition
-      ! B = b_const * dsqrt(n_ext) * gamma_bulk(i)
+      !B = b_const * dsqrt(n_ext) * gamma_bulk(i)
       !B = b_const * dsqrt(n_ext * (gamma_bulk(i) - 1d0) * gamma_bulk(i))
       B = b_const * dsqrt(n_ext * (gamma_bulk(i) - 1d0) * (gamma_bulk(i) + 0.75d0))
       uB = B**2 / (8d0 * pi)
@@ -619,11 +619,11 @@ subroutine mezcal(params_file, output_file, with_ic, KNcool, assume_blob)
    call K2_init
 
    !!!TODO: Transform all these into arguments of the subroutine
-   ! with_ic = .true.
-   ! full_rad_cool = .true.
-   ! bw_approx = .true.
-   ! radius_evol = .false.
-   ! pwl_over_trpzd_integ = .false.
+!   with_ic = .true.
+!   full_rad_cool = .true.
+!   bw_approx = .true.
+!   radius_evol = .false.
+!   pwl_over_trpzd_integ = .false.
    b_const = dsqrt(32d0 * pi * eps_B) * cLight
    g1_const = eps_e * mass_p * (pind - 2d0) / ((pind - 1d0) * mass_e)
    g2_const = dsqrt(6d0 * pi * eCharge * eps_g2 / sigmaT)
@@ -720,7 +720,7 @@ subroutine mezcal(params_file, output_file, with_ic, KNcool, assume_blob)
          dt = t_com(l, i) - t_com(l, i - 1)
          rb = r(l, i) / (12d0 * gamma_bulk(l, i))
          tlc = rb / cLight
-   
+
          !> Solving the Fokker-Planck eq.
          call FP_FinDif_difu(dt, &
                &             gamma_e, &
@@ -781,7 +781,7 @@ subroutine mezcal(params_file, output_file, with_ic, KNcool, assume_blob)
          else
             jnut(l, :, i) = jsyn(l, :, i)
          end if
-   
+
       end do derroteros_loop
 
       if ( mod(i, nmod) == 0 .or. i == 1 ) &
