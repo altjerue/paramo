@@ -121,8 +121,8 @@ class compiler(object):
 
     Parameters
     ----------
-    COMP : {'gcc', 'intel'}, optional
-        Compiler to be used. Default 'gcc'.
+    COMP : int, optional
+        Compiler to be used. 0 for GCC (default), 1 for Intel.
     OMP : bool, optional
         If True, compilation is done with OpenMP flag. Default False.
     DBG : bool, optional
@@ -130,23 +130,22 @@ class compiler(object):
     HDF5 : bool, optional
         If True (default), data saved in HDF5 data files. Default False.
         Note: other formats need to be included
+    CONFIG : int, optional
+        Program to be compiled. 0 for tests, 1 for blazars, 2 for afterflow, 3 for turbulence, 4 for Mezcal
     server : int, optional
         Computer where code whill be compiled. 0 for unix PC, 1 for Brown (Purdue) server
-    problem : int, optional
-        Program to be compiled. 0 for tests, 1 for blazars, 2 for afterflow,
-        3 for turbulence, 4 for Mezcal
     compileDir : str, optional
         Full path where Paramo is located. Must end with '/'. Default is './'
     '''
-    # -----  COMPILER FLAGS & RULES -----
 
+    # -----  COMPILER FLAGS & RULES -----
     def flags(self):
         self.COMP = 0           # 0 (GCC), 1 (INTEL)
         self.OMP = False        # compile with OpenMP
         self.DBG = False        # compile for debugging
-        self.HDF5 = True       # save data with HDF5
+        self.HDF5 = True        # save data with HDF5
+        self.CONFIG = 0         # 0 (tests), 1 (blazars), 2 (afterflow), 3 (turbulence), 4 (Mezcal)
         self.server = 0         # 0 (UNIX PC) 1 (Brown@Purdue)
-        self.problem = 0        # 0 (tests), 1 (blazars), 2 (afterflow), 3 (turbulence), 4 (Mezcal)
         self.compileDir = './'  # the path to Paramo... must end with '/'
 
     def __init__(self, **kwargs):
@@ -156,7 +155,7 @@ class compiler(object):
 
     def compile(self):
         print(strftime("\n\n%a, %d %b %Y %H:%M:%S %Z", localtime()))
-        make = ["make", "Paramo", "PROBLEM="+str(self.problem), "COMPILER="+str(self.COMP)]
+        make = ["make", "Paramo", "CONFIG="+str(self.problem), "COMPILER="+str(self.COMP)]
         if self.OMP:
             make.append("OPENMP=1")
         else:

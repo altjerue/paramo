@@ -16,7 +16,7 @@ contains
    !  #     # #       #    ## #     # #     #
    !   #####  #       #     #  #####   #####
    !
-   !> Evolution model of a blast-wave as in eqs. (9) and (10) of Sari, Piran & 
+   !> Evolution model of a blast-wave as in eqs. (9) and (10) of Sari, Piran &
    !! Narayan (1998)
    subroutine blastwave_approx_SPN98(G0, E0, n, tobs, Gshk, Rshk, adiabatic)
       implicit none
@@ -124,43 +124,86 @@ contains
 
 
    !> Analytic solution for the adiabatic blast wave with wind.
-   function adiab_bw_wind(Rshk, G0, E0, Aw, s) result(Gshk)
+   function adiab_blastwave(Rshk, sol_kind, G0, E0, Aw, s, Npts, filename) result(Gshk)
       implicit none
-      real(dp), intent(in) :: Rshk, G0, E0, Aw, s
-      real(dp) :: x, Gshk, R0
-      !---> Eqs. (4)-(5) in PK00
-      R0 = ( (3d0 - s) * E0 / (4d0 * pi * mass_p * cLight**2 * Aw * G0**2))**(1d0 / (3d0 - s) )
-      x = Rshk / R0
-      Gshk = 0.5d0 * x**(s - 3d0) * G0 * ( dsqrt( 4d0 * x**(3d0 - s) + 1d0 + (2d0 * x**(3d0 - s) / G0)**2 ) - 1d0 )
-   end function adiab_bw_wind
+      real(dp), intent(in) :: Rshk
+      integer, intent(in) :: sol_kind
+      integer, intent(in), optional :: Npts
+      character(len=*), intent(in), optional :: filename
+      real(dp), intent(in), optional :: G0, E0, Aw, s
+      real(dp) :: M0, x, Gshk, R0
+      real(dp), dimension(:), allocatable :: rshknum, gshknum
+      integer :: i
 
-   !> Depending on the model, the blast wave cross sectional area may be 
+      select case( sol_kind )
+      case(1)
+         !---> Eqs. (9)-(10) in CD99
+         M0 = E0 / (G0 * cLight**2)
+         x = 4d0 * pi * mass_p * Aw * Rshk**3 / 3d0
+         Gshk = (x + G0 * M0) / dsqrt(M0**2 + 2d0 * G0 * M0 * x + x**2)
+      case(2)
+         if ( .not. present(s) ) call an_error("deceleration_radius: Wind index s not declared")
+        !---> Eqs. (4)-(5) in PK00
+         R0 = ( (3d0 - s) * E0 / (4d0 * pi * mass_p * cLight**2 * Aw * G0**2))**(1d0 / (3d0 - s) )
+         x = Rshk / R0
+         Gshk = 0.5d0 * x**(s - 3d0) * G0 * ( dsqrt( 4d0 * x**(3d0 - s) + 1d0 + (2d0 * x**(3d0 - s) / G0)**2 ) - 1d0 )
+      case(3)
+         ! Numerical interpolation for a blast wave using an external file (ASCII)
+         if ( .not. (present(Npts) .or. present(filename)) ) then
+            call an_error("deceleration_radius: Arguments Npts or filename not declared")
+         else
+            call realloc(rshknum, Npts)
+            call realloc(gshknum, Npts)
+         end if
+         open(444, file=trim(filename), status='old')
+         do i = 1, Npts
+            read(444,*) rshknum(i), gshknum(i)
+         end do
+         close(444)
+
+         i = 1
+         do while ( Rshk > rshknum(i) )
+            i = 1 + i
+         end do
+
+         ! Interpolate
+         call linint(rshknum(i-1), rshknum(i), Rshk, gshknum(i-1), gshknum(i), Gshk)
+         !!TODO: Try polint. You can save the do while above, and have a more accurate value than linint.
+         ! call polint(rshknum, gshknum, Rshk, Gshk, dR)
+      case default
+         call an_error("adiab_blastwave: wrong value of sol_kind")
+      end select
+
+   end function adiab_blastwave
+
+
+   !> Depending on the model, the blast wave cross sectional area may be
    !! isotropic or beamed. This subroutine returns the the cross sectional area,
    !! volume, radius/thickness and Omega_j of the emitting region. The emitting
    !! region may be a blob or a slab.
    subroutine bw_crossec_area(beam_kind, blob, Rbw, Gbulk, theta_j0, Rb, volume, csa, Oj)
       implicit none
-      integer, intent(in)   :: beam_kind
-      real(dp), intent(in)  :: Rbw, theta_j0, Gbulk
-      logical, intent(in)   :: blob
+      integer, intent(in) :: beam_kind
+      real(dp), intent(in) :: Rbw, theta_j0, Gbulk
+      logical, intent(in) :: blob
       real(dp), intent(out) :: csa, volume, Rb, Oj
-      real(dp)              :: theta_j
+      real(dp) :: theta_j
       !---> Uniform isotropic or beamed?
       select case( beam_kind )
-      case(0)!> Isotropic blast-wave
-         theta_j = pi
-      case(1)!> Half blob
-         theta_j = halfpi
-      case(2)!> Classic beamed jet
-         theta_j = 1d0 / Gbulk
-      case(3)!> Beamed jet with initial opening angle theta_j0
-         theta_j = theta_j0
-      case(4)
-         theta_j = theta_j0 + 1d0 / (Gbulk * dsqrt(3d0))
-      case(5)
-         theta_j = theta_j0 + 1d0 / Gbulk
-      case default
-         call an_error("bw_crossec_area: wrong value of beam_kind")
+         case(0)!> Isotropic blast-wave
+            theta_j = pi
+         case(1)!> Half blob
+            theta_j = halfpi
+         case(2)!> Classic beamed jet
+            theta_j = 1d0 / Gbulk
+         case(3)!> Beamed jet with initial opening angle theta_j0
+            theta_j = theta_j0
+         case(4)
+            theta_j = theta_j0 + 1d0 / (Gbulk * dsqrt(3d0))
+         case(5)
+            theta_j = theta_j0 + 1d0 / Gbulk
+         case default
+            call an_error("bw_crossec_area: wrong value of beam_kind")
       end select
       Oj = 2d0 * pi * (1d0 - dcos(theta_j))
       csa = Oj * Rbw**2
@@ -200,7 +243,7 @@ contains
          dydx(4) = ((1d0 - eps) * dydx(2) / cLight**2) + dydx(1) ! mass-energy deriv
       end subroutine bw_derivs
    end subroutine bw_solver
-#endif
+
 
    !  #####                                      #
    ! #     # ##### #####  #    #  ####           # ###### #####
@@ -254,5 +297,6 @@ contains
       end do
       close(77)
    end subroutine bw_mezcal
+#endif
 
 end module blastwave

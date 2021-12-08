@@ -4,6 +4,7 @@
 *.h5
 *.dat
 *.params
+*.par
 *.backup
 *.dSYM
 .tramp_history

@@ -247,7 +247,7 @@ contains
       implicit none
       real(dp), intent(in) :: tcom, z, gamma, xcom, muo
       real(dp) :: tobs
-      tobs = (1d0 + z) * ((tcom / Doppler(gamma, muo)) + (gamma * xcom * (bofg(gamma) - muo)) / cLight)
+      tobs = (1d0 + z) * tcom / Doppler(gamma, muo)
    end function t_obs_s
 
    !> Time in the observer frame (array)
@@ -256,25 +256,25 @@ contains
       real(dp), intent(in) :: z, gamma, xcom, muo
       real(dp), intent(in), dimension(:) :: tcom
       real(dp), dimension(size(tcom)) :: tobs
-      tobs = (1d0 + z) * ((tcom / Doppler(gamma, muo)) + (gamma * xcom * (bofg(gamma) - muo)) / cLight)
+      tobs = (1d0 + z) * tcom / Doppler(gamma, muo)
    end function t_obs_v
 
 
    !> Time in the co-moving frame  ::::::
    !! @parameter x Position in the comoving frame (x')
-   function t_com_s(tobs, z, gamma, xcom, muo) result(tcom)
+   function t_com_s(tobs, z, gamma, muo) result(tcom)
       implicit none
-      real(dp), intent(in) :: tobs, z, gamma, xcom, muo
+      real(dp), intent(in) :: tobs, z, gamma, muo
       real(dp) :: tcom
-      tcom = Doppler(gamma, muo) * ((tobs / (1d0 + z)) + (gamma * xcom * (muo - bofg(gamma))) / cLight)
+      tcom = Doppler(gamma, muo) * tobs / (1d0 + z)
    end function t_com_s
 
-   function t_com_v(tobs, z, gamma, xcom, muo) result(tcom)
+   function t_com_v(tobs, z, gamma, muo) result(tcom)
       implicit none
-      real(dp), intent(in) :: z,gamma, xcom, muo
+      real(dp), intent(in) :: z, gamma, muo
       real(dp), intent(in), dimension(:) :: tobs
       real(dp), dimension(size(tobs)) :: tcom
-      tcom = Doppler(gamma, muo) * ((tobs / (1d0 + z)) + (gamma * xcom * (muo - bofg(gamma))) / cLight)
+      tcom = Doppler(gamma, muo) * tobs / (1d0 + z)
    end function t_com_v
 
 
