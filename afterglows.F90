@@ -384,11 +384,6 @@ subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob
          freqs(j) = nu_com_f(nu_obs(j), z, Dopp(i))
          call syn_emissivity(jmbs(j, i), freqs(j), gg, n_e(:, i), B)
          call syn_absorption(ambs(j, i), freqs(j), gg, n_e(:, i), B)
-         do k = 1, numbins
-            ! pow_syn(j, k) = dsqrt(3d0) * eCharge**3 * B * RMA_new(freqs(j) / (nuconst * B), gg(k))
-            !-----> Expression below is Eq. (3.63) in my thesis
-            pow_syn(j, k) = 1.315d-28 * nuconst * B * volume(i) * RMA_new(freqs(j) / (nuconst * B), gg(k))
-         end do
       end do
       !$OMP END PARALLEL DO
 
@@ -405,6 +400,16 @@ subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob
 
       !-----> Synchrotron boiler from GGS88
       if ( ssa_boiler ) then
+         !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) PRIVATE(j, k)
+         do j = 1, numdf
+            do k = 1, numbins
+               ! pow_syn(j, k) = dsqrt(3d0) * eCharge**3 * B * RMA_new(freqs(j) / (nuconst * B), gg(k))
+               !-----> Expression below is Eq. (3.63) in my thesis
+               pow_syn(j, k) = 1.315d-28 * nuconst * B * volume(i) * RMA_new(freqs(j) / (nuconst * B), gg(k))
+            end do
+         end do
+         !$OMP END PARALLEL DO
+
          do k=1,numbins
             call bolometric_integ(freqs, Inu * pow_syn(:, k) / freqs**2, Ddiff(k, i))
             Ddiff(k, i) = Ddiff(k, i) * gg(k) * pofg(gg(k)) / (2d0 * mass_e * energy_e)
