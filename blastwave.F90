@@ -129,13 +129,13 @@ contains
       real(dp), intent(in) :: Rshk, G0, E0, Aw, s
       logical, intent(in) :: with_wind, numerical
       real(dp) :: M0, x, Gshk, R0
-      real(dp), dimension(1000) :: rshknum, gshknum 
+      real(dp), dimension(2000) :: rshknum, gshknum 
       integer :: i
 
       if (numerical) then
 
-         open(444, file = '/home/lcombi/Dropbox/repository/astrograv_tools/comala/paramo/numerical_gshk.dat', status='old')
-         do i = 1,999
+         open(444, file = '/home/lcombi/Dropbox/repository/astrograv_tools/comala_new/paramo/numerical_gshk.dat', status='old')
+         do i = 1,1999
            read(444,*) rshknum(i), gshknum(i)
          end do
          close(444)
