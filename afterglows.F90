@@ -379,11 +379,11 @@ subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob
          freqs(j) = nu_com_f(nu_obs(j), z, D(i))
          call syn_emissivity(jmbs(j, i), freqs(j), gg, n_e(:, i), B)
          call syn_absorption(ambs(j, i), freqs(j), gg, n_e(:, i), B)
-         do k = 1, numbins
-            ! pow_syn(j, k) = dsqrt(3d0) * eCharge**3 * B * RMA_new(freqs(j) / (nuconst * B), gg(k))
-            !-----> Expression below is Eq. (3.63) in my thesis
-            pow_syn(j, k) = 1.315d-28 * nuconst * B * volume(i) * RMA_new(freqs(j) / (nuconst * B), gg(k))
-         end do
+         !do k = 1, numbins
+         !   ! pow_syn(j, k) = dsqrt(3d0) * eCharge**3 * B * RMA_new(freqs(j) / (nuconst * B), gg(k))
+         !   !-----> Expression below is Eq. (3.63) in my thesis
+         !   pow_syn(j, k) = 1.315d-28 * nuconst * B * volume(i) * RMA_new(freqs(j) / (nuconst * B), gg(k))
+         !end do
       end do
       !$OMP END PARALLEL DO
 
@@ -435,7 +435,8 @@ subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob
       dotg(:, i) = 0d0
       ! call bolometric_integ(freqs, 4d0 * pi * Inu / cLight, urad)
       ! call RadTrans_blob(Inu, R, jssc(:, i) + jeic(:, i), anut(:, i))
-      call RadTrans_blob(Inu, Rb(i), jmbs(:, i), ambs(:, i))
+      !call RadTrans_blob(Inu, Rb(i), jmbs(:, i), ambs(:, i))
+      call RadTrans(Inu, Rb(i), jmbs(:, i), ambs(:, i))
       call rad_cool_pwl(dotg_tmp, gg, freqs, 4d0 * pi * Inu / cLight, cool_withKN)
       dotg(:, i) = dotg_tmp
       call rad_cool_mono(dotg_tmp, gg, nu_ext, uext, cool_withKN)
