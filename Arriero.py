@@ -133,7 +133,7 @@ class compiler(object):
     CONFIG : int, optional
         Program to be compiled. 0 for tests, 1 for blazars, 2 for afterflow, 3 for turbulence, 4 for Mezcal
     server : int, optional
-        Computer where code whill be compiled. 0 for unix PC, 1 for Brown (Purdue) server
+        Computer where code whill be compiled. 0 for unix PC, 1 for Brown (Purdue) server, 2 for SPORC (RC-RIT)
     compileDir : str, optional
         Full path where Paramo is located. Must end with '/'. Default is './'
     '''
@@ -145,7 +145,7 @@ class compiler(object):
         self.DBG = False        # compile for debugging
         self.HDF5 = True        # save data with HDF5
         self.CONFIG = 0         # 0 (tests), 1 (blazars), 2 (afterflow), 3 (turbulence), 4 (Mezcal)
-        self.server = 0         # 0 (UNIX PC) 1 (Brown@Purdue)
+        self.server = 0         # 0 (UNIX PC) 1 (Brown@Purdue) 2 (RC@RIT)
         self.compileDir = './'  # the path to Paramo... must end with '/'
 
     def __init__(self, **kwargs):
@@ -196,11 +196,11 @@ class compiler(object):
 #  #   #  #    # #   ##
 #  #    #  ####  #    #
 class Runner(object):
-    """
+    '''
     Description
     -----------
     This class sets up the exectuable instructions.
-    """
+    '''
 
     def __init__(self, flabel='DriverTest', par_kw={}, comp_kw={}):
         self.par = parameters(**par_kw)
@@ -250,7 +250,7 @@ class Runner(object):
 
     #####
     def run_Aglow(self, cmd_args=(False, False, False), pream=None, clean=False, cl=False, wMezcal=False):
-        """
+        '''
         Description
         -----------
         Aglow compilation and run.
@@ -384,11 +384,11 @@ def PBSfile(jname, qname, xcmd, depen=None, nodes=None, cores=None, mail=None, h
 #  SLURM
 #
 def SlurmFile(jname, qname, xcmd, depen=None, nodes=None, cores=None, mail=None, htime=None, box=None):
-    """
+    '''
     Description
     -----------
     This function generates the Slurm file to queue a simulation
-    """
+    '''
     from datetime import timedelta as td
 
     if htime is None:

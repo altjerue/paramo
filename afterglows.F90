@@ -1,9 +1,4 @@
-#define ADIABATIC_NONE     (0)
-#define ADIABATIC_VOL_EVOL (1)
-#define ADIABATIC_MSB00    (2)
-#define ADIABATIC_COOLING_TYPE (ADIABATIC_MSB00)
-
-!!!NOTE
+!!!NOTE:
 !!! To keep indices clean the order is:
 !!!
 
@@ -40,7 +35,7 @@ subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob
    character(len=*), parameter :: screan_head = &
       '---------------------------------------------------------------------'&
       //new_line('A')//&
-      ' | Iteration | Obser. time |   BW radius |  gamma_bulk |      Bfield |'&
+      '| Iteration | Obser. time |   BW radius |  gamma_bulk |      Bfield |'&
       //new_line('A')//&
       ' ---------------------------------------------------------------------', &
       on_screen = "(' | ', I9, ' | ', ES11.4, ' | ', ES11.4, ' | ', ES11.4, ' | ', ES11.4, ' |')"
@@ -187,10 +182,9 @@ subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob
 
    !---> Magnetic field
    b_const = dsqrt(32d0 * pi * eps_B * mass_p) * cLight
-   !B = b_const * dsqrt(n_ext) * gamma_bulk(0)
+   ! B = b_const * dsqrt(n_ext) * gamma_bulk(0)
    !B = b_const * dsqrt(n_ext * (gamma_bulk(0) - 1d0) * gamma_bulk(0))
-   !B = b_const * dsqrt(n_ext * (gamma_bulk(0) - 1d0) * (gamma_bulk(0) + 0.75d0))
-   B = b_const * dsqrt(n_ext * (gamma_bulk(0) - 1d0) * gamma_bulk(0) * 0.5d0)
+   B = b_const * dsqrt(n_ext * (gamma_bulk(0) - 1d0) * (gamma_bulk(0) + 0.75d0))
    uB = B**2 / (8d0 * pi)
 
    !---> Radiation fields
@@ -277,7 +271,7 @@ subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob
          beta_bulk(i) = bofg(gamma_bulk(i))
          call rk2_arr(t(i - 1), 1d0 / (beta_bulk(i - 1:i) * gamma_bulk(i - 1:i) * cLight), dr, t(i))
          dt = t(i) - t(i - 1)
-      else
+         else
          R(i) = R0 * (Rmax / R0)**(dble(i) / dble(numt))
          dr = R(i) - R(i - 1)
          if ( numerical ) then
@@ -292,6 +286,7 @@ subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob
          dt = t(i) - t(i - 1)
       end if
       call rk2_arr(t_obs(i - 1), (1d0 + z) / Dopp(i - 1:i), dt, t_obs(i))
+      Rb(i) = R(i) / gamma_bulk(i)
 
       !  ###### ###### #####
       !  #      #      #    #
@@ -315,10 +310,9 @@ subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob
       n_ext = Aw * R(i)**(-sind)
 
       !-----> Magnetic field assuming equipartition
-      !B = b_const * dsqrt(n_ext) * gamma_bulk(i)
+      ! B = b_const * dsqrt(n_ext) * gamma_bulk(i)
       !B = b_const * dsqrt(n_ext * (gamma_bulk(i) - 1d0) * gamma_bulk(i))
-      !B = b_const * dsqrt(n_ext * (gamma_bulk(i) - 1d0) * (gamma_bulk(i) + 0.75d0))
-      B = b_const * dsqrt(n_ext * (gamma_bulk(i) - 1d0) * gamma_bulk(i) * 0.5d0)
+      B = b_const * dsqrt(n_ext * (gamma_bulk(i) - 1d0) * (gamma_bulk(i) + 0.75d0))
       uB = B**2 / (8d0 * pi)
 
       !-----> Radiation fields
@@ -384,7 +378,6 @@ subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob
             end do
          end do
          !$OMP END PARALLEL DO
-
          do k=1,numbins
             call bolometric_integ(freqs, Inu * pow_syn(:, k) / freqs**2, Ddiff(k, i))
             Ddiff(k, i) = Ddiff(k, i) * gg(k) * pofg(gg(k)) / (2d0 * mass_e * energy_e)
@@ -393,6 +386,7 @@ subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob
          Ddiff(:, i) = 1d-200
       end if
 
+      !-----> Inverse Compton emissivity
       if ( with_ic ) then
          !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) PRIVATE(j)
          do j = 1, numdf
@@ -414,29 +408,17 @@ subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob
       !  #    # #    # #    # #      # #   ## #    #
       !   ####   ####   ####  ###### # #    #  ####
 
-      !
-      !     Radiative cooling
-      !
-      dotg(:, i) = 0d0
+      !> Synchrotron cooling
+      dotg(:, i) = urad_const * uB * pofg(gg)**2 + &
+      !> Adiabatic cooling
+            adiab_cooling(gg, 0)
       ! call bolometric_integ(freqs, 4d0 * pi * Inu / cLight, urad)
       ! call RadTrans_blob(Inu, R, jssc(:, i) + jeic(:, i), anut(:, i))
       call RadTrans_blob(Inu, Rb(i), jmbs(:, i), ambs(:, i))
       call rad_cool_pwl(dotg_tmp, gg, freqs, 4d0 * pi * Inu / cLight, cool_withKN)
-      dotg(:, i) = dotg_tmp
+      dotg(:, i) = dotg(:, i) + dotg_tmp
       call rad_cool_mono(dotg_tmp, gg, nu_ext, uext, cool_withKN)
       dotg(:, i) = dotg(:, i) + dotg_tmp
-
-
-      !
-      !     Adiabatic cooling
-      !
-      !-----> Numeric using finite differences
-      dotg(:, i) = dotg(:, i) + pofg(gg) * dlog(volume(i) / volume(i - 1)) / (3d0 * dt)
-      !-----> MSB00
-      !dotg(:, i) = dotg(:, i) + cLight * beta_bulk(i) * gamma_bulk(i) * pofg(gg) / R(i)
-      !!!!!NOTE: using time-scile in Hao's paper, eq. (11)
-      !dotg(:, i) = dotg(:, i) + 1.6d0 * cLight * gamma_bulk(i) * pofg(gg) / R(i)
-
 
       !   ####  #    #     ####   ####  #####  ###### ###### #    #
       !  #    # ##   #    #      #    # #    # #      #      ##   #
@@ -521,9 +503,10 @@ subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob
    ! ------  Closing output file  ------
    call h5io_closef(file_id, herror)
    call h5close_f(herror)
+   write(*, "('--> Closing HDF5')")
 #endif
    write(*, "('==========  FINISHED  ==========')")
-   write(*,*) ''
+   write(*, *) ''
 
 end subroutine bw1D_afterglow
 
@@ -622,11 +605,11 @@ subroutine mezcal(params_file, output_file, with_ic, KNcool, assume_blob)
    call K2_init
 
    !!!TODO: Transform all these into arguments of the subroutine
-!   with_ic = .true.
-!   full_rad_cool = .true.
-!   bw_approx = .true.
-!   radius_evol = .false.
-!   pwl_over_trpzd_integ = .false.
+   ! with_ic = .true.
+   ! full_rad_cool = .true.
+   ! bw_approx = .true.
+   ! radius_evol = .false.
+   ! pwl_over_trpzd_integ = .false.
    b_const = dsqrt(32d0 * pi * eps_B) * cLight
    g1_const = eps_e * mass_p * (pind - 2d0) / ((pind - 1d0) * mass_e)
    g2_const = dsqrt(6d0 * pi * eCharge * eps_g2 / sigmaT)

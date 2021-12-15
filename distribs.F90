@@ -292,17 +292,41 @@ contains
       end if
    end subroutine time_step
 
+
+   !> Adiabatic cooling
+   function adiab_cooling(gg, cool_type, volume1, volume2, Gbulk, Bbulk, R, dt) result(dotg)
+      implicit none
+      integer, intent(in) :: cool_type
+      real(dp), dimension(:), intent(in) :: gg
+      real(dp), intent(in), optional :: volume1, volume2, Gbulk, Bbulk, R, dt
+      real(dp), dimension(size(gg)) :: dotg
+      select case(cool_type)
+      case(0) !> No adiabatic cooling
+         dotg = 0d0
+      case(1) !> Volume evolution, i.e., approxim dV/dt with finite differences
+         if ( .not. (present(volume1) .or. present(volume2) .or. present(dt)) ) &
+               call an_error("adiab_cooling: Arguments volume1, volume2 and dt not present")
+         dotg = pofg(gg) * dlog(volume2 / volume1) / (3d0 * dt)
+      case(2) !> Following MSB00
+         if ( .not. (present(Bbulk) .or. present(Gbulk) .or. present(R)) ) &
+               call an_error("adiab_cooling: Arguments Gbulk, Bbulk and R not present")
+         dotg = cLight * Bbulk * Gbulk * gg / R
+      case(3) !> See Hao et al. (2020)
+         if ( .not. (present(Gbulk) .or. present(R)) ) &
+               call an_error("adiab_cooling: Arguments Gbulk and R not present")
+         dotg = 1.6d0 * cLight * Bbulk * Gbulk * pofg(gg) / R
+      case default
+         call an_error("adiab_cooling: wrong value of cool_type")
+      end select
+   end function adiab_cooling
+
 end module distribs
 
 
 
-
-
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!    D  E  P  R  E  C  A  T  E  D    !!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
 #if 0
    !
    !     Slope of the Relativistic Maxwell distribution

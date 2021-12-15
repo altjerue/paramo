@@ -275,7 +275,7 @@ contains
    dy1 = abs(y2 - y1)
    dy2 = abs(y1 - y)
    dy3 = abs(y2 - y)
-   if(dy1 + dy2 > dy3) then
+   if(dy3 + dy2 > dy1) then
       write(*, *) y1, y2, y
       call an_error('linint: Interpolation not between y1 and y2')
    end if

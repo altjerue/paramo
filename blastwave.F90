@@ -16,7 +16,7 @@ contains
    !  #     # #       #    ## #     # #     #
    !   #####  #       #     #  #####   #####
    !
-   !> Evolution model of a blast-wave as in eqs. (9) and (10) of Sari, Piran &
+   !> Evolution model of a blast-wave as in eqs. (9) and (10) of Sari, Piran & 
    !! Narayan (1998)
    subroutine blastwave_approx_SPN98(G0, E0, n, tobs, Gshk, Rshk, adiabatic)
       implicit none
@@ -110,20 +110,7 @@ contains
       end if
    end subroutine deceleration_radius
 
-
-   !> Analytic solution for the adiabatic blast wave.
-   function adiab_bw(Rshk, G0, E0, n_ext) result(Gshk)
-      implicit none
-      real(dp), intent(in) :: Rshk, G0, E0, n_ext
-      real(dp) :: M0, x, Gshk
-      !---> Eqs. (9)-(10) in CD99
-      M0 = E0 / (G0 * cLight**2)
-      x = 4d0 * pi * mass_p * n_ext * Rshk**3 / 3d0
-      Gshk = (x + G0 * M0) / dsqrt(M0**2 + 2d0 * G0 * M0 * x + x**2)
-   end function adiab_bw
-
-
-   !> Analytic solution for the adiabatic blast wave with wind.
+   !> Adiabatic blast wave models.
    function adiab_blastwave(Rshk, sol_kind, G0, E0, Aw, s, Npts, filename) result(Gshk)
       implicit none
       real(dp), intent(in) :: Rshk
@@ -137,16 +124,16 @@ contains
 
       select case( sol_kind )
       case(1)
-         !---> Eqs. (9)-(10) in CD99
-         M0 = E0 / (G0 * cLight**2)
+      !---> Eqs. (9)-(10) in CD99
+      M0 = E0 / (G0 * cLight**2)
          x = 4d0 * pi * mass_p * Aw * Rshk**3 / 3d0
-         Gshk = (x + G0 * M0) / dsqrt(M0**2 + 2d0 * G0 * M0 * x + x**2)
+      Gshk = (x + G0 * M0) / dsqrt(M0**2 + 2d0 * G0 * M0 * x + x**2)
       case(2)
          if ( .not. present(s) ) call an_error("deceleration_radius: Wind index s not declared")
-        !---> Eqs. (4)-(5) in PK00
-         R0 = ( (3d0 - s) * E0 / (4d0 * pi * mass_p * cLight**2 * Aw * G0**2))**(1d0 / (3d0 - s) )
-         x = Rshk / R0
-         Gshk = 0.5d0 * x**(s - 3d0) * G0 * ( dsqrt( 4d0 * x**(3d0 - s) + 1d0 + (2d0 * x**(3d0 - s) / G0)**2 ) - 1d0 )
+      !---> Eqs. (4)-(5) in PK00
+      R0 = ( (3d0 - s) * E0 / (4d0 * pi * mass_p * cLight**2 * Aw * G0**2))**(1d0 / (3d0 - s) )
+      x = Rshk / R0
+      Gshk = 0.5d0 * x**(s - 3d0) * G0 * ( dsqrt( 4d0 * x**(3d0 - s) + 1d0 + (2d0 * x**(3d0 - s) / G0)**2 ) - 1d0 )
       case(3)
          ! Numerical interpolation for a blast wave using an external file (ASCII)
          if ( .not. (present(Npts) .or. present(filename)) ) then
@@ -177,13 +164,13 @@ contains
    end function adiab_blastwave
 
 
-   !> Depending on the model, the blast wave cross sectional area may be
+   !> Depending on the model, the blast wave cross sectional area may be 
    !! isotropic or beamed. This subroutine returns the the cross sectional area,
    !! volume, radius/thickness and Omega_j of the emitting region. The emitting
    !! region may be a blob or a slab.
    subroutine bw_crossec_area(beam_kind, blob, Rbw, Gbulk, theta_j0, Rb, volume, csa, Oj)
       implicit none
-      integer, intent(in) :: beam_kind
+      integer, intent(in)   :: beam_kind
       real(dp), intent(in) :: Rbw, theta_j0, Gbulk
       logical, intent(in) :: blob
       real(dp), intent(out) :: csa, volume, Rb, Oj
@@ -197,13 +184,13 @@ contains
          case(2)!> Classic beamed jet
             theta_j = 1d0 / Gbulk
          case(3)!> Beamed jet with initial opening angle theta_j0
-            theta_j = theta_j0
+         theta_j = theta_j0
          case(4)
-            theta_j = theta_j0 + 1d0 / (Gbulk * dsqrt(3d0))
+         theta_j = theta_j0 + 1d0 / (Gbulk * dsqrt(3d0))
          case(5)
-            theta_j = theta_j0 + 1d0 / Gbulk
-         case default
-            call an_error("bw_crossec_area: wrong value of beam_kind")
+         theta_j = theta_j0 + 1d0 / Gbulk
+      case default
+         call an_error("bw_crossec_area: wrong value of beam_kind")
       end select
       Oj = 2d0 * pi * (1d0 - dcos(theta_j))
       csa = Oj * Rbw**2
