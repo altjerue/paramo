@@ -1,4 +1,3 @@
-
 program main
    use data_types
    use misc
@@ -31,11 +30,12 @@ program main
    allocate(args(numArgs), with_arg(numArgs - 2))
    do i=1, numArgs
       call get_command_argument(i, args(i))
+      write(*, *) i, args(i), numArgs, size(with_arg)
       if ( i > 2 ) then
          if ( args(i) == 'T' ) then
-            with_arg(i) = .true.
+            with_arg(i - 2) = .true.
          else if ( args(i) == 'F' ) then
-            with_arg(i) = .false.
+            with_arg(i - 2) = .false.
          else
             call an_error(args_error)
          end if

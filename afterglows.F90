@@ -1,9 +1,4 @@
-#define ADIABATIC_NONE     (0)
-#define ADIABATIC_VOL_EVOL (1)
-#define ADIABATIC_MSB00    (2)
-#define ADIABATIC_COOLING_TYPE (ADIABATIC_MSB00)
-
-!!!NOTE
+!!!NOTE:
 !!! To keep indices clean the order is:
 !!!
 
@@ -414,17 +409,9 @@ subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob
       !   ####   ####   ####  ###### # #    #  ####
 
       !> Synchrotron cooling
-      dotg(:, i) = urad_const * uB * pofg(gg)**2 &
+      dotg(:, i) = urad_const * uB * pofg(gg)**2 + &
       !> Adiabatic cooling
-#if( ADIABATIC_COOLING_TYPE == ADIABATIC_MSB00 )
-         + cLight * beta_bulk(i) * gamma_bulk(i) * gg / R(i)
-      !!!!!NOTE: using time-scile in Hao's paper, eq. (11)
-      !dotg(:, i) = dotg(:, i) + 1.6d0 * cLight * gamma_bulk(i) * pofg(gg) / R(i)
-#elif( ADIABATIC_COOLING_TYPE == ADIABATIC_VOL_EVOL )
-         + pofg(gg) * dlog(volume(l, i) / volume(l, i - 1)) / (3d0 * dt)
-#else
-         + 0d0
-#endif
+            adiab_cooling(gg, 0)
       ! call bolometric_integ(freqs, 4d0 * pi * Inu / cLight, urad)
       ! call RadTrans_blob(Inu, R, jssc(:, i) + jeic(:, i), anut(:, i))
       call RadTrans_blob(Inu, Rb(i), jmbs(:, i), ambs(:, i))
@@ -516,9 +503,10 @@ subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob
    ! ------  Closing output file  ------
    call h5io_closef(file_id, herror)
    call h5close_f(herror)
+   write(*, "('--> Closing HDF5')")
 #endif
    write(*, "('==========  FINISHED  ==========')")
-   write(*,*) ''
+   write(*, *) ''
 
 end subroutine bw1D_afterglow
 
@@ -718,7 +706,7 @@ subroutine mezcal(params_file, output_file, with_ic, KNcool, assume_blob)
          dt = t_com(l, i) - t_com(l, i - 1)
          rb = r(l, i) / (12d0 * gamma_bulk(l, i))
          tlc = rb / cLight
-   
+
          !> Solving the Fokker-Planck eq.
          call FP_FinDif_difu(dt, &
                &             gamma_e, &
@@ -779,7 +767,7 @@ subroutine mezcal(params_file, output_file, with_ic, KNcool, assume_blob)
          else
             jnut(l, :, i) = jsyn(l, :, i)
          end if
-   
+
       end do derroteros_loop
 
       if ( mod(i, nmod) == 0 .or. i == 1 ) &
