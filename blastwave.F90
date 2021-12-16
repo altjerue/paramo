@@ -172,7 +172,7 @@ contains
       real(dp), intent(in)  :: Rbw, theta_j0, Gbulk, G0
       logical, intent(in)   :: blob
       real(dp), intent(out) :: csa, volume, Rb, Oj
-      real(dp)              :: theta_j
+      real(dp)              :: theta_j, Gbulk_fluid
 
       !---> Uniform isotropic or beamed?
       iso_or_beamed: if ( beam_kind >= 0 ) then
@@ -202,7 +202,9 @@ contains
             end if
          else
             ! Rb = Rbw / (Gbulk * 12d0)
-            Rb = Rbw / (12d0 * (Gbulk + 0.75d0))
+            !Rb = Rbw / (12d0 * (Gbulk + 0.75d0))
+            Gbulk_fluid = dsqrt(1 + Gbulk**2 + Gbulk * dsqrt(3 + Gbulk**2))/2
+            Rb = Rbw / (12d0 * (Gbulk_fluid**2) ) !Gbulk + 0.75d0))
             csa = Oj * Rbw**2
             volume = csa * Rb
          end if

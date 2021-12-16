@@ -420,7 +420,7 @@ contains
             qq = -dlog(nn(k + 1) / nn(k)) / dlog(gg(k + 1) / gg(k))
             if ( qq > 8d0 ) qq = 8d0
             if ( qq < -8d0 ) qq = -8d0
-            jnu = jnu + j_mb(freq, B, nn(k), gg(k), gg(k + 1), qq, RMA_nobreak)
+            jnu = jnu + j_mb(freq, B, nn(k), gg(k), gg(k + 1), qq, RMA_nobreak) !_new)
          end if
       end do calc_jnu
       if ( jnu < 1d-200 ) jnu = 0d0
@@ -565,7 +565,7 @@ contains
             qq = -dlog(nn(k + 1) / nn(k)) / dlog(gg(k + 1) / gg(k))
             if ( qq > 8d0 ) qq = 8d0
             if ( qq < -8d0 ) qq = -8d0
-            anu = anu + a_mb(freq, B, nn(k), gg(k), gg(k + 1), qq, RMA_nobreak)
+            anu = anu + a_mb(freq, B, nn(k), gg(k), gg(k + 1), qq, RMA_nobreak)!new)
          end if
       end do calc_anu
       if ( anu < 1d-200 ) anu = 0d0

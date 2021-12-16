@@ -109,7 +109,7 @@ subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob
    call K2_init
 
    !!!!!TODO: Transform all these into arguments of the subroutine
-   with_ic = .true.
+   with_ic = .false.
    bw_approx = .false.
    radius_evol = .false.
    pwl_over_trpzd_integ = .false.
@@ -120,11 +120,14 @@ subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob
    !-----> About the observer
    theta_obs = par_theta_obs * pi / 180d0
    mu_obs = dcos(theta_obs)
-
+   
    !-----> Initializing blast wave
    theta_j0 = 0.2d0
    beta_bulk = bofg(gamma_bulk0)
+   !gamma_bulk(0) = adiab_blast_wave(R(0), gamma_bulk0, E0, Aw, with_wind, numerical, sind)
    call bw_crossec_area(flow_kind, blob, gamma_bulk0, R0, gamma_bulk0, theta_j0, Rb(0), volume(0), cs_area, Omega_j)
+   !gamma_bulk(0) = adiab_blast_wave(R(0), gamma_bulk0, E0, Aw, with_wind, numerical, sind)
+   !call bw_crossec_area(flow_kind, blob, gamma_bulk(0), R(0), gamma_bulk(0), theta_j0, R(0), volume(0), cs_area, Omega_j)
 
    !-----> External medioum
    if ( with_wind ) then
@@ -137,9 +140,9 @@ subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob
       Aw = n_ext0
       n_ext = n_ext0
    end if
+   
    call deceleration_radius(Rd, Rd2, E0, gamma_bulk0, Aw, with_wind, sind)
    td = (1d0 + z) * Rd / (4d0 * gamma_bulk0**2 * cLight)
-
    !---> True outflow energy and decceleration radius
    Ejet = E0 * Omega_j / (4d0 * pi)
 
@@ -159,7 +162,7 @@ subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob
       t(0) = R(0) / (beta_bulk * gamma_bulk(0) * cLight)
    end if
 
-   call bw_crossec_area(flow_kind, blob, gamma_bulk0, R(0), gamma_bulk(0), theta_j0, Rb(0), volume(0), cs_area, Omega_j)
+   call bw_crossec_area(flow_kind, blob, gamma_bulk(0), R(0), gamma_bulk(0), theta_j0, Rb(0), volume(0), cs_area, Omega_j)
 
    !---> External medioum
    n_ext = Aw * R(0)**(-sind)
@@ -169,6 +172,8 @@ subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob
    !B = b_const * dsqrt(n_ext) * gamma_bulk(0)
    !B = b_const * dsqrt(n_ext * (gamma_bulk(0) - 1d0) * (gamma_bulk(0) + 0.75d0))
    B = b_const * dsqrt(n_ext * (gamma_bulk(0) - 1d0) * (gamma_bulk(0)) / 2d0 )
+   !B = b_const * dsqrt(n_ext * 0.25 + gamma_bulk(i)**2/4. + (gamma_bulk(i)*dsqrt(3 + gamma_bulk(i)**2))/4. &
+   !           - dsqrt(1 + gamma_bulk(i)*(gamma_bulk(i) + dsqrt(3 + gamma_bulk(i)**2)))/2.)
    uB = B**2 / (8d0 * pi)
 
    !---> Radiation fields
@@ -330,7 +335,7 @@ subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob
             &             1d200, &
             &             tlc)
 
-      call bw_crossec_area(flow_kind, blob, gamma_bulk0, R(i), gamma_bulk(i), theta_j0, Rb(i), volume(i), cs_area, Omega_j)
+      call bw_crossec_area(flow_kind, blob, gamma_bulk(0), R(i), gamma_bulk(i), theta_j0, Rb(i), volume(i), cs_area, Omega_j)
 
       !-----> External medioum
       n_ext = Aw * R(i)**(-sind)
@@ -338,7 +343,9 @@ subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob
       !-----> Magnetic field assuming equipartition
       !B = b_const * dsqrt(n_ext) * gamma_bulk(i)
       !B = b_const * dsqrt(n_ext * (gamma_bulk(i) - 1d0) * (gamma_bulk(i) + 0.75d0))
-      B = b_const * dsqrt(n_ext * (gamma_bulk(i) - 1d0) * (gamma_bulk(i)) / 2d0 )
+      B = b_const * dsqrt(n_ext * (gamma_bulk(i) - 1d0) * (gamma_bulk(i))/2.)
+      !B = b_const * dsqrt(n_ext * 0.25 + gamma_bulk(i)**2/4. + (gamma_bulk(i)*dsqrt(3 + gamma_bulk(i)**2))/4. &
+      !        - dsqrt(1 + gamma_bulk(i)*(gamma_bulk(i) + dsqrt(3 + gamma_bulk(i)**2)))/2.)
       uB = B**2 / (8d0 * pi)
 
       !-----> Radiation fields
@@ -377,13 +384,9 @@ subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob
       !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) PRIVATE(j, k)
       do j = 1, numdf
          freqs(j) = nu_com_f(nu_obs(j), z, D(i))
+         !call syn_broken(freqs(j), tlc, gamma_bulk(i), gg, pind, B, n_ext, jmbs(j,i))
          call syn_emissivity(jmbs(j, i), freqs(j), gg, n_e(:, i), B)
          call syn_absorption(ambs(j, i), freqs(j), gg, n_e(:, i), B)
-         !do k = 1, numbins
-         !   ! pow_syn(j, k) = dsqrt(3d0) * eCharge**3 * B * RMA_new(freqs(j) / (nuconst * B), gg(k))
-         !   !-----> Expression below is Eq. (3.63) in my thesis
-         !   pow_syn(j, k) = 1.315d-28 * nuconst * B * volume(i) * RMA_new(freqs(j) / (nuconst * B), gg(k))
-         !end do
       end do
       !$OMP END PARALLEL DO
 
@@ -435,7 +438,6 @@ subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob
       dotg(:, i) = 0d0
       ! call bolometric_integ(freqs, 4d0 * pi * Inu / cLight, urad)
       ! call RadTrans_blob(Inu, R, jssc(:, i) + jeic(:, i), anut(:, i))
-      !call RadTrans_blob(Inu, Rb(i), jmbs(:, i), ambs(:, i))
       call RadTrans(Inu, Rb(i), jmbs(:, i), ambs(:, i))
       call rad_cool_pwl(dotg_tmp, gg, freqs, 4d0 * pi * Inu / cLight, cool_withKN)
       dotg(:, i) = dotg_tmp
