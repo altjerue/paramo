@@ -16,7 +16,7 @@ contains
    !  #     # #       #    ## #     # #     #
    !   #####  #       #     #  #####   #####
    !
-   !> Evolution model of a blast-wave as in eqs. (9) and (10) of Sari, Piran & 
+   !> Evolution model of a blast-wave as in eqs. (9) and (10) of Sari, Piran &
    !! Narayan (1998)
    subroutine blastwave_approx_SPN98(G0, E0, n, tobs, Gshk, Rshk, adiabatic)
       implicit none
@@ -164,30 +164,30 @@ contains
    end function adiab_blastwave
 
 
-   !> Depending on the model, the blast wave cross sectional area may be 
+   !> Depending on the model, the blast wave cross sectional area may be
    !! isotropic or beamed. This subroutine returns the the cross sectional area,
    !! volume, radius/thickness and Omega_j of the emitting region. The emitting
    !! region may be a blob or a slab.
    subroutine bw_crossec_area(beam_kind, blob, Rbw, Gbulk, theta_j0, Rb, volume, csa, Oj)
       implicit none
-      integer, intent(in)   :: beam_kind
+      integer, intent(in) :: beam_kind
       real(dp), intent(in) :: Rbw, theta_j0, Gbulk
       logical, intent(in) :: blob
       real(dp), intent(out) :: csa, volume, Rb, Oj
       real(dp) :: theta_j
       !---> Uniform isotropic or beamed?
       select case( beam_kind )
-         case(0)!> Isotropic blast-wave
-            theta_j = pi
-         case(1)!> Half blob
-            theta_j = halfpi
-         case(2)!> Classic beamed jet
-            theta_j = 1d0 / Gbulk
-         case(3)!> Beamed jet with initial opening angle theta_j0
+      case(0)!> Isotropic blast-wave
+         theta_j = pi
+      case(1)!> Half blob
+         theta_j = halfpi
+      case(2)!> Classic beamed jet
+         theta_j = 1d0 / Gbulk
+      case(3)!> Beamed jet with initial opening angle theta_j0
          theta_j = theta_j0
-         case(4)
+      case(4)
          theta_j = theta_j0 + 1d0 / (Gbulk * dsqrt(3d0))
-         case(5)
+      case(5)
          theta_j = theta_j0 + 1d0 / Gbulk
       case default
          call an_error("bw_crossec_area: wrong value of beam_kind")

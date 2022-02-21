@@ -286,7 +286,6 @@ subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob
          dt = t(i) - t(i - 1)
       end if
       call rk2_arr(t_obs(i - 1), (1d0 + z) / Dopp(i - 1:i), dt, t_obs(i))
-      Rb(i) = R(i) / gamma_bulk(i)
 
       !  ###### ###### #####
       !  #      #      #    #

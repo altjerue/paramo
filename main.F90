@@ -25,6 +25,7 @@ program main
    logical, allocatable, dimension(:) :: with_arg
 
    numArgs = command_argument_count()
+   !!!!! TODO: Reduce number of argmuents to 2: params_file and output_file. The rest of the arguments should be set into the parameters file
    if ( numArgs /= 5 ) call an_error(args_error)
    call get_command_argument(0, program_name)
    allocate(args(numArgs), with_arg(numArgs - 2))

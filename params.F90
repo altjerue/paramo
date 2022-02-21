@@ -19,7 +19,7 @@ module params
          par_numax, par_E0, par_B, par_mu_mag, par_eta_j, par_fesc, par_eps_acc
 
 contains
-
+   !!!!!! TODO: separate parameters and write them all in a single parameter file: 1st global parameters, 2nd Problem specific parameters
    subroutine read_params(par_file)
       implicit none
       character(*), intent(in) :: par_file
