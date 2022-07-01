@@ -3,7 +3,7 @@
 #define BLACK_BODY    (3)
 #define SYN_AFTERGLOW (4)
 #define ODE_SOLVER    (5)
-#define TEST_CHOICE (SYN_AFTERGLOW)
+! #define TEST_CHOICE (SYN_AFTERGLOW)
 
 program tests
    use data_types
@@ -26,18 +26,22 @@ program tests
    integer(HID_T) :: file_id, group_id
    integer :: herror
 #endif
+integer :: TEST_CHOICE
+character(len=8) :: targ
+call get_command_argument(1,targ)
+TEST_CHOICE = char2int(targ)
 
-#if TEST_CHOICE == 1
+if (TEST_CHOICE == 1) then
    call steady_state
-#elif TEST_CHOICE == 2
-   call rad_procs
-#elif TEST_CHOICE == 3
+! else if (TEST_CHOICE == 2) then
+!    call rad_procs
+else if (TEST_CHOICE == 3) then
    call BlackBody_tests(.true.)
-#elif TEST_CHOICE == 4
+else if (TEST_CHOICE == 4) then
    call syn_afterglow
-#elif TEST_CHOICE == 5
+else if (TEST_CHOICE == 5) then
    call ode_solver_test(50, 2, 0d0, 5d0, (/ 0d0, 1d0 /), 2)
-#endif
+end if
 
 contains
 
@@ -51,7 +55,9 @@ contains
          Inu1, Inu4, Inu5, Inu6
       real(dp), allocatable, dimension(:,:) :: n1, n2, n3, n4, n5, n6
       real(dp), allocatable, dimension(:,:) :: jmbs1, ambs1, jssc1, jmbs4, ambs4, jssc4, jmbs5, ambs5, jssc5, jmbs6, ambs6, jssc6
-
+      character(len=256) :: output_file
+      call get_command_argument(2,output_file)
+      !output_file = "steady_state_test.h5"
       numg = 128
       numt = 300
       numf = 192
@@ -93,9 +99,9 @@ contains
       zero1 = 1d-200
       zero2 = 0d0
       C0 = 3.48d-11 ! 4d0 * sigmaT * uB / (3d0 * mass_e * cLight)
-      tacc = 1d0 / (C0(1) * 10d0**4.5d0) !tesc
+      tacc = 1d0 / (C0(1) * ((10d0)**(4.5d0))) !tesc
       tesc = tacc ! 1d200 ! 1.5d0 * R / cLight !
-      D0 = 0.5d0 * pofg(g)**2 / tacc
+      D0 = 0.5d0 * (pofg(g)**2) / tacc
       n1(0, :) = injection_pwl(1d0, tacc, g, g1, g2, qind, 1d0)
       n2(0, :) = n1(0, :)
       n3(0, :) = n1(0, :)
@@ -155,6 +161,8 @@ contains
          end do
          !$OMP END PARALLEL DO
 
+         write(*,'(A)') 'iteration: '//trim(int2char(i))//' of '//trim(int2char(numt))
+
       end do time_loop
 
       write(*, "('--> Fokker-Planck solver test')")
@@ -166,7 +174,7 @@ contains
             !      # ###### #    # # #  # # #  ###
             ! #    # #    #  #  #  # #   ## #    #
             !  ####  #    #   ##   # #    #  ####
-      #ifdef HDF5
+#ifdef HDF5
             ! write(*, *) ''
             write(*, "('---> Creating HDF5')")
             ! ------  Opening output file  ------
@@ -179,7 +187,6 @@ contains
             call h5io_wint0 (group_id, 'numg',        numg, herror)
             call h5io_wdble0(group_id, 't_max',       tmax, herror)
             call h5io_wdble0(group_id, 'tstep',       tstep, herror)
-            call h5io_wdble0(group_id, 'Gamma_bulk0', G0, herror)
             call h5io_wdble0(group_id, 'gamma_min',   gmin, herror)
             call h5io_wdble0(group_id, 'gamma_max',   gmax, herror)
             call h5io_wdble0(group_id, 'gamma_1',     g1, herror)
@@ -194,10 +201,6 @@ contains
             call h5io_wdble0(group_id, 'tacc',   tacc, herror)
             call h5io_wdble0(group_id, 'tesc',   tesc, herror)
             call h5io_wdble1(group_id, 'D0',    D0, herror)
-
-            call h5io_wdble0(group_id, 'E0',          E0, herror)
-            call h5io_wdble0(group_id, 'R0',          r0, herror)
-            call h5io_wdble0(group_id, 'n_ext',       n_ext, herror)
             call h5io_closeg(group_id, herror)
             ! ------  saving numerical data  ------
             call h5io_createg(file_id, "Numeric", group_id, herror)
@@ -238,7 +241,7 @@ contains
             ! ------  Closing output file  ------
             call h5io_closef(file_id, herror)
             call h5close_f(herror)
-      #endif
+#endif
    end subroutine steady_state
 
    !> Tests with a Blackbody
@@ -389,7 +392,7 @@ contains
       t_lab(0) = 0d0
       dt = 0.1d0
 
-      Gbulk(0) = adiab_bw(r(0), G0, E0, n_ext)
+      ! Gbulk(0) = adiab_bw(r(0), G0, E0, n_ext)
       Bbulk(0) = bofg(Gbulk(0))
 
       !--->  Magnetic field
@@ -446,7 +449,7 @@ contains
       ! ######   ##    ####  ######  ####    #   #  ####  #    #
       do i=1, numt
          r(i) = r0 * ( (rmax / r0)**(dble(i) / dble(numt)) )
-         Gbulk(i) = adiab_bw(R(i), G0, E0, n_ext)
+         ! Gbulk(i) = adiab_bw(R(i), G0, E0, n_ext)
          dr = r(i) - r(i - 1)
          Bbulk(i) = bofg(Gbulk(i))
          call rk2_arr(t(i-1), 1d0 / (Bbulk(i-1:i) * Gbulk(i-1:i) * cLight), dr, t(i))

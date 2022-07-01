@@ -155,7 +155,8 @@ class compiler(object):
 
     def compile(self):
         print(strftime("\n\n%a, %d %b %Y %H:%M:%S %Z", localtime()))
-        make = ["make", "Paramo", "CONFIG="+str(self.problem), "COMPILER="+str(self.COMP)]
+        # make = ["make", "Paramo", "CONFIG="+str(self.problem), "COMPILER="+str(self.COMP)]
+        make = ["make", "Paramo", "CONFIG="+str(self.CONFIG), "COMPILER="+str(self.COMP)]
         if self.OMP:
             make.append("OPENMP=1")
         else:
@@ -209,12 +210,17 @@ class Runner(object):
         self.comp_kw = comp_kw
         self.flabel = flabel  # a label to identify each output
 
-    def run_test(self, clean=False):
+    def run_test(self, output_file, clean=False, test_choice=0):
+        if(test_choice==0):
+            print("\n --> need to input test_choice")
+            print("\n --> test_choice : 1 (steady_state), 2 (rad_procs), "
+                  "3 (BlackBody_tests), 4 (syn_afterglow), 5 (ode_solver_test)")
+            exit(0)
         comp = compiler(rules='xTests', **self.comp_kw)
         if clean:
             comp.cleanup()
         comp.compile()
-        run_cmd = '{0}xTests'.format(comp.compileDir)
+        run_cmd = '{0}Paramo {1} {2}'.format(comp.compileDir,test_choice,output_file)
         print("\n--> Running:\n  ", run_cmd, "\n")
         os.system(run_cmd)
         print("\n--> Finished")

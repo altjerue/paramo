@@ -159,6 +159,14 @@ contains
       end if
    end function assert_eq
 
+   !> Convert a integer to a string value using an internal read.
+   function int2char(i) result(c)
+      integer, intent(in) :: i
+      character(len=60) :: c
+      write (c,*) i
+      c = adjustl(c)
+   end function int2char
+
    !> Convert a string to a integer value using an internal read.
    function char2int(c) result(i)
       character(len=*), intent(in) :: c
