@@ -159,6 +159,86 @@ contains
 
       write(*, "('--> Fokker-Planck solver test')")
 
+
+            !  ####    ##   #    # # #    #  ####
+            ! #       #  #  #    # # ##   # #    #
+            !  ####  #    # #    # # # #  # #
+            !      # ###### #    # # #  # # #  ###
+            ! #    # #    #  #  #  # #   ## #    #
+            !  ####  #    #   ##   # #    #  ####
+      #ifdef HDF5
+            ! write(*, *) ''
+            write(*, "('---> Creating HDF5')")
+            ! ------  Opening output file  ------
+            call h5open_f(herror)
+            call h5io_createf(output_file, file_id, herror)
+            ! ------  Saving initial parameters  ------
+            call h5io_createg(file_id, "Parameters", group_id, herror)
+            call h5io_wint0 (group_id, 'numt',        numt, herror)
+            call h5io_wint0 (group_id, 'numf',        numf, herror)
+            call h5io_wint0 (group_id, 'numg',        numg, herror)
+            call h5io_wdble0(group_id, 't_max',       tmax, herror)
+            call h5io_wdble0(group_id, 'tstep',       tstep, herror)
+            call h5io_wdble0(group_id, 'Gamma_bulk0', G0, herror)
+            call h5io_wdble0(group_id, 'gamma_min',   gmin, herror)
+            call h5io_wdble0(group_id, 'gamma_max',   gmax, herror)
+            call h5io_wdble0(group_id, 'gamma_1',     g1, herror)
+            call h5io_wdble0(group_id, 'gamma_2',     g2, herror)
+            call h5io_wdble0(group_id, 'pwl-index',   qind, herror)
+            call h5io_wdble0(group_id, 'nu_min',      numin, herror)
+            call h5io_wdble0(group_id, 'nu_max',      numax, herror)
+            call h5io_wdble0(group_id, 'emission_R',      R, herror)
+            call h5io_wdble0(group_id, 'B_0',      B, herror)
+            call h5io_wdble0(group_id, 'uB',      uB, herror)
+            call h5io_wdble0(group_id, 'C0',   C0(1), herror)
+            call h5io_wdble0(group_id, 'tacc',   tacc, herror)
+            call h5io_wdble0(group_id, 'tesc',   tesc, herror)
+            call h5io_wdble1(group_id, 'D0',    D0, herror)
+
+            call h5io_wdble0(group_id, 'E0',          E0, herror)
+            call h5io_wdble0(group_id, 'R0',          r0, herror)
+            call h5io_wdble0(group_id, 'n_ext',       n_ext, herror)
+            call h5io_closeg(group_id, herror)
+            ! ------  saving numerical data  ------
+            call h5io_createg(file_id, "Numeric", group_id, herror)
+            call h5io_wdble1(group_id, 'freqs',    freqs, herror)
+            call h5io_wdble1(group_id, 'gamma',   g, herror)
+            call h5io_wdble1(group_id, 'dg',   dg, herror)
+            call h5io_wdble1(group_id, 'time',       t(1:), herror)
+            call h5io_wdble1(group_id, 'dt',       dt(1:), herror)
+            call h5io_wdble1(group_id, 'Inu1',   Inu1, herror)
+            call h5io_wdble1(group_id, 'Inu4',   Inu4, herror)
+            call h5io_wdble1(group_id, 'Inu5',   Inu5, herror)
+            call h5io_wdble1(group_id, 'Inu6',   Inu6, herror)
+            call h5io_wdble1(group_id, 'Ntot1',   Ntot1, herror)
+            call h5io_wdble1(group_id, 'Ntot2',   Ntot2, herror)
+            call h5io_wdble1(group_id, 'Ntot3',   Ntot3, herror)
+            call h5io_wdble1(group_id, 'Ntot4',   Ntot4, herror)
+            call h5io_wdble1(group_id, 'Ntot5',   Ntot5, herror)
+            call h5io_wdble1(group_id, 'Ntot6',   Ntot6, herror)
+            call h5io_wdble2(group_id, 'jmbs1',    jmbs1, herror)
+            call h5io_wdble2(group_id, 'jssc1',    jssc1, herror)
+            call h5io_wdble2(group_id, 'ambs1',    ambs1, herror)
+            call h5io_wdble2(group_id, 'n1',     n1(:, 1:), herror)
+            call h5io_wdble2(group_id, 'n2',     n2(:, 1:), herror)
+            call h5io_wdble2(group_id, 'n3',     n3(:, 1:), herror)
+            call h5io_wdble2(group_id, 'jmbs4',    jmbs4, herror)
+            call h5io_wdble2(group_id, 'jssc4',    jssc4, herror)
+            call h5io_wdble2(group_id, 'ambs4',    ambs4, herror)
+            call h5io_wdble2(group_id, 'n4',     n4(:, 1:), herror)
+            call h5io_wdble2(group_id, 'jmbs5',    jmbs5, herror)
+            call h5io_wdble2(group_id, 'jssc5',    jssc5, herror)
+            call h5io_wdble2(group_id, 'ambs5',    ambs5, herror)
+            call h5io_wdble2(group_id, 'n5',     n5(:, 1:), herror)
+            call h5io_wdble2(group_id, 'jmbs6',    jmbs6, herror)
+            call h5io_wdble2(group_id, 'jssc6',    jssc6, herror)
+            call h5io_wdble2(group_id, 'ambs6',    ambs6, herror)
+            call h5io_wdble2(group_id, 'n6',     n6(:, 1:), herror)
+            call h5io_closeg(group_id, herror)
+            ! ------  Closing output file  ------
+            call h5io_closef(file_id, herror)
+            call h5close_f(herror)
+      #endif
    end subroutine steady_state
 
    !> Tests with a Blackbody
