@@ -67,8 +67,7 @@ contains
       gmax = 1.5d0 * g2
       numin = 1d10
       numax = 1d27
-      tstep = 1e0
-      tmax = 1e7
+
       qind = 0d0
       R = 1e16
       B = 1d0
@@ -101,6 +100,10 @@ contains
       C0 = 3.48d-11 ! 4d0 * sigmaT * uB / (3d0 * mass_e * cLight)
       tacc = 1d0 / (C0(1) * ((10d0)**(4.5d0))) !tesc
       tesc = tacc ! 1d200 ! 1.5d0 * R / cLight !
+      tmax = tacc*20d0
+      tstep = tmax*1e-7
+
+
       D0 = 0.5d0 * (pofg(g)**2) / tacc
       n1(0, :) = injection_pwl(1d0, tacc, g, g1, g2, qind, 1d0)
       n2(0, :) = n1(0, :)
@@ -123,9 +126,9 @@ contains
          call FP_FinDif_difu(dt(i), g, n1(i - 1, :), n1(i, :), C0 * pofg(g)**2, zero1, zero2, 1d200, R / cLight)
          call FP_FinDif_difu(dt(i), g, n2(i - 1, :), n2(i, :), C0 * pofg(g)**2, zero1, Q0,    1d200, R / cLight)
          call FP_FinDif_difu(dt(i), g, n3(i - 1, :), n3(i, :), C0 * pofg(g)**2, zero1, Q0,    tesc,  R / cLight)
-         call FP_FinDif_difu(dt(i), g, n4(i - 1, :), n4(i, :), C0 * pofg(g)**2, D0,    zero2, 1d200, R / cLight)
-         call FP_FinDif_difu(dt(i), g, n5(i - 1, :), n5(i, :), C0 * pofg(g)**2, D0,    Q0,    1d200, R / cLight)
-         call FP_FinDif_difu(dt(i), g, n6(i - 1, :), n6(i, :), C0 * pofg(g)**2, D0,    Q0,    tesc,  R / cLight)
+         call FP_FinDif_difu(dt(i), g, n4(i - 1, :), n4(i, :), C0 * pofg(g)**2 - 2d0*D0/g, D0,    zero2, 1d200, R / cLight)
+         call FP_FinDif_difu(dt(i), g, n5(i - 1, :), n5(i, :), C0 * pofg(g)**2 - 2d0*D0/g, D0,    Q0,    1d200, R / cLight)
+         call FP_FinDif_difu(dt(i), g, n6(i - 1, :), n6(i, :), C0 * pofg(g)**2 - 2d0*D0/g, D0,    Q0,    tesc,  R / cLight)
 
          Ntot1(i) = sum(n1(i, :) * dg)
          Ntot2(i) = sum(n2(i, :) * dg)
@@ -134,32 +137,32 @@ contains
          Ntot5(i) = sum(n5(i, :) * dg)
          Ntot6(i) = sum(n6(i, :) * dg)
 
-         !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) PRIVATE(j)
-         do j = 1, numf
-            call syn_emissivity(jmbs1(j, i), freqs(j), g, n1(i, :), B)
-            call syn_emissivity(jmbs4(j, i), freqs(j), g, n4(i, :), B)
-            call syn_emissivity(jmbs5(j, i), freqs(j), g, n5(i, :), B)
-            call syn_emissivity(jmbs6(j, i), freqs(j), g, n6(i, :), B)
-            call syn_absorption(ambs1(j, i), freqs(j), g, n1(i, :), B)
-            call syn_absorption(ambs4(j, i), freqs(j), g, n4(i, :), B)
-            call syn_absorption(ambs5(j, i), freqs(j), g, n5(i, :), B)
-            call syn_absorption(ambs6(j, i), freqs(j), g, n6(i, :), B)
-         end do
-         !$OMP END PARALLEL DO
-
-         call RadTrans_blob(Inu1, R, jmbs4(:, i), ambs1(:, i))
-         call RadTrans_blob(Inu4, R, jmbs4(:, i), ambs4(:, i))
-         call RadTrans_blob(Inu5, R, jmbs4(:, i), ambs5(:, i))
-         call RadTrans_blob(Inu6, R, jmbs6(:, i), ambs6(:, i))
-
-         !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) PRIVATE(j)
-         do j = 1, numf
-            call IC_iso_powlaw(jssc1(j, i), freqs(j), freqs, Inu1, n1(i, :), g)
-            call IC_iso_powlaw(jssc4(j, i), freqs(j), freqs, Inu4, n4(i, :), g)
-            call IC_iso_powlaw(jssc5(j, i), freqs(j), freqs, Inu5, n5(i, :), g)
-            call IC_iso_powlaw(jssc6(j, i), freqs(j), freqs, Inu6, n6(i, :), g)
-         end do
-         !$OMP END PARALLEL DO
+         ! !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) PRIVATE(j)
+         ! do j = 1, numf
+         !    call syn_emissivity(jmbs1(j, i), freqs(j), g, n1(i, :), B)
+         !    call syn_emissivity(jmbs4(j, i), freqs(j), g, n4(i, :), B)
+         !    call syn_emissivity(jmbs5(j, i), freqs(j), g, n5(i, :), B)
+         !    call syn_emissivity(jmbs6(j, i), freqs(j), g, n6(i, :), B)
+         !    call syn_absorption(ambs1(j, i), freqs(j), g, n1(i, :), B)
+         !    call syn_absorption(ambs4(j, i), freqs(j), g, n4(i, :), B)
+         !    call syn_absorption(ambs5(j, i), freqs(j), g, n5(i, :), B)
+         !    call syn_absorption(ambs6(j, i), freqs(j), g, n6(i, :), B)
+         ! end do
+         ! !$OMP END PARALLEL DO
+         !
+         ! call RadTrans_blob(Inu1, R, jmbs4(:, i), ambs1(:, i))
+         ! call RadTrans_blob(Inu4, R, jmbs4(:, i), ambs4(:, i))
+         ! call RadTrans_blob(Inu5, R, jmbs4(:, i), ambs5(:, i))
+         ! call RadTrans_blob(Inu6, R, jmbs6(:, i), ambs6(:, i))
+         !
+         ! !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) PRIVATE(j)
+         ! do j = 1, numf
+         !    call IC_iso_powlaw(jssc1(j, i), freqs(j), freqs, Inu1, n1(i, :), g)
+         !    call IC_iso_powlaw(jssc4(j, i), freqs(j), freqs, Inu4, n4(i, :), g)
+         !    call IC_iso_powlaw(jssc5(j, i), freqs(j), freqs, Inu5, n5(i, :), g)
+         !    call IC_iso_powlaw(jssc6(j, i), freqs(j), freqs, Inu6, n6(i, :), g)
+         ! end do
+         ! !$OMP END PARALLEL DO
 
          write(*,'(A)') 'iteration: '//trim(int2char(i))//' of '//trim(int2char(numt))
 

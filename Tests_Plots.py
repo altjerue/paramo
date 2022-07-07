@@ -156,7 +156,7 @@ def ssr_n_plots():
         plt.tight_layout()
 
         # plt.savefig(plots_folder+"n1vsg.png")
-        # plt.show()
+        plt.show()
 
 def ssr_j_plots():
     ssr = get_steady_state_results()
@@ -236,6 +236,6 @@ def ssr_j_plots():
         # plt.savefig(plots_folder+"n1vsg.png")
         plt.show()
 
-# run_steady_state_test()
-# ssr_n_plots()
-ssr_j_plots()
+run_steady_state_test()
+ssr_n_plots()
+# ssr_j_plots()
