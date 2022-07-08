@@ -282,9 +282,9 @@ class Runner(object):
         else:
             in3 = 'T'
         if wMezcal:
-            comp = compiler(problem=4, **self.comp_kw)
+            comp = compiler(CONFIG=4, **self.comp_kw)
         else:
-            comp = compiler(problem=2, **self.comp_kw)
+            comp = compiler(CONFIG=2, **self.comp_kw)
         if clean:
             comp.cleanup()
         comp.compile()

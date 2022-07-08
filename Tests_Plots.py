@@ -5,6 +5,7 @@ import Eduviges.extractor as extr
 import matplotlib.cm as cm
 import matplotlib
 
+
 class SS_results:
 
     def __init__(self, outfile):
