@@ -5,51 +5,12 @@ import Eduviges.extractor as extr
 import matplotlib.cm as cm
 import matplotlib
 
-outfile = 'afterglow_test'
+outfile = 'interJets_test'
 
 plots_folder = '/home/zach/Documents/Code_Projects/paramo/Plots/'
 
-class mezcal_results:
 
-    def __init__(self, outfile):
-        ex = extr.fromHDF5(h5fname=outfile)
-        self.numt = ex.hdf5ExtractScalar('numt', group='Parameters')
-        self.numf = ex.hdf5ExtractScalar('numf', group='Parameters')
-        self.numg = ex.hdf5ExtractScalar('numg', group='Parameters')
-        self.numh = ex.hdf5ExtractScalar('numh', group='Parameters')
-        self.d_lum = ex.hdf5ExtractScalar('d_lum', group='Parameters')
-        self.redshift = ex.hdf5ExtractScalar('redshift', group='Parameters')
-        self.gmin = ex.hdf5ExtractScalar('gamma_min', group='Parameters')
-        self.gmax = ex.hdf5ExtractScalar('gamma_max', group='Parameters')
-        self.g1 = ex.hdf5ExtractScalar('gamma_1', group='Parameters')
-        self.g2 = ex.hdf5ExtractScalar('gamma_2', group='Parameters')
-        self.qind = ex.hdf5ExtractScalar('pwl-index', group='Parameters')
-        self.epsilon_e = ex.hdf5ExtractScalar('epsilon_e', group='Parameters')
-        self.epsilon_B = ex.hdf5ExtractScalar('epsilon_B', group='Parameters')
-        self.numin = ex.hdf5ExtractScalar('nu_min', group='Parameters')
-        self.numax = ex.hdf5ExtractScalar('nu_max', group='Parameters')
-        self.E0 = ex.hdf5ExtractScalar('E0', group='Parameters')
-
-        self.t_lab = ex.hdf5Extract1D('t_lab')
-        self.theta = ex.hdf5Extract1D('theta')
-        self.nu_com = ex.hdf5Extract1D('nu_com')
-        self.g = ex.hdf5Extract1D('gamma')
-        self.t_com = ex.hdf5Extract2D('t_com')
-        self.radius = ex.hdf5Extract2D('radius')
-        self.volume = ex.hdf5Extract2D('volume')
-        self.Gamma_bulk = ex.hdf5Extract2D('Gamma_bulk')
-        self.Doppler = ex.hdf5Extract2D('Doppler')
-        self.r_mu_obs = ex.hdf5Extract2D('r_mu_obs')
-        self.v_mu_obs = ex.hdf5Extract2D('v_mu_obs')
-        self.density = ex.hdf5Extract2D('density')
-        self.jnut = ex.hdf5Extract3D('jnut')
-        self.jsyn = ex.hdf5Extract3D('jsyn')
-        self.jssc = ex.hdf5Extract3D('jssc')
-        self.anut = ex.hdf5Extract3D('anut')
-        self.n = ex.hdf5Extract3D('n_e')
-
-
-class bw1D_results:
+class ij_results:
 
     def __init__(self, outfile):
         ex = extr.fromHDF5(h5fname=outfile)
@@ -106,20 +67,20 @@ class bw1D_results:
 
 
 
-def run_bw1D_afterglow():
-    rr = ar.Runner(flabel=outfile,comp_kw={'OMP': True, 'HDF5': True})
+def run_interJets():
+    rr = ar.Runner(flabel=outfile,comp_kw={'OMP': True, 'HDF5': True,'compileDir':'../'})
     ##adjust parameters
     rr.par.numax = 1e28
     rr.par.wParams()
     ###
-    rr.run_Aglow(clean=False)
+    rr.run_interJets(clean=True)
 
-def get_bw1D_results():
-    bw1dr = bw1D_results(outfile=outfile+'.jp.h5')
-    return bw1dr
+def get_ij_results():
+    ijr = ij_results(outfile=outfile+'.jp.h5')
+    return ijr
 
-def bw1dr_n_plot():
-    bw1dr = get_bw1D_results()
+def ijr_n_plot():
+    ijr = get_ij_results()
 
     fig, ax = plt.subplots()
     ax.set_yscale('log')
@@ -127,9 +88,9 @@ def bw1dr_n_plot():
 
 
 
-    g = bw1dr.g
-    t = bw1dr.t
-    n = bw1dr.n
+    g = ijr.g
+    t = ijr.t
+    n = ijr.n
 
     cmap = cm.rainbow
     sm = plt.cm.ScalarMappable(cmap=cmap,  norm=matplotlib.colors.LogNorm(vmin=t[0], vmax=t[-1]))
@@ -195,8 +156,8 @@ def bw1dr_n_plot():
     plt.show()
 
 
-def bw1dr_j_plots():
-    bw1dr = get_bw1D_results()
+def ijr_j_plots():
+    ijr = get_ij_results()
 
     fig, ax = plt.subplots()
     ax.set_yscale('log')
@@ -204,11 +165,11 @@ def bw1dr_j_plots():
 
 
 
-    nu = bw1dr.nu
-    t = bw1dr.t
-    jm = bw1dr.jsyn
-    jssc = bw1dr.jssc
-    jeic = bw1dr.jeic
+    nu = ijr.nu
+    t = ijr.t
+    jm = ijr.jsyn
+    jssc = ijr.jssc
+    jeic = ijr.jeic
 
     cmap = cm.rainbow
     sm = plt.cm.ScalarMappable(cmap=cmap,  norm=matplotlib.colors.LogNorm(vmin=t[0], vmax=t[-1]))
@@ -228,7 +189,7 @@ def bw1dr_j_plots():
         pls.append(pl)
 
     ax.set_ylim(my/1e10, 2*my)
-    ax.set_xlim(bw1dr.numin, bw1dr.numax)
+    ax.set_xlim(ijr.numin, ijr.numax)
 
     cbticks = []
     for i in range(8):
@@ -273,7 +234,7 @@ def bw1dr_j_plots():
     # plt.savefig(plots_folder+"n1vsg.png")
     plt.show()
 
-# run_bw1D_afterglow()
-# get_bw1D_results()
-bw1dr_n_plot()
-# bw1dr_j_plots()
+run_interJets()
+# get_ij_results()
+ijr_n_plot()
+ijr_j_plots()

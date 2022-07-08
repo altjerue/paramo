@@ -5,89 +5,54 @@ import Eduviges.extractor as extr
 import matplotlib.cm as cm
 import matplotlib
 
-outfile = 'afterglow_test'
-
+outfile = 'blazeMag_test'
+outdir='./'
 plots_folder = '/home/zach/Documents/Code_Projects/paramo/Plots/'
 
-class mezcal_results:
+
+class bm_results:
 
     def __init__(self, outfile):
-        ex = extr.fromHDF5(h5fname=outfile)
-        self.numt = ex.hdf5ExtractScalar('numt', group='Parameters')
-        self.numf = ex.hdf5ExtractScalar('numf', group='Parameters')
-        self.numg = ex.hdf5ExtractScalar('numg', group='Parameters')
-        self.numh = ex.hdf5ExtractScalar('numh', group='Parameters')
-        self.d_lum = ex.hdf5ExtractScalar('d_lum', group='Parameters')
-        self.redshift = ex.hdf5ExtractScalar('redshift', group='Parameters')
-        self.gmin = ex.hdf5ExtractScalar('gamma_min', group='Parameters')
-        self.gmax = ex.hdf5ExtractScalar('gamma_max', group='Parameters')
-        self.g1 = ex.hdf5ExtractScalar('gamma_1', group='Parameters')
-        self.g2 = ex.hdf5ExtractScalar('gamma_2', group='Parameters')
-        self.qind = ex.hdf5ExtractScalar('pwl-index', group='Parameters')
-        self.epsilon_e = ex.hdf5ExtractScalar('epsilon_e', group='Parameters')
-        self.epsilon_B = ex.hdf5ExtractScalar('epsilon_B', group='Parameters')
-        self.numin = ex.hdf5ExtractScalar('nu_min', group='Parameters')
-        self.numax = ex.hdf5ExtractScalar('nu_max', group='Parameters')
-        self.E0 = ex.hdf5ExtractScalar('E0', group='Parameters')
-
-        self.t_lab = ex.hdf5Extract1D('t_lab')
-        self.theta = ex.hdf5Extract1D('theta')
-        self.nu_com = ex.hdf5Extract1D('nu_com')
-        self.g = ex.hdf5Extract1D('gamma')
-        self.t_com = ex.hdf5Extract2D('t_com')
-        self.radius = ex.hdf5Extract2D('radius')
-        self.volume = ex.hdf5Extract2D('volume')
-        self.Gamma_bulk = ex.hdf5Extract2D('Gamma_bulk')
-        self.Doppler = ex.hdf5Extract2D('Doppler')
-        self.r_mu_obs = ex.hdf5Extract2D('r_mu_obs')
-        self.v_mu_obs = ex.hdf5Extract2D('v_mu_obs')
-        self.density = ex.hdf5Extract2D('density')
-        self.jnut = ex.hdf5Extract3D('jnut')
-        self.jsyn = ex.hdf5Extract3D('jsyn')
-        self.jssc = ex.hdf5Extract3D('jssc')
-        self.anut = ex.hdf5Extract3D('anut')
-        self.n = ex.hdf5Extract3D('n_e')
-
-
-class bw1D_results:
-
-    def __init__(self, outfile):
-        ex = extr.fromHDF5(h5fname=outfile)
-        self.numt = ex.hdf5ExtractScalar('numt', group='Parameters')
+        ex = extr.fromHDF5(h5fname=outdir+outfile)
+        self.numt = ex.hdf5ExtractScalar('numdt', group='Parameters')
         self.numf = ex.hdf5ExtractScalar('numdf', group='Parameters')
         self.numg = ex.hdf5ExtractScalar('numbins', group='Parameters')
-        self.time_grid = ex.hdf5ExtractScalar('time-grid', group='Parameters')
         self.t_max = ex.hdf5ExtractScalar('t_max', group='Parameters')
-        self.t_min = ex.hdf5ExtractScalar('t_min', group='Parameters')
         self.tstep = ex.hdf5ExtractScalar('tstep', group='Parameters')
+        self.R_b = ex.hdf5ExtractScalar('R_b', group='Parameters')
+        self.R_em = ex.hdf5ExtractScalar('R_em', group='Parameters')
         self.d_lum = ex.hdf5ExtractScalar('d_lum', group='Parameters')
         self.redshift = ex.hdf5ExtractScalar('redshift', group='Parameters')
-        self.Gamma_bulk0 = ex.hdf5ExtractScalar('Gamma_bulk0', group='Parameters')
-        self.view_angle = ex.hdf5ExtractScalar('view-angle', group='Parameters')
+        self.Gamma_bulk = ex.hdf5ExtractScalar('Gamma_bulk', group='Parameters')
+        self.sigma = ex.hdf5ExtractScalar('sigma', group='Parameters')
+        self.theta_obs_deg = ex.hdf5ExtractScalar('theta_obs_deg', group='Parameters')
         self.gmin = ex.hdf5ExtractScalar('gamma_min', group='Parameters')
         self.gmax = ex.hdf5ExtractScalar('gamma_max', group='Parameters')
         self.g1 = ex.hdf5ExtractScalar('gamma_1', group='Parameters')
         self.g2 = ex.hdf5ExtractScalar('gamma_2', group='Parameters')
         self.qind = ex.hdf5ExtractScalar('pwl-index', group='Parameters')
-        self.L_j = ex.hdf5ExtractScalar('L_j', group='Parameters')
-        self.epsilon_e = ex.hdf5ExtractScalar('epsilon_e', group='Parameters')
-        self.epsilon_B = ex.hdf5ExtractScalar('epsilon_B', group='Parameters')
+        self.u_ext = ex.hdf5ExtractScalar('u_ext', group='Parameters')
+        self.nu_ext = ex.hdf5ExtractScalar('nu_ext', group='Parameters')
+        self.L_j = ex.hdf5ExtractScalar('L_jet', group='Parameters')
         self.numin = ex.hdf5ExtractScalar('nu_min', group='Parameters')
         self.numax = ex.hdf5ExtractScalar('nu_max', group='Parameters')
-        self.E0 = ex.hdf5ExtractScalar('E0', group='Parameters')
-        self.Ejet = ex.hdf5ExtractScalar('Ejet', group='Parameters')
-        self.R0 = ex.hdf5ExtractScalar('R0', group='Parameters')
-        self.n_ext = ex.hdf5ExtractScalar('n_ext', group='Parameters')
+        self.numag = ex.hdf5ExtractScalar('mu_mag', group='Parameters')
 
-        self.Rd = ex.hdf5ExtractScalar('Rd')
-        self.td = ex.hdf5ExtractScalar('td')
+        self.t_inj = ex.hdf5ExtractScalar('t_inj')
+        self.t_esc = ex.hdf5ExtractScalar('t_esc')
+
+        self.Bfield = ex.hdf5ExtractScalar('Bfield', group='electrons-energy')
+        self.L_B = ex.hdf5ExtractScalar('L_B', group='electrons-energy')
+        self.uB = ex.hdf5ExtractScalar('uB', group='electrons-energy')
+        self.L_e = ex.hdf5ExtractScalar('L_e', group='electrons-energy')
+        self.L_e2 = ex.hdf5ExtractScalar('L_e2', group='electrons-energy')
+        self.Q_nth = ex.hdf5ExtractScalar('Q_nth', group='electrons-energy')
+        self.Q_nth2 = ex.hdf5ExtractScalar('Q_nth2', group='electrons-energy')
+        self.Q_nth3 = ex.hdf5ExtractScalar('Q_nth3', group='electrons-energy')
+
+
         self.t = ex.hdf5Extract1D('time')
         self.t_obs = ex.hdf5Extract1D('t_obs')
-        self.Rb = ex.hdf5Extract1D('Rb')
-        self.Rbw = ex.hdf5Extract1D('Rbw')
-        self.volume = ex.hdf5Extract1D('volume')
-        self.Gamma_bulk = ex.hdf5Extract1D('Gamma_bulk')
-        self.Doppler = ex.hdf5Extract1D('Doppler')
         self.nu = ex.hdf5Extract1D('nu')
         self.nu_obs = ex.hdf5Extract1D('nu_obs')
         self.g = ex.hdf5Extract1D('gamma')
@@ -97,29 +62,28 @@ class bw1D_results:
         self.jeic = ex.hdf5Extract2D('jeic')
         self.anut = ex.hdf5Extract2D('anut')
         self.ambs = ex.hdf5Extract2D('ambs')
-        self.Qinj = ex.hdf5Extract2D('Qinj')
         self.n = ex.hdf5Extract2D('n_e')
-        self.gdotty = ex.hdf5Extract2D('cool-coef')
-        self.Ddiff = ex.hdf5Extract2D('diffusion')
+        self.gdotty = ex.hdf5Extract2D('dgdt')
 
 
 
 
 
-def run_bw1D_afterglow():
-    rr = ar.Runner(flabel=outfile,comp_kw={'OMP': True, 'HDF5': True})
+
+def run_BlazeMag():
+    rr = ar.Runner(flabel=outfile,comp_kw={'OMP': True, 'HDF5': True,'compileDir':'/home/zach/Documents/Code_Projects/paramo/'})
     ##adjust parameters
     rr.par.numax = 1e28
     rr.par.wParams()
     ###
-    rr.run_Aglow(clean=False)
+    rr.run_blazMag(cmd_args=(True, True),clean=True)
 
-def get_bw1D_results():
-    bw1dr = bw1D_results(outfile=outfile+'.jp.h5')
-    return bw1dr
+def get_bm_results():
+    bmr = bm_results(outfile=outfile+'.jp.h5')
+    return bmr
 
-def bw1dr_n_plot():
-    bw1dr = get_bw1D_results()
+def bmr_n_plot():
+    bmr = get_bm_results()
 
     fig, ax = plt.subplots()
     ax.set_yscale('log')
@@ -127,9 +91,9 @@ def bw1dr_n_plot():
 
 
 
-    g = bw1dr.g
-    t = bw1dr.t
-    n = bw1dr.n
+    g = bmr.g
+    t = bmr.t
+    n = bmr.n
 
     cmap = cm.rainbow
     sm = plt.cm.ScalarMappable(cmap=cmap,  norm=matplotlib.colors.LogNorm(vmin=t[0], vmax=t[-1]))
@@ -195,8 +159,8 @@ def bw1dr_n_plot():
     plt.show()
 
 
-def bw1dr_j_plots():
-    bw1dr = get_bw1D_results()
+def bmr_j_plots():
+    bmr = get_bm_results()
 
     fig, ax = plt.subplots()
     ax.set_yscale('log')
@@ -204,11 +168,11 @@ def bw1dr_j_plots():
 
 
 
-    nu = bw1dr.nu
-    t = bw1dr.t
-    jm = bw1dr.jsyn
-    jssc = bw1dr.jssc
-    jeic = bw1dr.jeic
+    nu = bmr.nu
+    t = bmr.t
+    jm = bmr.jsyn
+    jssc = bmr.jssc
+    jeic = bmr.jeic
 
     cmap = cm.rainbow
     sm = plt.cm.ScalarMappable(cmap=cmap,  norm=matplotlib.colors.LogNorm(vmin=t[0], vmax=t[-1]))
@@ -228,7 +192,7 @@ def bw1dr_j_plots():
         pls.append(pl)
 
     ax.set_ylim(my/1e10, 2*my)
-    ax.set_xlim(bw1dr.numin, bw1dr.numax)
+    ax.set_xlim(bmr.numin, bmr.numax)
 
     cbticks = []
     for i in range(8):
@@ -273,7 +237,7 @@ def bw1dr_j_plots():
     # plt.savefig(plots_folder+"n1vsg.png")
     plt.show()
 
-# run_bw1D_afterglow()
-# get_bw1D_results()
-bw1dr_n_plot()
-# bw1dr_j_plots()
+# run_BlazeMag()
+# get_bm_results()
+bmr_n_plot()
+bmr_j_plots()

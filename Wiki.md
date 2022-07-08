@@ -2,22 +2,34 @@
 
 ### Description: 
 
+Simulates afterglows by, solving the blast-waves' equation of motion, evolving particles inside the emission region, and calculating the emission from the particles.
+
+
 ### Functions/Subroutines:
 
 1. bw1D_afterglow
+    
+    Simulates afterglows by assuming the blast wave's equation is one dimensional and assumes an external density $$n(r)=A r^{-s}$$. s=0 is a homogenous cicumsteller medium and s=2 describes a constant peed wind from the progenitor.
 
+    For s=0(with_wind=False) see [CD99] for model details. 
+
+    For s>0 see  [PK00]
+
+ 
    __parameter__ : __in/out__: __type__
 
-   * *params_file*:
+   * *params_file*:in
+     * Input file that specifies the computational and physical parameters in the model
      * see https://bitbucket.org/comala/paramo/src/master/Examples/example_input.par
-   * *output_file*:
-       ~~~~ 
-             example file 
+   * *output_file*:out
+     * filename of the output hdf5 file
+     * see https://bitbucket.org/comala/paramo/src/master/Examples/afterglow_examples.py for a list of outputs in the result classes
    * *with_wind*:in:logical
     
    * *cool_withKN*:in:logical
    
    * *blob*:in:logical
+
 
 ####
  

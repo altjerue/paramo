@@ -25,7 +25,7 @@ program main
    logical, allocatable, dimension(:) :: with_arg
 
    numArgs = command_argument_count()
-   if ( numArgs /= 5 ) call an_error(args_error)
+  ! if ( numArgs /= 5 ) call an_error(args_error)
    call get_command_argument(0, program_name)
    allocate(args(numArgs), with_arg(numArgs - 2))
    do i=1, numArgs

@@ -16,7 +16,7 @@ contains
    !  #     # #       #    ## #     # #     #
    !   #####  #       #     #  #####   #####
    !
-   !> Evolution model of a blast-wave as in eqs. (9) and (10) of Sari, Piran & 
+   !> Evolution model of a blast-wave as in eqs. (9) and (10) of Sari, Piran &
    !! Narayan (1998)
    subroutine blastwave_approx_SPN98(G0, E0, n, tobs, Gshk, Rshk, adiabatic)
       implicit none
@@ -125,9 +125,9 @@ contains
       select case( sol_kind )
       case(1)
       !---> Eqs. (9)-(10) in CD99
-      M0 = E0 / (G0 * cLight**2)
-         x = 4d0 * pi * mass_p * Aw * Rshk**3 / 3d0
-      Gshk = (x + G0 * M0) / dsqrt(M0**2 + 2d0 * G0 * M0 * x + x**2)
+      M0 = E0 / (G0 * cLight**2)!!ejecta mass
+         x = 4d0 * pi * mass_p * Aw * Rshk**3 / 3d0 !!!swept up mass Aw=...
+      Gshk = (x + G0 * M0) / dsqrt(M0**2 + 2d0 * G0 * M0 * x + x**2)!!Gamma of r..denom is blastwave shell mass
       case(2)
          if ( .not. present(s) ) call an_error("deceleration_radius: Wind index s not declared")
       !---> Eqs. (4)-(5) in PK00
@@ -164,7 +164,7 @@ contains
    end function adiab_blastwave
 
 
-   !> Depending on the model, the blast wave cross sectional area may be 
+   !> Depending on the model, the blast wave cross sectional area may be
    !! isotropic or beamed. This subroutine returns the the cross sectional area,
    !! volume, radius/thickness and Omega_j of the emitting region. The emitting
    !! region may be a blob or a slab.

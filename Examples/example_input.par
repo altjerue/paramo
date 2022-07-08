@@ -1,0 +1,36 @@
+1d14  ! Initial radius
+4.0793d26  ! luminosity distance
+3d-2  ! redshift
+5d0  ! viewing angle
+1d2  ! bulk Lorentz factor
+1d0  ! (1 + sigma) Gamma
+1d0  ! magnetization
+1d0  ! dissipative efficiency of magnetic reconection
+0d0  ! magnetic field decay index
+1d0  ! magnetic field strength
+1d1  ! electrons temperature
+9.9d-1  ! fraction of nonthermal electrons
+1d0  ! electrons escape time
+1d-2  ! time step factor
+1d5  ! maximum time
+0d0  ! minimum time
+2d0  ! variability time scale
+1d45  ! jet luminosity
+1d50  ! energy of the blast wave
+1d0  ! number density of the external medium
+1d-1  ! epsilon_e
+3d-2  ! epsilon_B
+1d-2  ! epsilon_acc
+1d2  ! power-law min Lorentz factor
+1d4  ! power-law max Lorentz factor
+1.01d0  ! EED min Lorentz factor
+2d4  ! EED max Lorentz factor
+2.5d0  ! EED power-law index
+1d14  ! external rad. field frequency
+1d-4  ! external rad. field ener. density
+1d7  ! min frequency
+1d15  ! max frequency
+128  ! number of EED bins
+300  ! number of time steps
+256  ! number of frequencies
+1  ! kind of time grid

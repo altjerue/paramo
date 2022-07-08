@@ -49,7 +49,7 @@ class parameters(object):
         self.g1 = 1e2                   # power-law min Lorentz factor
         self.g2 = 1e4                   # power-law max Lorentz factor
         self.gmin = 1.01                # EED minimum Lorentz factor
-        self.gmax = 2e4                 # EED maximum Lorentz factor
+        self.gmax = self.g2*5e3                 # EED maximum Lorentz factor
         self.pind = 2.5                 # EED power-law index
         self.nu_ext = 1e14              # external radiation field freq.
         self.u_ext = 1e-4               # external radiation field ener. dens.
@@ -144,7 +144,7 @@ class compiler(object):
         self.OMP = False        # compile with OpenMP
         self.DBG = False        # compile for debugging
         self.HDF5 = True        # save data with HDF5
-        self.CONFIG = 0         # 0 (tests), 1 (blazars), 2 (afterflow), 3 (turbulence), 4 (Mezcal)
+        self.CONFIG = 0         # 0 (tests), 1 (blazars), 2 (afterflow), 3 (turbulence), 4 (Mezcal), 5 (interJets)
         self.server = 0         # 0 (UNIX PC) 1 (Brown@Purdue) 2 (RC@RIT)
         self.compileDir = './'  # the path to Paramo... must end with '/'
 
@@ -226,6 +226,9 @@ class Runner(object):
         print("\n--> Finished")
 
     # ----->   BlazMag compilation and run
+    #cmd args
+    #1. cool_withKN
+    #2. with_abs
     def run_blazMag(self, cmd_args=(None, None), pream=None, clean=False, cl=False):
         if cmd_args[0] is None or cmd_args[0] is False:
             in1 = 'F'
@@ -235,7 +238,7 @@ class Runner(object):
             in2 = 'F'
         else:
             in2 = 'T'
-        comp = compiler(problem=1, **self.comp_kw)
+        comp = compiler(CONFIG=1, **self.comp_kw)
         if clean:
             comp.cleanup()
         comp.compile()
@@ -244,6 +247,29 @@ class Runner(object):
             run_cmd = '{0}Paramo {1} {2} {3} {4}'.format(comp.compileDir, self.par.params_file, outfile, in1, in2)
         else:
             run_cmd = '{0} {1}Paramo {2} {3} {4} {5}'.format(pream, comp.compileDir, self.par.params_file, outfile, in1, in2)
+        print("\n--> Parameters:")
+        os.system("cat -n " + self.par.params_file)
+        if cl:
+            print("\n--> Running:\n  ", run_cmd, "\n")
+            return run_cmd
+        else:
+            print("\n--> Running:\n  ", run_cmd, "\n")
+            os.system(run_cmd)
+            print("\n--> Finished")
+
+        # ----->   BlazMag compilation and run
+
+    def run_interJets(self, pream=None, clean=False, cl=False):
+
+        comp = compiler(CONFIG=5, **self.comp_kw)
+        if clean:
+            comp.cleanup()
+        comp.compile()
+        outfile = self.flabel + '.jp.h5'
+        if pream is None:
+            run_cmd = '{0}Paramo {1} {2}'.format(comp.compileDir, self.par.params_file, outfile)
+        else:
+            run_cmd = '{0} {1}Paramo {2} {3}'.format(pream, comp.compileDir, self.par.params_file, outfile)
         print("\n--> Parameters:")
         os.system("cat -n " + self.par.params_file)
         if cl:
