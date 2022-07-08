@@ -7,6 +7,7 @@
 1. bw1D_afterglow
 
    __parameter__ : __in/out__: __type__
+
    * *params_file*:
      * see https://bitbucket.org/comala/paramo/src/master/Examples/example_input.par
    * *output_file*:
