@@ -59,6 +59,9 @@ class parameters(object):
         self.NT = 300                   # number of time steps
         self.NF = 256                   # number of frequencies
         self.time_grid = 1              # kind of cooling
+        self.lg1 = "d"              # logical parameter 1 with default = 'd'
+        self.lg2 = "d"                # logical parameter 2 with default = 'd'
+        self.lg3 = "d"                # logical parameter 3 with default = 'd'
         self.params_file = 'input.par'  # name of the parameters file
 
     def __init__(self, **kwargs):
@@ -104,6 +107,9 @@ class parameters(object):
             print(self.NT, ' ! number of time steps', file=f)
             print(self.NF, ' ! number of frequencies', file=f)
             print(self.time_grid, ' ! kind of time grid', file=f)
+            print( self.lg1, ' !  logical parameter 1 with default=d', file=f)
+            print( self.lg2, ' !  logical parameter 2 with default=d', file=f)
+            print( self.lg3, ' !  logical parameter 3 with default=d', file=f)
             # print(self.file_label, ' ! label to identify each output', file=f)
         print("--> Parameters file: ", self.params_file)
 
@@ -210,7 +216,7 @@ class Runner(object):
         self.comp_kw = comp_kw
         self.flabel = flabel  # a label to identify each output
 
-    def run_test(self, output_file, clean=False, test_choice=0):
+    def run_test(self, clean=False, test_choice=0):
         if(test_choice==0):
             print("\n --> need to input test_choice")
             print("\n --> test_choice : 1 (steady_state), 2 (rad_procs), "
@@ -220,7 +226,8 @@ class Runner(object):
         if clean:
             comp.cleanup()
         comp.compile()
-        run_cmd = '{0}Paramo {1} {2}'.format(comp.compileDir,test_choice,output_file)
+        outfile = self.flabel + '.jp.h5'
+        run_cmd = '{0}Paramo {1} {2} {3}'.format(comp.compileDir,test_choice,self.par.params_file, outfile)
         print("\n--> Running:\n  ", run_cmd, "\n")
         os.system(run_cmd)
         print("\n--> Finished")

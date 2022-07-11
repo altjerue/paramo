@@ -1,3 +1,5 @@
+import os
+
 import matplotlib.pyplot as plt
 import numpy as np
 import Arriero as ar
@@ -68,17 +70,35 @@ class SS_results:
         self.ambss = [self.ambs1,self.ambs4,self.ambs5,self.ambs6]
         self.jsscs = [self.jssc1,self.jssc4,self.jssc5,self.jssc6]
 
-outfile = './steady_state_test.h5'
+outfile =  __file__.split('Tests_Plots.py')[0] + 'steady_state_test'
+
+
 
 plots_folder = '/home/zach/Documents/Code_Projects/paramo/Plots/'
 
 def run_steady_state_test():
-    rr = ar.Runner(comp_kw={'OMP': True, 'HDF5': True})
-    rr.run_test(output_file=outfile, clean=False, test_choice=1)
+
+    rr = ar.Runner(flabel=outfile,comp_kw={'OMP': True, 'HDF5': True,'compileDir':'./'})
+    ##adjust parameters
+    rr.par.numax = 1e28
+    rr.par.NG = 128
+    rr.par.NT = 300
+    rr.par.NF = 192
+    rr.par.g1 = 1e2
+    rr.par.g2 = 1e6
+    rr.par.gmin = 1.01e0
+    rr.par.gmax = 1.5e0*rr.par.g2
+    rr.par.numin = 1e10
+    rr.par.numax = 1e27
+    rr.par.pind = 0e0
+    rr.par.lg1='F'
+    rr.par.wParams()
+    ###
+    rr.run_test(clean=True, test_choice=1)
 
 
 def get_steady_state_results():
-    ssr = SS_results(outfile=outfile)
+    ssr = SS_results(outfile=outfile+'.jp.h5')
     return ssr
 
 

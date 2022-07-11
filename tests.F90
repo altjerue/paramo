@@ -28,11 +28,14 @@ program tests
 #endif
 integer :: TEST_CHOICE
 character(len=8) :: targ
+character(len=256):: output_file, params_file
 call get_command_argument(1,targ)
+call get_command_argument(2,params_file)
+call get_command_argument(3,output_file)
 TEST_CHOICE = char2int(targ)
 
 if (TEST_CHOICE == 1) then
-   call steady_state
+   call steady_state(params_file,output_file)
 ! else if (TEST_CHOICE == 2) then
 !    call rad_procs
 else if (TEST_CHOICE == 3) then
@@ -46,8 +49,9 @@ end if
 contains
 
    !> This subroutine produces the steady state solutions of the kinetic equation.
-   subroutine steady_state
+   subroutine steady_state(params_file, output_file)
       implicit none
+      character(len=*), intent(in) :: output_file, params_file
       integer :: i, k, numg, numt, numf, j
       real(dp) :: g1, g2, gmin, gmax, tmax, tstep, qind, tacc, tesc, R, B, numax, numin, uB
       real(dp), allocatable, dimension(:) :: t, g, Q0, D0, C0, aux0, dt, dg, &
@@ -55,20 +59,34 @@ contains
          Inu1, Inu4, Inu5, Inu6
       real(dp), allocatable, dimension(:,:) :: n1, n2, n3, n4, n5, n6
       real(dp), allocatable, dimension(:,:) :: jmbs1, ambs1, jssc1, jmbs4, ambs4, jssc4, jmbs5, ambs5, jssc5, jmbs6, ambs6, jssc6
-      character(len=256) :: output_file
-      call get_command_argument(2,output_file)
-      !output_file = "steady_state_test.h5"
-      numg = 128
-      numt = 300
-      numf = 192
-      g1 = 1e2
-      g2 = 1e6
-      gmin = 1.01d0
-      gmax = 1.5d0 * g2
-      numin = 1d10
-      numax = 1d27
+      logical :: dorad
 
-      qind = 0d0
+      write(*,*) 'output file: ', output_file
+
+      call read_params(params_file)
+      tstep = par_tstep
+      tmax = par_tmax
+      gmin = par_gmin
+      gmax = par_gmax
+      numin = par_numin
+      numax = par_numax
+      numg = par_NG
+      numt = par_NT
+      numf = par_NF
+      qind = par_pind
+      g1 = par_g1
+      g2 = par_g2
+
+      if ( par_lg1 == "T" ) then
+        dorad = .true.
+      else if (par_lg1 == "F") then
+        dorad = .false.
+      else
+        dorad = .false.
+      end if
+
+
+
       R = 1e16
       B = 1d0
       uB = B**2 / (8d0 * pi)
@@ -137,37 +155,41 @@ contains
          Ntot5(i) = sum(n5(i, :) * dg)
          Ntot6(i) = sum(n6(i, :) * dg)
 
-         ! !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) PRIVATE(j)
-         ! do j = 1, numf
-         !    call syn_emissivity(jmbs1(j, i), freqs(j), g, n1(i, :), B)
-         !    call syn_emissivity(jmbs4(j, i), freqs(j), g, n4(i, :), B)
-         !    call syn_emissivity(jmbs5(j, i), freqs(j), g, n5(i, :), B)
-         !    call syn_emissivity(jmbs6(j, i), freqs(j), g, n6(i, :), B)
-         !    call syn_absorption(ambs1(j, i), freqs(j), g, n1(i, :), B)
-         !    call syn_absorption(ambs4(j, i), freqs(j), g, n4(i, :), B)
-         !    call syn_absorption(ambs5(j, i), freqs(j), g, n5(i, :), B)
-         !    call syn_absorption(ambs6(j, i), freqs(j), g, n6(i, :), B)
-         ! end do
-         ! !$OMP END PARALLEL DO
-         !
-         ! call RadTrans_blob(Inu1, R, jmbs4(:, i), ambs1(:, i))
-         ! call RadTrans_blob(Inu4, R, jmbs4(:, i), ambs4(:, i))
-         ! call RadTrans_blob(Inu5, R, jmbs4(:, i), ambs5(:, i))
-         ! call RadTrans_blob(Inu6, R, jmbs6(:, i), ambs6(:, i))
-         !
-         ! !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) PRIVATE(j)
-         ! do j = 1, numf
-         !    call IC_iso_powlaw(jssc1(j, i), freqs(j), freqs, Inu1, n1(i, :), g)
-         !    call IC_iso_powlaw(jssc4(j, i), freqs(j), freqs, Inu4, n4(i, :), g)
-         !    call IC_iso_powlaw(jssc5(j, i), freqs(j), freqs, Inu5, n5(i, :), g)
-         !    call IC_iso_powlaw(jssc6(j, i), freqs(j), freqs, Inu6, n6(i, :), g)
-         ! end do
-         ! !$OMP END PARALLEL DO
+         if ( dorad .eqv. .true. ) then
+
+           !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) PRIVATE(j)
+           do j = 1, numf
+              call syn_emissivity(jmbs1(j, i), freqs(j), g, n1(i, :), B)
+              call syn_emissivity(jmbs4(j, i), freqs(j), g, n4(i, :), B)
+              call syn_emissivity(jmbs5(j, i), freqs(j), g, n5(i, :), B)
+              call syn_emissivity(jmbs6(j, i), freqs(j), g, n6(i, :), B)
+              call syn_absorption(ambs1(j, i), freqs(j), g, n1(i, :), B)
+              call syn_absorption(ambs4(j, i), freqs(j), g, n4(i, :), B)
+              call syn_absorption(ambs5(j, i), freqs(j), g, n5(i, :), B)
+              call syn_absorption(ambs6(j, i), freqs(j), g, n6(i, :), B)
+           end do
+           !$OMP END PARALLEL DO
+
+           call RadTrans_blob(Inu1, R, jmbs4(:, i), ambs1(:, i))
+           call RadTrans_blob(Inu4, R, jmbs4(:, i), ambs4(:, i))
+           call RadTrans_blob(Inu5, R, jmbs4(:, i), ambs5(:, i))
+           call RadTrans_blob(Inu6, R, jmbs6(:, i), ambs6(:, i))
+
+           !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) PRIVATE(j)
+           do j = 1, numf
+              call IC_iso_powlaw(jssc1(j, i), freqs(j), freqs, Inu1, n1(i, :), g)
+              call IC_iso_powlaw(jssc4(j, i), freqs(j), freqs, Inu4, n4(i, :), g)
+              call IC_iso_powlaw(jssc5(j, i), freqs(j), freqs, Inu5, n5(i, :), g)
+              call IC_iso_powlaw(jssc6(j, i), freqs(j), freqs, Inu6, n6(i, :), g)
+           end do
+           !$OMP END PARALLEL DO
+
+         end if
 
          write(*,'(A)') 'iteration: '//trim(int2char(i))//' of '//trim(int2char(numt))
 
       end do time_loop
-
+      write(*,*) n1(:,-1)
       write(*, "('--> Fokker-Planck solver test')")
 
 
