@@ -262,7 +262,7 @@ class Runner(object):
         clean
         cl
         wMezcal
-        """
+        '''
         if cmd_args[0] is None or cmd_args[0] is False:
             in1 = 'F'
         else:
