@@ -120,8 +120,8 @@ def run_convergence_test(numts, numgs):
             rr.par.NF = 192
             rr.par.g1 = 1e2
             rr.par.g2 = 1e6
-            rr.par.gmin = 1.01e0
-            rr.par.gmax = 1.5e1 * rr.par.g2
+            rr.par.gmin = 1e0 + 1e-10
+            rr.par.gmax = 1.5e2 * rr.par.g2
             rr.par.numin = 1e10
             rr.par.numax = 1e27
             rr.par.pind = 0e0
@@ -299,7 +299,10 @@ def get_error_analytic(ei, eig,n0):
     er = []
     for i in range(len(eig)):
         ef = analytical_solution(n0,eig[i])
-        er.append(((ef-ei[i])/ef)**2)
+        if(ef>0):
+            er.append(((ef-ei[i])/ef)**2)
+        else:
+            er.append(0)
         # er.append(((ef-ei[i]))**2)
     eers = np.sqrt(er)
     er = np.sqrt(sum(er)/len(eig))
@@ -311,6 +314,7 @@ def convergence_plots_analytic(numt,numgs):
     ys = []
     gs = []
     ns = []
+    nios=[]
     eers = []
     p = 0e0
     gmin = 1e4
@@ -322,10 +326,12 @@ def convergence_plots_analytic(numt,numgs):
         ei = eissr.n4[:, -1]
         eig = eissr.g
         nio = np.trapz(ei,eig)
+        nio0 = np.trapz(eissr.n4[:, 0],eig)
+        nios.append(nio/nio0)
         # ei = n0*ei/nio
 
-        gminci = np.argmin(np.abs(eig - 10e0))
-        gmaxci = np.argmin(np.abs(eig - 1e6))
+        gminci = np.argmin(np.abs(eig - 12e0))
+        gmaxci = np.argmin(np.abs(eig - 3.6e6))
         eig=eig[gminci:gmaxci]
         ei=ei[gminci:gmaxci]
         er, eer = get_error_analytic(ei, eig,n0)
@@ -344,8 +350,12 @@ def convergence_plots_analytic(numt,numgs):
     fig2, ax2 = plt.subplots()
     ax2.set_yscale('log')
     ax2.set_xscale('log')
+    fig3, ax3 = plt.subplots()
+    ax3.set_yscale('log')
+    ax3.set_xscale('log')
     pl2 = ax2.plot()
     pl = ax.scatter(xs, ys)
+    pl3 = ax3.scatter(xs,nios)
     xc = np.logspace(0.5, 1.7)
     xc2 = np.logspace(1.5, 2.9)
     pl = ax.plot(xc*xc[1], ys[1] * (xc / xc[1]) ** -2, label='p=-2')
@@ -614,7 +624,8 @@ def build_g(gmax,gmin,numg):
 # run_convergence_test(np.logspace(1,4,4),np.logspace(1,4,4))
 # garr = [5,10,20,30,50,60,80,100,150,200,300,400,500,600,800,2000,3000,3500]
 garr = [20,30,60,80,100,150,200,250,300,400,500,700,900,1000]#,3500]
-run_convergence_test([300],garr)
+numtarr =[300]
+run_convergence_test(numtarr,garr)
 # convergence_plots_numg(300, garr)
 # build_g(1.5e6,1.0001,9000)
 
@@ -643,4 +654,4 @@ def debug_distribsFP():
     print("afd")
 
 # debug_distribsFP()
-convergence_plots_analytic(300,garr)
+convergence_plots_analytic(numtarr[0],garr)
