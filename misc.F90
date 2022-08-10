@@ -248,7 +248,7 @@ contains
       ns = ns - 1
       do m = 1, n - 1
          den(1:n - m) = ho(1:n - m) - ho(1 + m:n)
-         if ( any( dabs(den(1:n - m)) == 0d0 ) ) then
+         if ( any( dabs(den(1:n - m)) == 0d0)) then
             write(*, *) x, xa
             call an_error('polint: calculation failure')
          end if
@@ -527,6 +527,32 @@ contains
       yerr = h * (DC1 * dydx + DC3 * ak3 + DC4 * ak4 + DC5 * ak5 + DC6 * ak6)
    end subroutine rkck
 
+   !returns 1 if value is nan
+   function check_isnan_s(x) result(res)
+     implicit none
+     real(dp), intent(in) :: x
+     integer :: res
+     if ( isnan(x) ) then
+       res = 1
+     else
+       res = 0
+     end if
+   end function check_isnan_s
+
+   !returns 1 if any value is nan
+   function check_isnan_v(x) result(res)
+     implicit none
+     real(dp),dimension(:), intent(in) :: x
+     integer :: res,i
+     res = 0
+     do i = 1, size(x)
+       if ( isnan(x(i)) ) then
+         res = 1
+         exit
+       end if
+     end do
+   end function check_isnan_v
+
 #if 0
    ! ====================================================================
    !  First derivative of the Bessel function of the first kind of order
@@ -545,5 +571,7 @@ contains
          dbj = - dbesjn(nu + 1, z) + dble(nu) * dbesjn(nu, z) / z
       end if
    end function dbesseljn
+
+
 #endif
 end module misc

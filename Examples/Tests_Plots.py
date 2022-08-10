@@ -1,11 +1,13 @@
 import os
 
+import Eduviges.SRtoolkit
 import matplotlib.pyplot as plt
 import numpy as np
 import Arriero as ar
 import Eduviges.extractor as extr
 import matplotlib.cm as cm
 import scipy.integrate as intergrate
+import Eduviges.constants as aCons
 import matplotlib
 
 
@@ -118,10 +120,16 @@ def run_convergence_test(numts, numgs):
             rr.par.NG = numg
             rr.par.NT = numt
             rr.par.NF = 192
-            rr.par.g1 = 1e2
-            rr.par.g2 = 1e6
-            rr.par.gmin = 1e0 + 1e-10
-            rr.par.gmax = 1.5e2 * rr.par.g2
+            # rr.par.g1 = 1e4
+            # rr.par.g2 = 1e6
+            # rr.par.gmin = 1e0 + 1e-10
+            # rr.par.gmax = 1.5e2 * rr.par.g2
+            g1 = 1e4
+            g2=1e6
+            rr.par.g1 =g1#Eduviges.SRtoolkit.pofg(g1)*aCons.me*aCons.cLight
+            rr.par.g2 =g2 #Eduviges.SRtoolkit.pofg(g2)*aCons.me*aCons.cLight
+            rr.par.gmin =1e0  #+ 1e-90 #Eduviges.SRtoolkit.pofg(1 + 1e-15)*aCons.me*aCons.cLight
+            rr.par.gmax =1.5e2 * g2 #Eduviges.SRtoolkit.pofg(1.5e2 * g2)*aCons.me*aCons.cLight
             rr.par.numin = 1e10
             rr.par.numax = 1e27
             rr.par.pind = 0e0
@@ -330,8 +338,8 @@ def convergence_plots_analytic(numt,numgs):
         nios.append(nio/nio0)
         # ei = n0*ei/nio
 
-        gminci = np.argmin(np.abs(eig - 12e0))
-        gmaxci = np.argmin(np.abs(eig - 3.6e6))
+        gminci = np.argmin(np.abs(eig - 10e0))
+        gmaxci = np.argmin(np.abs(eig - 1e7))
         eig=eig[gminci:gmaxci]
         ei=ei[gminci:gmaxci]
         er, eer = get_error_analytic(ei, eig,n0)
@@ -351,7 +359,7 @@ def convergence_plots_analytic(numt,numgs):
     ax2.set_yscale('log')
     ax2.set_xscale('log')
     fig3, ax3 = plt.subplots()
-    ax3.set_yscale('log')
+    # ax3.set_yscale('log')
     ax3.set_xscale('log')
     pl2 = ax2.plot()
     pl = ax.scatter(xs, ys)
@@ -623,7 +631,7 @@ def build_g(gmax,gmin,numg):
 # ssr_j_plots()
 # run_convergence_test(np.logspace(1,4,4),np.logspace(1,4,4))
 # garr = [5,10,20,30,50,60,80,100,150,200,300,400,500,600,800,2000,3000,3500]
-garr = [20,30,60,80,100,150,200,250,300,400,500,700,900,1000]#,3500]
+garr = [20,30,60,80,100,150,200,250,300,400,500,700,900,1000,3000,6000,10000]#,3500]
 numtarr =[300]
 run_convergence_test(numtarr,garr)
 # convergence_plots_numg(300, garr)

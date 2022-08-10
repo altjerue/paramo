@@ -52,6 +52,21 @@ contains
       !
       !   :::::   Power-law distribution   :::::
       !
+      function powerlaw_s(g,s) result(pwl)
+        implicit none
+        doubleprecision, intent(in) :: g, s
+        doubleprecision :: pwl
+        pwl = g**(-s)
+      end function powerlaw_s
+
+      function powerlaw_v(g,s) result(pwl)
+        implicit none
+        doubleprecision, intent(in) :: s
+        doubleprecision, intent(in), dimension(:) :: g
+        doubleprecision, dimension(size(g)) :: pwl
+        pwl = g**(-s)
+      end function powerlaw_v
+
       function powlaw_dis_s(g, g1, g2, s) result(pwl)
          implicit none
          doubleprecision, intent(in) :: g, g1, g2, s
@@ -61,23 +76,37 @@ contains
          else
             pwl = 0d0
          end if
-         ! pwl = g**(-s) * dexp(-(g1 / g)**2) * dexp(-(g / g2)**2)
+
       end function powlaw_dis_s
 
-      function powlaw_dis_v(g, g1, g2, s) result(pwl)
+      function powlaw_dis_v(g, g1, g2, s, norm) result(pwl)
          implicit none
          doubleprecision, intent(in) :: g1,g2,s
          doubleprecision, intent(in), dimension(:) :: g
          integer :: k
+         logical, optional, intent(in) :: norm
          doubleprecision, dimension(size(g)) :: pwl
+         doubleprecision :: norm_dbl
+         doubleprecision :: norm2_dbl
          do k = 1, size(g)
             if ( g(k) >= g1 .and. g(k) <= g2 ) then
                pwl(k) = g(k)**(-s)
             else
                pwl(k) = 0d0
             end if
+            if ( k > 1 ) then
+              norm_dbl = norm_dbl + pwl(k)*(g(k)-g(k-1))
+            else
+              norm_dbl = pwl(k)*(g(k+1)-g(k))
+            end if
          end do
-         ! pwl = g**(-s) * dexp(-(g1 / g)**2) * dexp(-(g / g2)**2)
+         if ( present(norm) ) then
+           if(norm .eqv. .true.) then
+             norm2_dbl = qromb_w2arg(powerlaw_v, g1, g2, s)
+             pwl = norm2_dbl*pwl/norm_dbl
+           end if
+         end if
+
       end function powlaw_dis_v
 
 
@@ -149,16 +178,38 @@ contains
    !  #       # #  # # #     # # #
    !  #       # #   ## #     # # #
    !  #       # #    # ######  # #
-   subroutine FP_FinDif_difu(dt_in, g, nin, nout, gdot_in, Din, Qin, tesc_in, tlc)
+   subroutine FP_FinDif_difu(dt_in, g, nin, nout, gdot_in, Din, Qin, tesc_in, tlc,check_params)
       implicit none
       real(dp), intent(in) :: dt_in, tesc_in, tlc
-      real(dp), intent(in), dimension(:) :: g, nin, gdot_in, Din, Qin
+      real(dp), intent(in), dimension(:) :: g, nin,gdot_in , Din, Qin
+      logical, intent(in), optional :: check_params
+      integer :: check_count
+      logical :: check_params2
       real(dp), intent(out), dimension(:) :: nout
       real(dp), parameter :: eps = 1e-3
       integer :: i, Ng, Ng1
       real(dp) :: dBB, dt, tesc
       real(dp), dimension(size(g)) :: dx, dxp2, dxm2, CCp2, CCm2, BBp2, BBm2, &
          YYp2, YYm2, WWp2, WWm2, ZZp2, ZZm2, a, b, c, r, DD, QQ, gdot
+
+      !check for bad inputs
+      check_params2 = .true.
+      if ( present(check_params) ) then
+        if(check_params .eqv. .false.) then
+          check_params2 = .false.
+        end if
+      end if
+      if ( check_params2 ) then
+        check_count = 0+check_isnan_s(dt_in)+check_isnan_s(tesc_in)+check_isnan_s(tlc)
+        check_count = check_count + check_isnan_v(g) + check_isnan_v(nin)
+        check_count = check_count + check_isnan_v(gdot_in) + check_isnan_v(Din)
+        check_count = check_count + check_isnan_v(Qin)
+        if ( check_count > 0 ) then
+            call an_error("FP_FinDif_difu: at least one input parameter is not correclty defined")
+        end if
+      end if
+
+
 
       Ng = size(g)
       Ng1 = Ng - 1
@@ -187,11 +238,22 @@ contains
       BBp2(:Ng1) = 0.5d0 * ((DD(2:) - DD(:Ng1)) / dxp2(:Ng1) + (gdot(2:) + gdot(:Ng1)))
       BBm2(2:) = 0.5d0 * ((DD(2:) - DD(:Ng1)) / dxm2(2:) + (gdot(2:) + gdot(:Ng1)))
       BBp2(Ng) = 0.5d0 * ((DD(Ng) - DD(Ng1)) / dxp2(Ng) + (gdot(Ng) + gdot(Ng1)))
-      call polint(g(2:), BBm2(2:), g(1), BBm2(1), dBB)
+      ! should allow for momentum space use but is not tested.
+      if ( g(1) .lt. 1d-200 ) then
+        call polint(g(2:), BBm2(2:), g(1), BBm2(1), dBB)
+      else
+        BBm2(1) = 0.5d0 * ((DD(2) - DD(1)) / dxm2(2) + (gdot(2) + gdot(1)))
+      end if
+
 
       WWp2 = dxp2 * BBp2 / CCp2
-      WWm2 = dxm2 * BBm2 / CCm2
-      ! print*,'*****  JUST LOOKING  *****'
+      !prevents divide by small number error
+      if(CCm2(1) .lt. 1d-300) then
+        WWm2(2:) = dxm2(2:) * BBm2(2:) / CCm2(2:)
+        WWm2(1) = WWm2(2)
+      else
+        WWm2 = dxm2 * BBm2 / CCm2
+      end if
 
       do i = 1, Ng
 
@@ -225,13 +287,18 @@ contains
          else
             YYm2(i) = dabs(WWm2(i)) / ( dexp(dabs(ZZm2(i))) - dexp(-dabs(ZZm2(i))) )
          end if
-
       end do
+
+      !!!YYp2 * dexp(ZZp2) = Wm+1/2
+
+
 
       r = nin + dt * QQ
       c = -dt * CCp2 * YYp2 * dexp(ZZp2) / (dx * dxp2)
       a = -dt * CCm2 * YYm2 * dexp(-ZZm2) / (dx * dxm2)
       b = 1d0 + dt * ( CCp2 * YYp2 * dexp(-ZZp2) / dxp2 + CCm2 * YYm2 * dexp(ZZm2) / dxm2 ) / dx + dt / tesc
+
+
       call tridag_ser(a(2:), b, c(:Ng1), r, nout)
 
       nout = nout

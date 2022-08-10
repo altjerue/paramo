@@ -108,6 +108,8 @@ contains
 
       build_g: do k = 1, numg
          g(k) = gmin * (gmax / gmin)**(dble(k - 1) / dble(numg - 1))
+         ! g(k) = dsqrt((g(k)**2) - 1d0)
+         ! g(k) = (k-1)*(gmax-gmin)/numg
          if ( k > 1 ) dg(k) = g(k) - g(k - 1)
       end do build_g
       dg(1) = dg(2)
@@ -118,12 +120,13 @@ contains
       C0 = 3.48d-11 ! 4d0 * sigmaT * uB / (3d0 * mass_e * cLight)
       tacc = 1d0 / (C0(1) * ((10d0)**(4.5d0))) !tesc
       tesc = tacc ! 1d200 ! 1.5d0 * R / cLight !
-      tmax = tacc*20d0
+      tmax = tacc*200d0
       tstep = tmax*1e-7
 
 
-      D0 = 0.5d0 * (pofg(g)**2) / tacc
-      n1(0, :) = injection_pwl(1d0, tacc, g, g1, g2, qind, 1d0)
+      D0 = 0.5d0 * (g**2) / tacc
+
+      n1(0, :) = powlaw_dis_v(g, g1, g2, qind,.true.)
       n2(0, :) = n1(0, :)
       n3(0, :) = n1(0, :)
       n4(0, :) = n1(0, :)
@@ -135,18 +138,16 @@ contains
       time_loop: do i = 1, numt
 
          t(i) = tstep * ( (tmax / tstep)**(dble(i - 1) / dble(numt - 1)) )
+         ! t(i) = i*(tmax-t(0))/tstep
          dt(i) = t(i) - t(i - 1)
 
          Q0 = injection_pwl(t(i), tacc, g, g1, g2, qind, 1d0)
-         ! call FP_FinDif_cool(dt(i), g, n1(i - 1, :), n1(i, :), C0, zero2, 1d200)
-         ! call FP_FinDif_cool(dt(i), g, n2(i - 1, :), n2(i, :), C0, Q0, 1d200)
-         ! call FP_FinDif_cool(dt(i), g, n3(i - 1, :), n3(i, :), C0, Q0, tesc)
-         call FP_FinDif_difu(dt(i), g, n1(i - 1, :), n1(i, :), C0 * pofg(g)**2, zero1, zero2, 1d200, R / cLight)
-         call FP_FinDif_difu(dt(i), g, n2(i - 1, :), n2(i, :), C0 * pofg(g)**2, zero1, Q0,    1d200, R / cLight)
-         call FP_FinDif_difu(dt(i), g, n3(i - 1, :), n3(i, :), C0 * pofg(g)**2, zero1, Q0,    tesc,  R / cLight)
-         call FP_FinDif_difu(dt(i), g, n4(i - 1, :), n4(i, :), C0 * pofg(g)**2 - 2d0*D0/g, D0,    zero2, 1d200, R / cLight)
-         call FP_FinDif_difu(dt(i), g, n5(i - 1, :), n5(i, :), C0 * pofg(g)**2 - 2d0*D0/g, D0,    Q0,    1d200, R / cLight)
-         call FP_FinDif_difu(dt(i), g, n6(i - 1, :), n6(i, :), C0 * pofg(g)**2 - 2d0*D0/g, D0,    Q0,    tesc,  R / cLight)
+         call FP_FinDif_difu(dt(i), g, n1(i - 1, :), n1(i, :), C0(1) * (g**2), zero1, zero2, 1d200, R/cLight)!R/cLight
+         call FP_FinDif_difu(dt(i), g, n2(i - 1, :), n2(i, :), C0(1) * (g**2), zero1, Q0,    1d200, R/cLight)
+         call FP_FinDif_difu(dt(i), g, n3(i - 1, :), n3(i, :), C0(1) * (g**2), zero1, Q0,    tesc,  R/cLight)
+         call FP_FinDif_difu(dt(i), g, n4(i - 1, :), n4(i, :), C0(1) * (g**2) - 2d0*g/tesc, 2*D0,    zero2, 1d200,R/cLight)
+         call FP_FinDif_difu(dt(i), g, n5(i - 1, :), n5(i, :), C0(1) * (g**2) - 2d0*D0/g, D0,    Q0,    1d200,R/cLight)
+         call FP_FinDif_difu(dt(i), g, n6(i - 1, :), n6(i, :), C0(1) * (g**2) - 2d0*D0/g, D0,    Q0,    tesc,  R/cLight)
 
          Ntot1(i) = sum(n1(i, :) * dg)
          Ntot2(i) = sum(n2(i, :) * dg)
@@ -189,7 +190,7 @@ contains
          write(*,'(A)') 'iteration: '//trim(int2char(i))//' of '//trim(int2char(numt))
 
       end do time_loop
-      write(*,*) n1(:,-1)
+
       write(*, "('--> Fokker-Planck solver test')")
 
 
