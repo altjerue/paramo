@@ -220,7 +220,7 @@ class Runner(object):
         if(test_choice==0):
             print("\n --> need to input test_choice")
             print("\n --> test_choice : 1 (steady_state), 2 (rad_procs), "
-                  "3 (BlackBody_tests), 4 (syn_afterglow), 5 (ode_solver_test)")
+                  "3 (BlackBody_tests), 4 (syn_afterglow), 5 (ode_solver_test), time_dependence_test  (6)")
             exit(0)
         comp = compiler(rules='xTests', **self.comp_kw)
         if clean:

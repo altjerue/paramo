@@ -9,7 +9,9 @@ import matplotlib.cm as cm
 import scipy.integrate as intergrate
 import Eduviges.constants as aCons
 import matplotlib
-
+import analytical_solutions as ansol
+import Plotter as PL
+import ModelFitter.PlotExplorer as PE
 
 class SS_results:
 
@@ -41,33 +43,73 @@ class SS_results:
         self.t = ex.hdf5Extract1D('time', group='Numeric')
         self.dt = ex.hdf5Extract1D('dt', group='Numeric')
         self.Inu1 = ex.hdf5Extract1D('Inu1', group='Numeric')
-        self.Inu4 = ex.hdf5Extract1D('Inu4', group='Numeric')
-        self.Inu5 = ex.hdf5Extract1D('Inu5', group='Numeric')
-        self.Inu6 = ex.hdf5Extract1D('Inu6', group='Numeric')
+        try:
+            self.Inu4 = ex.hdf5Extract1D('Inu4', group='Numeric')
+            self.Inu5 = ex.hdf5Extract1D('Inu5', group='Numeric')
+            self.Inu6 = ex.hdf5Extract1D('Inu6', group='Numeric')
+        except:
+            self.Inu4 = None
+            self.Inu5 = None
+            self.Inu6 = None
+            print("not available")
         self.Ntot1 = ex.hdf5Extract1D('Ntot1', group='Numeric')
-        self.Ntot2 = ex.hdf5Extract1D('Ntot2', group='Numeric')
-        self.Ntot3 = ex.hdf5Extract1D('Ntot3', group='Numeric')
-        self.Ntot4 = ex.hdf5Extract1D('Ntot4', group='Numeric')
-        self.Ntot5 = ex.hdf5Extract1D('Ntot5', group='Numeric')
-        self.Ntot6 = ex.hdf5Extract1D('Ntot6', group='Numeric')
+        try:
+            self.Ntot2 = ex.hdf5Extract1D('Ntot2', group='Numeric')
+            self.Ntot3 = ex.hdf5Extract1D('Ntot3', group='Numeric')
+            self.Ntot4 = ex.hdf5Extract1D('Ntot4', group='Numeric')
+            self.Ntot5 = ex.hdf5Extract1D('Ntot5', group='Numeric')
+            self.Ntot6 = ex.hdf5Extract1D('Ntot6', group='Numeric')
+        except:
+            self.Ntot2 =None
+            self.Ntot3 =None
+            self.Ntot4 =None
+            self.Ntot5 =None
+            self.Ntot6 =None
+            print("not available")
         self.n1 = ex.hdf5Extract2D('n1', group='Numeric')
-        self.n2 = ex.hdf5Extract2D('n2', group='Numeric')
-        self.n3 = ex.hdf5Extract2D('n3', group='Numeric')
-        self.n4 = ex.hdf5Extract2D('n4', group='Numeric')
-        self.n5 = ex.hdf5Extract2D('n5', group='Numeric')
-        self.n6 = ex.hdf5Extract2D('n6', group='Numeric')
+        try:
+            self.n2 = ex.hdf5Extract2D('n2', group='Numeric')
+            self.n3 = ex.hdf5Extract2D('n3', group='Numeric')
+            self.n4 = ex.hdf5Extract2D('n4', group='Numeric')
+            self.n5 = ex.hdf5Extract2D('n5', group='Numeric')
+            self.n6 = ex.hdf5Extract2D('n6', group='Numeric')
+        except:
+            self.n2 = None
+            self.n3 = None
+            self.n4 = None
+            self.n5 = None
+            self.n6 = None
+            print("not available")
         self.jmbs1 = ex.hdf5Extract2D('jmbs1', group='Numeric')
-        self.jmbs4 = ex.hdf5Extract2D('jmbs4', group='Numeric')
-        self.jmbs5 = ex.hdf5Extract2D('jmbs5', group='Numeric')
-        self.jmbs6 = ex.hdf5Extract2D('jmbs6', group='Numeric')
+        try:
+            self.jmbs4 = ex.hdf5Extract2D('jmbs4', group='Numeric')
+            self.jmbs5 = ex.hdf5Extract2D('jmbs5', group='Numeric')
+            self.jmbs6 = ex.hdf5Extract2D('jmbs6', group='Numeric')
+        except:
+            self.jmbs4 = None
+            self.jmbs5 = None
+            self.jmbs6 = None
+            print("not available")
         self.jssc1 = ex.hdf5Extract2D('jssc1', group='Numeric')
-        self.jssc4 = ex.hdf5Extract2D('jssc4', group='Numeric')
-        self.jssc5 = ex.hdf5Extract2D('jssc5', group='Numeric')
-        self.jssc6 = ex.hdf5Extract2D('jssc6', group='Numeric')
+        try:
+            self.jssc4 = ex.hdf5Extract2D('jssc4', group='Numeric')
+            self.jssc5 = ex.hdf5Extract2D('jssc5', group='Numeric')
+            self.jssc6 = ex.hdf5Extract2D('jssc6', group='Numeric')
+        except:
+            self.jssc4 = None
+            self.jssc5 = None
+            self.jssc6 = None
+            print("not available")
         self.ambs1 = ex.hdf5Extract2D('ambs1', group='Numeric')
-        self.ambs4 = ex.hdf5Extract2D('ambs4', group='Numeric')
-        self.ambs5 = ex.hdf5Extract2D('ambs5', group='Numeric')
-        self.ambs6 = ex.hdf5Extract2D('ambs6', group='Numeric')
+        try:
+            self.ambs4 = ex.hdf5Extract2D('ambs4', group='Numeric')
+            self.ambs5 = ex.hdf5Extract2D('ambs5', group='Numeric')
+            self.ambs6 = ex.hdf5Extract2D('ambs6', group='Numeric')
+        except:
+            self.ambs4 = None
+            self.ambs5 = None
+            self.ambs6 = None
+            print("not available")
         self.ns = [self.n1, self.n2, self.n3, self.n4, self.n5, self.n6]
         self.jmbss = [self.jmbs1, self.jmbs4, self.jmbs5, self.jmbs6]
         self.ambss = [self.ambs1, self.ambs4, self.ambs5, self.ambs6]
@@ -104,7 +146,7 @@ def get_steady_state_results():
     return ssr
 
 
-def run_convergence_test(numts, numgs):
+def run_convergence_test(numts, numgs,test_choice=1):
     check_exist=True
 
     for numt in numts:
@@ -136,7 +178,7 @@ def run_convergence_test(numts, numgs):
             rr.par.lg1 = 'F'  # no radiation
             rr.par.wParams()
             ###
-            rr.run_test(clean=True, test_choice=1)
+            rr.run_test(clean=True, test_choice=test_choice)
 
 
 def get_convergence_results(numt, numg):
@@ -315,6 +357,7 @@ def get_error_analytic(ei, eig,n0):
     eers = np.sqrt(er)
     er = np.sqrt(sum(er)/len(eig))
     return er,eers
+
 
 
 def convergence_plots_analytic(numt,numgs):
@@ -631,9 +674,9 @@ def build_g(gmax,gmin,numg):
 # ssr_j_plots()
 # run_convergence_test(np.logspace(1,4,4),np.logspace(1,4,4))
 # garr = [5,10,20,30,50,60,80,100,150,200,300,400,500,600,800,2000,3000,3500]
-garr = [20,30,60,80,100,150,200,250,300,400,500,700,900,1000,3000,6000,10000]#,3500]
-numtarr =[300]
-run_convergence_test(numtarr,garr)
+garr = [20,30,60,80,100,150,200,250,300]#,3500]
+numtarr =[2000]
+# run_convergence_test(numtarr,garr)
 # convergence_plots_numg(300, garr)
 # build_g(1.5e6,1.0001,9000)
 
@@ -661,5 +704,135 @@ def debug_distribsFP():
     eissr = get_convergence_results(numt, numg)
     print("afd")
 
+def get_error_analytic_time(ei, eig,t):
+
+    er = []
+    for i in range(len(eig)):
+        ef = ansol.eq_59_Park1995(t,eig[i])
+        if(ef>0):
+            er.append(((ef-ei[i])/ef)**2)
+        else:
+            er.append(0)
+        # er.append(((ef-ei[i]))**2)
+    eers = np.sqrt(er)
+    er = np.sqrt(sum(er)/len(eig))
+    return er,eers
+
+
+
+
+def convergence_plots_analytic_time(numts,numg):
+    xs = []
+    ys = []
+    gs = []
+    ns = []
+    nios=[]
+    eers = []
+    p = 0e0
+    gmin = 1e4
+    gmax = 1e6
+    n0 = intergrate.quad(lambda x: x**p,gmin,gmax)[0]
+    t=3e-2
+    for i in range(len(numts)):
+        mt = numts[i]
+        eissr = get_convergence_results(mt, numg)
+        tind = np.argmin(np.abs(eissr.t - t))
+        ei = eissr.n1[:, tind]
+        eig = eissr.g
+        nio = np.trapz(ei,eig)
+        nio0 = np.trapz(eissr.n1[:, 0],eig)
+        nios.append(nio/nio0)
+        # ei = n0*ei/nio
+        print("t/t: " + str(t/eissr.t[tind]))
+        gminci = np.argmin(np.abs(eig - 5e0))
+        gmaxci = np.argmin(np.abs(eig - 1e4))
+        eig=eig[gminci:gmaxci]
+        ei=ei[gminci:gmaxci]
+        er, eer = get_error_analytic_time(ei, eig,t)
+        gs.append(eig)
+        ns.append(ei)
+        eers.append(eer)
+        ys.append(er)
+        xs.append(len(eig))
+
+    fig, ax = plt.subplots()
+    ax.set_yscale('log')
+    ax.set_xscale('log')
+    fig1, ax1 = plt.subplots()
+    ax1.set_yscale('log')
+    ax1.set_xscale('log')
+    fig2, ax2 = plt.subplots()
+    ax2.set_yscale('log')
+    ax2.set_xscale('log')
+
+    fig3, ax3 = plt.subplots()
+    # ax3.set_yscale('log')
+    ax3.set_xscale('log')
+    pl2 = ax2.plot()
+    pl = ax.scatter(xs, ys)
+    pl3 = ax3.scatter(xs,nios)
+    xc = np.logspace(0.5, 1.7)
+    xc2 = np.logspace(1.5, 2.9)
+    pl = ax.plot(xc*xc[1], ys[1] * (xc / xc[1]) ** -2, label='p=-2')
+    pl = ax.plot(xc2, ys[4] * (xc2 / xc2[0]) ** -1, label='p=-1')
+    for i in range(len(gs)):
+            pl2 = ax2.scatter(gs[i], eers[i], 4)
+            pl2 = ax1.plot(gs[i], ns[i], label='line: ' + str(i))
+    ax1.plot(gs[-2],ansol.eq_59_Park1995(t,gs[-2]),'--')
+    ax1.set_ylim([1e-8, 1e2])
+    ax1.set_xlim([1e-4, 1e4])
+    ax1.legend()
+    ax.legend()
+    plt.show()
+
+def convergence_plots_analytic_time_manupilate(t):
+    numg = 900
+    numt = 600
+    xs = []
+    ys = []
+    gs = []
+    ns = []
+    nios=[]
+    eers = []
+    p = 0e0
+    gmin = 1e4
+    gmax = 1e6
+    n0 = intergrate.quad(lambda x: x**p,gmin,gmax)[0]
+    eissr = get_convergence_results(numt, numg)
+    tind = np.argmin(np.abs(eissr.t - t))
+    ei = eissr.n1[:, tind]
+    y2 = ansol.eq_59_Park1995(t,eissr.g)
+    return  [ei,y2]
+
+
+
+
 # debug_distribsFP()
-convergence_plots_analytic(numtarr[0],garr)
+
+garr = [900]
+numtarr = [600]
+t0=1e-4
+y =ansol.eq_59_Park1995(t0,np.logspace(0,4,garr[0]))
+run_convergence_test(numtarr,garr,test_choice=6)
+# convergence_plots_analytic_time(numtarr,garr[0])
+
+eissr = get_convergence_results(numtarr[0], garr[0])
+irs = []
+
+irs.append(PE.inputRange(t0,t0,1e-3,'t'))
+ep = PE.explorerPlot(convergence_plots_analytic_time_manupilate,eissr.g,irs)
+dd = PL.dataset()
+
+
+dd.x =eissr.g
+dd.y = y
+dd.marker='--'
+dd.plot_type=dd.scattertype
+ep.dataset=[dd]
+ep.line_y_scale='log'
+ep.line_x_scale='log'
+ep.plot_y_bound=(1e0,1e-12)
+dd = PL.dataset()
+dd.plot_type=dd.scattertype
+ep.buildPlot()
+ep.figret.pyplt.show()

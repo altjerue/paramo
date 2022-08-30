@@ -3,6 +3,7 @@
 #define BLACK_BODY    (3)
 #define SYN_AFTERGLOW (4)
 #define ODE_SOLVER    (5)
+#define time_dependence_test  (6)
 ! #define TEST_CHOICE (SYN_AFTERGLOW)
 
 program tests
@@ -44,6 +45,8 @@ else if (TEST_CHOICE == 4) then
    call syn_afterglow
 else if (TEST_CHOICE == 5) then
    call ode_solver_test(50, 2, 0d0, 5d0, (/ 0d0, 1d0 /), 2)
+else if (TEST_CHOICE == 6) then
+   call test_time_dependence(params_file,output_file)
 end if
 
 contains
@@ -171,9 +174,9 @@ contains
            end do
            !$OMP END PARALLEL DO
 
-           call RadTrans_blob(Inu1, R, jmbs4(:, i), ambs1(:, i))
+           call RadTrans_blob(Inu1, R, jmbs1(:, i), ambs1(:, i))
            call RadTrans_blob(Inu4, R, jmbs4(:, i), ambs4(:, i))
-           call RadTrans_blob(Inu5, R, jmbs4(:, i), ambs5(:, i))
+           call RadTrans_blob(Inu5, R, jmbs5(:, i), ambs5(:, i))
            call RadTrans_blob(Inu6, R, jmbs6(:, i), ambs6(:, i))
 
            !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) PRIVATE(j)
@@ -269,6 +272,172 @@ contains
             call h5close_f(herror)
 #endif
    end subroutine steady_state
+
+   !> made to test time dependence via a solution(eq 59) from Fokker-Planck Equations of Stochastic Acceleration: Green's Functions and Boundary Conditions by Park and Petrosian 1995
+   subroutine test_time_dependence(params_file, output_file)
+      implicit none
+      character(len=*), intent(in) :: output_file, params_file
+      integer :: i, k, numg, numt, numf, j
+      real(dp) :: g1, g2, gmin, gmax, tmax, tstep, qind, tacc, tesc, R, B, numax, numin, uB
+      real(dp), allocatable, dimension(:) :: t, g, Q0, D0, C0, aux0, dt, dg, &
+         Ntot1, zero1, zero2, freqs, Inu1
+      real(dp), allocatable, dimension(:,:) :: n1
+      real(dp), allocatable, dimension(:,:) :: jmbs1, ambs1, jssc1
+      logical :: dorad
+
+      write(*,*) 'output file: ', output_file
+
+      call read_params(params_file)
+      tstep = par_tstep
+      tmax = par_tmax
+      gmin = par_gmin
+      gmax = par_gmax
+      numin = par_numin
+      numax = par_numax
+      numg = par_NG
+      numt = par_NT
+      numf = par_NF
+      qind = par_pind
+      g1 = par_g1
+      g2 = par_g2
+
+      if ( par_lg1 == "T" ) then
+        dorad = .true.
+      else if (par_lg1 == "F") then
+        dorad = .false.
+      else
+        dorad = .false.
+      end if
+
+
+
+      R = 1e16
+      B = 1d0
+      uB = B**2 / (8d0 * pi)
+
+      allocate(g(numg), Q0(numg), D0(numg), t(0:numt), dt(numt), dg(numg), &
+         Ntot1(numt),C0(numg), aux0(numg), zero1(numg), zero2(numg), &
+         freqs(numf), Inu1(numf))
+      allocate(n1(0:numt, numg),jmbs1(numf, numt), ambs1(numf, numt), jssc1(numf, numt))
+
+      build_f: do j=1,numf
+         freqs(j) = numin * ( (numax / numin)**(dble(j - 1) / dble(numf - 1)) )
+      end do build_f
+
+      build_g: do k = 1, numg
+         g(k) = gmin * (gmax / gmin)**(dble(k - 1) / dble(numg - 1))
+         ! g(k) = dsqrt((g(k)**2) - 1d0)
+         ! g(k) = (k-1)*(gmax-gmin)/numg
+         if ( k > 1 ) dg(k) = g(k) - g(k - 1)
+      end do build_g
+      dg(1) = dg(2)
+
+      t(0) = 0d0
+      zero1 = 1d-200
+      zero2 = 0d0
+      tacc = 1d0
+      tesc = tacc
+      tmax = tacc*1d-1
+      tstep = tmax*1d-10
+
+
+      D0 = 1d0 * (g**3)
+      n1(0,:) = 0d0
+      n1(0, minloc(abs(g-1d2))) = 5d0
+      ! write(*,*) 'gcompare', g(minloc(abs(g-1d2)))
+
+
+      write(*, "(4ES15.7)") C0(1), D0(1), tacc, tmax
+
+      time_loop: do i = 1, numt
+
+         t(i) = tstep * ( (tmax / tstep)**(dble(i - 1) / dble(numt - 1)) )
+         dt(i) = t(i) - t(i - 1)
+         call FP_FinDif_difu(dt(i), g, n1(i - 1, :), n1(i, :), 1d0 * (g**2) - 3d0*(g**2) -2d0*D0/g, 2d0*D0, zero2, 1d0,1d200)
+
+
+         Ntot1(i) = sum(n1(i, :) * dg)
+
+
+         if ( dorad .eqv. .true. ) then
+
+           !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) PRIVATE(j)
+           do j = 1, numf
+              call syn_emissivity(jmbs1(j, i), freqs(j), g, n1(i, :), B)
+              call syn_absorption(ambs1(j, i), freqs(j), g, n1(i, :), B)
+           end do
+           !$OMP END PARALLEL DO
+
+           call RadTrans_blob(Inu1, R, jmbs1(:, i), ambs1(:, i))
+
+           !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) PRIVATE(j)
+           do j = 1, numf
+              call IC_iso_powlaw(jssc1(j, i), freqs(j), freqs, Inu1, n1(i, :), g)
+           end do
+           !$OMP END PARALLEL DO
+
+         end if
+
+         write(*,'(A)') 'iteration: '//trim(int2char(i))//' of '//trim(int2char(numt))
+
+      end do time_loop
+
+      write(*, "('--> Fokker-Planck solver test')")
+
+
+            !  ####    ##   #    # # #    #  ####
+            ! #       #  #  #    # # ##   # #    #
+            !  ####  #    # #    # # # #  # #
+            !      # ###### #    # # #  # # #  ###
+            ! #    # #    #  #  #  # #   ## #    #
+          !  ####  #    #   ##   # #    #  ####
+#ifdef HDF5
+            ! write(*, *) ''
+            write(*, "('---> Creating HDF5')")
+            ! ------  Opening output file  ------
+            call h5open_f(herror)
+            call h5io_createf(output_file, file_id, herror)
+            ! ------  Saving initial parameters  ------
+            call h5io_createg(file_id, "Parameters", group_id, herror)
+            call h5io_wint0 (group_id, 'numt',        numt, herror)
+            call h5io_wint0 (group_id, 'numf',        numf, herror)
+            call h5io_wint0 (group_id, 'numg',        numg, herror)
+            call h5io_wdble0(group_id, 't_max',       tmax, herror)
+            call h5io_wdble0(group_id, 'tstep',       tstep, herror)
+            call h5io_wdble0(group_id, 'gamma_min',   gmin, herror)
+            call h5io_wdble0(group_id, 'gamma_max',   gmax, herror)
+            call h5io_wdble0(group_id, 'gamma_1',     g1, herror)
+            call h5io_wdble0(group_id, 'gamma_2',     g2, herror)
+            call h5io_wdble0(group_id, 'pwl-index',   qind, herror)
+            call h5io_wdble0(group_id, 'nu_min',      numin, herror)
+            call h5io_wdble0(group_id, 'nu_max',      numax, herror)
+            call h5io_wdble0(group_id, 'emission_R',      R, herror)
+            call h5io_wdble0(group_id, 'B_0',      B, herror)
+            call h5io_wdble0(group_id, 'uB',      uB, herror)
+            call h5io_wdble0(group_id, 'C0',   C0(1), herror)
+            call h5io_wdble0(group_id, 'tacc',   tacc, herror)
+            call h5io_wdble0(group_id, 'tesc',   tesc, herror)
+            call h5io_wdble1(group_id, 'D0',    D0, herror)
+            call h5io_closeg(group_id, herror)
+            ! ------  saving numerical data  ------
+            call h5io_createg(file_id, "Numeric", group_id, herror)
+            call h5io_wdble1(group_id, 'freqs',    freqs, herror)
+            call h5io_wdble1(group_id, 'gamma',   g, herror)
+            call h5io_wdble1(group_id, 'dg',   dg, herror)
+            call h5io_wdble1(group_id, 'time',       t(1:), herror)
+            call h5io_wdble1(group_id, 'dt',       dt(1:), herror)
+            call h5io_wdble1(group_id, 'Inu1',   Inu1, herror)
+            call h5io_wdble1(group_id, 'Ntot1',   Ntot1, herror)
+            call h5io_wdble2(group_id, 'jmbs1',    jmbs1, herror)
+            call h5io_wdble2(group_id, 'jssc1',    jssc1, herror)
+            call h5io_wdble2(group_id, 'ambs1',    ambs1, herror)
+            call h5io_wdble2(group_id, 'n1',     n1(:, 1:), herror)
+            call h5io_closeg(group_id, herror)
+            ! ------  Closing output file  ------
+            call h5io_closef(file_id, herror)
+            call h5close_f(herror)
+#endif
+end subroutine test_time_dependence
 
    !> Tests with a Blackbody
    subroutine BlackBody_tests(with_kncool)

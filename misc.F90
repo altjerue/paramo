@@ -553,6 +553,181 @@ contains
      end do
    end function check_isnan_v
 
+   !
+   !modified bessel function as found in Numerical Recipes 3rd Edition William H. Press
+   !
+   function iop() result(iopa)
+     implicit none
+     real(dp),dimension(14) :: iopa
+     iopa =(/ 9.999999999999997d-1,2.466405579426905d-1,&
+              1.478980363444585d-2,3.826993559940360d-4,5.395676869878828d-6,&
+              4.700912200921704d-8,2.733894920915608d-10,1.115830108455192d-12,&
+              3.301093025084127d-15,7.209167098020555d-18,1.166898488777214d-20,&
+              1.378948246502109d-23,1.124884061857506d-26,5.498556929587117d-30 /)
+   end function iop
+
+   function ioq() result(ioqa)
+     implicit none
+     real(dp),dimension(5) :: ioqa
+     ioqa =(/ 4.463598170691436d-1,1.702205745042606d-3,&
+              2.792125684538934d-6,2.369902034785866d-9,8.965900179621208d-13 /)
+   end function ioq
+
+   function iopp() result(ioppa)
+     implicit none
+     real(dp),dimension(5) :: ioppa
+     ioppa =(/ 1.192273748120670d-1,1.947452015979746d-1,&
+               7.629241821600588d-2,8.474903580801549d-3,2.023821945835647d-4 /)
+   end function iopp
+
+   function ioqq() result(ioqqa)
+     implicit none
+     real(dp),dimension(6) :: ioqqa
+     ioqqa =(/ 2.962898424533095d-1,4.866115913196384d-1,&
+               1.938352806477617d-1,2.261671093400046d-2,6.450448095075585d-4,&
+               1.529835782400450d-6 /)
+   end function ioqq
+
+   function i1p() result(i1pa)
+     implicit none
+     real(dp),dimension(14) :: i1pa
+     i1pa =(/ 5.000000000000000d-1,6.090824836578078d-2,&
+              2.407288574545340d-3,4.622311145544158d-5,5.161743818147913d-7,&
+              3.712362374847555d-9,1.833983433811517d-11,6.493125133990706d-14,&
+              1.693074927497696d-16,3.299609473102338d-19,4.813071975603122d-22,&
+              5.164275442089090d-25,3.846870021788629d-28,1.712948291408736d-31 /)
+   end function i1p
+
+   function i1q() result(i1qa)
+     implicit none
+     real(dp),dimension(5) :: i1qa
+     i1qa =(/ 4.665973211630446d-1,1.677754477613006d-3,&
+              2.583049634689725d-6,2.045930934253556d-9,7.166133240195285d-13 /)
+   end function i1q
+
+   function i1pp() result(i1ppa)
+     implicit none
+     real(dp),dimension(5) :: i1ppa
+     i1ppa =(/ 1.286515211317124d-1,1.930915272916783d-1,&
+               6.965689298161343d-2,7.345978783504595d-3,1.963602129240502d-4 /)
+   end function i1pp
+
+   function i1qq() result(i1qqa)
+     implicit none
+     real(dp),dimension(6) :: i1qqa
+     i1qqa =(/ 3.309385098860755d-1,4.878218424097628d-1,&
+               1.663088501568696d-1,1.473541892809522d-2,1.964131438571051d-4,&
+               -1.034524660214173d-6 /)
+   end function i1qq
+
+
+   function poly(cof,n,x) result(res)
+     implicit none
+     real(dp), intent(in) :: x
+     integer, intent(in) :: n
+     integer :: i
+     real(dp), intent(in), dimension(:) :: cof
+     real(dp) :: res
+     res = cof(n)
+     do i=n,1,-1
+       res = res*x+cof(i)
+     end do
+   end function poly
+
+   function bessel_I0(x) result(res)
+     implicit none
+     real(dp), intent(in) :: x
+     real(dp) :: res,y,z
+     real(dp),dimension(14) :: iopa
+     real(dp),dimension(5) :: ioppa,ioqa
+     real(dp),dimension(6) :: ioqqa
+     iopa = iop()
+     ioppa = iopp()
+     ioqa = ioq()
+     ioqqa= ioqq()
+     if(abs(x) <15d0) then
+       y = x*x
+       res = poly(iopa,13,y)/poly(ioqa,4,225d0-y)
+     else
+       z = 1d0-15d0/abs(x)
+       res = exp(abs(x))*poly(ioppa,4,z)/(poly(ioqqa,5,z)*sqrt(abs(x)))
+     end if
+
+   end function bessel_I0
+
+   function bessel_I1(x) result(res)
+     implicit none
+     real(dp), intent(in) :: x
+     real(dp) :: res,y,z
+     real(dp),dimension(14) :: i1pa
+     real(dp),dimension(5) :: i1ppa,i1qa
+     real(dp),dimension(6) :: i1qqa
+     i1pa = i1p()
+     i1ppa = i1pp()
+     i1qa = i1q()
+     i1qqa = i1qq()
+     if(abs(x) <15d0) then
+       y = x*x
+       res = x*poly(i1pa,13,y)/poly(i1qa,4,225d0-y)
+     else
+       z = 1d0-15d0/abs(x)
+       res = exp(abs(x))*poly(i1ppa,4,z)/(poly(i1qqa,5,z)*sqrt(abs(x)))
+       if(x<0d0) then
+         res = -res
+       end if
+     end if
+   end function bessel_I1
+
+   function bessel_In(n,x) result(res)
+     implicit none
+     real(dp), intent(in) :: n
+     real(dp), intent(in):: x
+     real(dp) :: res,tod,ACC
+     real(dp) :: bip,ans,bi,bim,tox
+     integer :: i
+     ACC = 200d0
+     if(n .eq. 0) then
+       res = bessel_I0(x)
+     else if(n .eq. 1) then
+       res = bessel_I1(x)
+     else
+       tox = 2d0/abs(x)
+       bip = 0d0
+       ans = 0d0
+       bi = 1d0
+       do i = int(2*(n*int(sqrt(ACC*n)))),0,-1
+         bim = bip+i*tox*bi
+         bip = bi
+         bi = bim
+
+         if(i .eq. n) then
+           res = bip
+         end if
+       end do
+       res = res*bessel_I0(x)/bi
+       if(x<0d0) then
+         res = -res
+       end if
+     end if
+
+   end function bessel_In
+
+
+   function bessel_In_v(n,x) result(res)
+     implicit none
+     real(dp), intent(in) :: n
+     real(dp), intent(in),dimension(:):: x
+     real(dp),dimension(size(x)) :: res
+     integer :: i
+     do i=1,size(x)
+       res(i) = bessel_In(n,x(i))
+     end do
+
+   end function bessel_In_v
+
+
+
+
 #if 0
    ! ====================================================================
    !  First derivative of the Bessel function of the first kind of order

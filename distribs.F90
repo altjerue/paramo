@@ -25,6 +25,36 @@ contains
       ! #    # #      #   #   #####  # #    #      #
       ! #    # # #    #   #   #   #  # #    # #    #
       ! #####  #  ####    #   #    # # #####   ####
+
+      ! solution from Fokker-Planck Equations of Stochastic Acceleration: Green's Functions and Boundary Conditions by Park and Petrosian 1995
+      function eq_59_Park1995(t,g) result(GF)
+        implicit none
+        real(dp), intent(in) :: t
+        doubleprecision, intent(in), dimension(:) :: g
+        real(dp), dimension(size(g)) :: rm,GF,x,gfb,gfc,gfd,gfe
+        real(dp) :: D_cof, q,a,x0,alpha,theta,t_esc,tau,etta,order,gfa
+
+
+        D_cof = 1d0
+        x = (g**2d0 -1d0)**0.5d0
+        q = 3d0
+        a = 1d0
+        x0 =((100d0**2d0)- 1d0)**0.5d0
+        alpha = (2d0-q)/2d0
+        theta=1d0
+        t_esc = 1d0
+        tau = D_cof * t
+        gfa =(1d0/abs(alpha))*(1d0/(2d0*tau))
+        gfb =(x**((1d0-q +a)/2d0))*(x0**((1d0-q -a)/2d0))
+        etta = (q-1d0 + a )/(2d0*alpha)
+        order = abs(etta)
+        gfc = bessel_In_v(order, (x**alpha)*(x0**alpha)/(2d0*tau*(alpha**2d0)))
+        gfd =exp(-((x**(2d0*alpha)) + (x0**(2d0*alpha)))/(4d0*(alpha**2d0)*tau))
+        gfe =exp(-theta*tau)
+        Gf = gfa*gfb*gfc*gfd*gfe*4d0*pi
+
+      end function eq_59_Park1995
+
       !
       !  :::::   Relativistic Maxwell distribution   :::::
       !
