@@ -342,8 +342,7 @@ contains
 
 
       D0 = 1d0 * (g**3)
-      n1(0,:) = 0d0
-      n1(0, minloc(abs(g-1d2))) = 5d0
+      call eq_59_park1995(1d-4,g,n1(0,:))
       ! write(*,*) 'gcompare', g(minloc(abs(g-1d2)))
 
 

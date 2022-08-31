@@ -27,14 +27,14 @@ contains
       ! #####  #  ####    #   #    # # #####   ####
 
       ! solution from Fokker-Planck Equations of Stochastic Acceleration: Green's Functions and Boundary Conditions by Park and Petrosian 1995
-      function eq_59_Park1995(t,g) result(GF)
+      subroutine eq_59_Park1995(t,g,Gf)
         implicit none
         real(dp), intent(in) :: t
         doubleprecision, intent(in), dimension(:) :: g
-        real(dp), dimension(size(g)) :: rm,GF,x,gfb,gfc,gfd,gfe
+        real(dp), dimension(size(g)), intent(out) :: Gf
+        real(dp), dimension(size(g)) :: rm,x,gfb,gfc,gfd,gfe
         real(dp) :: D_cof, q,a,x0,alpha,theta,t_esc,tau,etta,order,gfa
-
-
+        integer :: i
         D_cof = 1d0
         x = (g**2d0 -1d0)**0.5d0
         q = 3d0
@@ -52,8 +52,19 @@ contains
         gfd =exp(-((x**(2d0*alpha)) + (x0**(2d0*alpha)))/(4d0*(alpha**2d0)*tau))
         gfe =exp(-theta*tau)
         Gf = gfa*gfb*gfc*gfd*gfe*4d0*pi
+        do i=1,size(g)
+          if(check_isnan_s(Gf(i))>0d0) then
+            Gf(i) = 0d0
+          end if
+          if(Gf(i)>1d200) then
+            Gf(i) = 1d200
+          end if
+          if(Gf(i)<1d-100) then
+            Gf(i) = 1e-100
+          end if
+        end do
 
-      end function eq_59_Park1995
+      end subroutine eq_59_Park1995
 
       !
       !  :::::   Relativistic Maxwell distribution   :::::

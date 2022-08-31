@@ -708,7 +708,7 @@ def get_error_analytic_time(ei, eig,t):
 
     er = []
     for i in range(len(eig)):
-        ef = ansol.eq_59_Park1995(t,eig[i])
+        ef = ansol.eq_59_Park1995(t + 1e-4,eig[i])
         if(ef>0):
             er.append(((ef-ei[i])/ef)**2)
         else:
@@ -732,7 +732,7 @@ def convergence_plots_analytic_time(numts,numg):
     gmin = 1e4
     gmax = 1e6
     n0 = intergrate.quad(lambda x: x**p,gmin,gmax)[0]
-    t=3e-2
+    t=2e-4
     for i in range(len(numts)):
         mt = numts[i]
         eissr = get_convergence_results(mt, numg)
@@ -744,8 +744,8 @@ def convergence_plots_analytic_time(numts,numg):
         nios.append(nio/nio0)
         # ei = n0*ei/nio
         print("t/t: " + str(t/eissr.t[tind]))
-        gminci = np.argmin(np.abs(eig - 5e0))
-        gmaxci = np.argmin(np.abs(eig - 1e4))
+        gminci = np.argmin(np.abs(eig - 30e0))
+        gmaxci = np.argmin(np.abs(eig - 8e2))
         eig=eig[gminci:gmaxci]
         ei=ei[gminci:gmaxci]
         er, eer = get_error_analytic_time(ei, eig,t)
@@ -753,7 +753,7 @@ def convergence_plots_analytic_time(numts,numg):
         ns.append(ei)
         eers.append(eer)
         ys.append(er)
-        xs.append(len(eig))
+        xs.append(mt)
 
     fig, ax = plt.subplots()
     ax.set_yscale('log')
@@ -778,7 +778,7 @@ def convergence_plots_analytic_time(numts,numg):
     for i in range(len(gs)):
             pl2 = ax2.scatter(gs[i], eers[i], 4)
             pl2 = ax1.plot(gs[i], ns[i], label='line: ' + str(i))
-    ax1.plot(gs[-2],ansol.eq_59_Park1995(t,gs[-2]),'--')
+    ax1.plot(gs[-2],ansol.eq_59_Park1995(t + 1e-4,gs[-2]),'--')
     ax1.set_ylim([1e-8, 1e2])
     ax1.set_xlim([1e-4, 1e4])
     ax1.legend()
@@ -801,7 +801,7 @@ def convergence_plots_analytic_time_manupilate(t):
     eissr = get_convergence_results(numt, numg)
     tind = np.argmin(np.abs(eissr.t - t))
     ei = eissr.n1[:, tind]
-    y2 = ansol.eq_59_Park1995(t,eissr.g)
+    y2 = ansol.eq_59_Park1995(t+1e-4,eissr.g)
     return  [ei,y2]
 
 
@@ -809,30 +809,30 @@ def convergence_plots_analytic_time_manupilate(t):
 
 # debug_distribsFP()
 
-garr = [900]
-numtarr = [600]
+garr = [2000]
+numtarr = [50,100,300,450,600,1000]
 t0=1e-4
-y =ansol.eq_59_Park1995(t0,np.logspace(0,4,garr[0]))
+y =ansol.eq_59_Park1995(t0,np.logspace(0,8,garr[0]))
 run_convergence_test(numtarr,garr,test_choice=6)
-# convergence_plots_analytic_time(numtarr,garr[0])
+convergence_plots_analytic_time(numtarr,garr[0])
 
-eissr = get_convergence_results(numtarr[0], garr[0])
-irs = []
-
-irs.append(PE.inputRange(t0,t0,1e-3,'t'))
-ep = PE.explorerPlot(convergence_plots_analytic_time_manupilate,eissr.g,irs)
-dd = PL.dataset()
-
-
-dd.x =eissr.g
-dd.y = y
-dd.marker='--'
-dd.plot_type=dd.scattertype
-ep.dataset=[dd]
-ep.line_y_scale='log'
-ep.line_x_scale='log'
-ep.plot_y_bound=(1e0,1e-12)
-dd = PL.dataset()
-dd.plot_type=dd.scattertype
-ep.buildPlot()
-ep.figret.pyplt.show()
+# eissr = get_convergence_results(numtarr[0], garr[0])
+# irs = []
+# n1test=eissr.n1[:,0]
+# irs.append(PE.inputRange(t0,t0,1e-3,'t'))
+# ep = PE.explorerPlot(convergence_plots_analytic_time_manupilate,eissr.g,irs)
+# dd = PL.dataset()
+#
+#
+# dd.x =eissr.g
+# dd.y = y
+# dd.marker='--'
+# dd.plot_type=dd.scattertype
+# # ep.dataset=[dd]
+# ep.line_y_scale='log'
+# ep.line_x_scale='log'
+# ep.plot_y_bound=(1e0,1e-12)
+# dd = PL.dataset()
+# dd.plot_type=dd.scattertype
+# ep.buildPlot()
+# ep.figret.pyplt.show()
