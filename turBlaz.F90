@@ -1,45 +1,41 @@
-subroutine turBlaz(params_file, output_file, cool_withKN, with_abs)
+subroutine turBlaz(params_file,output_file,cool_withKN,with_abs)
    use data_types
    use constants
    use params
    use misc
    use pwl_integ
-#ifdef HDF5
    use hdf5
    use h5_inout
-#endif
    use SRtoolkit
-   use distribs
    use radiation
+   use distribs
    implicit none
 
-   character(len=*),intent(in) :: params_file
+   character(len=*),intent(in) :: output_file,params_file
+   character(len=1) :: no_rad_case
    logical,intent(in) :: cool_withKN,with_abs
-   character(len=*),intent(inout) :: output_file
-   integer,parameter :: nmod=50
+   integer,parameter :: nmod=5
+
    character(len=*),parameter :: screan_head=&
-      '| Iteration |        Time |   Time step |    nu_0(g2) |       N_tot |'&
+      '| Iteration |        Time |   Time step |       N_tot |'&
       //new_line('A')//&
       ' ---------------------------------------------------------------------',&
-      on_screen="(' | ',I9,' | ',ES11.4,' | ',ES11.4,' | ',ES11.4,' | ',ES11.4,' |')"
-#ifdef HDF5
+      on_screen="(' | ',I9,' | ',ES11.4,' | ',ES11.4,' | ',ES11.4,' |')"
+
    integer(HID_T) :: file_id,group_id
-   integer :: herror
-#endif
-   integer :: i,j,k,numbins,numdf,numdt,time_grid
-   integer :: l,mtb_case
-   real(dp) :: uB,R,gmin,gmax,numin,numax,pind,D,g1,g2,tstep,Qnth,tmax,&
-         d_lum,z,tinj,gamma_bulk,theta_obs,Rdis,mu_obs,nu_ext,tesc,tlc,&
-         L_jet,volume,beta_bulk,urad_const,usyn
-   real(dp) :: B_0,B_rms,gam0,Gamma0,Gamma2,Gammaa,Gammah,kk,l_rho,mfp,n0,p,&
-         rho,Rva,sig,t2,tcm,tcorg,th,thss,uph,va,zero1,zero2,tc
-   real(dp),allocatable,dimension(:) :: freqs,t,Ntot,Inu,g,dt,dg,urad,dfreq
-   real(dp),allocatable,dimension(:) :: tempg,tempnu,Ap,Dpp,total,Mgam,ubol
+   integer :: i,j,k,numbins,numdf,numdt,herror,l,ml
+   real(dp) :: uB,R,gmin,gmax,numin,numax,tstep,tmax,&
+         gamma_bulk,nu_ext,tesc,tlc,L_jet,ninj,omega_j,R_turb,&
+         R_turbm,del_ph,gavg,tc0,tc1,tc2
+   real(dp) :: B_0,B_rms,gam0,Gamma0,Gamma2,Gammaa,Gammah,n0,p,&
+         sig,th,uph,va,zero1,zero2,tc,A0,a,b,c,c1,hplank,&
+         P0,e0,hbar2
    real(dp),allocatable,dimension(:,:) :: gdotty,n1,jnut,jmbs,jssc,jeic,&
-         ambs,anut,Qinj,Diff
-   real(dp),allocatable,dimension(:,:) :: dotg_temp,dotg_temp2
-   character(len=256) :: mtb_label
-   logical :: with_cool
+            ambs,anut,Diff
+   real(dp),allocatable,dimension(:) :: freqs,t,Ntot,Inu,g,dt,dg,urad,dfreq
+   real(dp),allocatable,dimension(:) :: tempg,tempnu,Ap,Dpp,total,Mgam,ubol,&
+         dotgKN,gdot_db
+   logical :: with_cool,cool_after,do_full_radiation,norad,printout,nossc,no_photon_cooling
 
 
    !  ####  ###### ##### #    # #####
@@ -48,32 +44,39 @@ subroutine turBlaz(params_file, output_file, cool_withKN, with_abs)
    !      # #        #   #    # #####
    ! #    # #        #   #    # #
    !  ####  ######   #    ####  #
+   printout=.true.
    call read_params(params_file)
-   d_lum=par_d_lum
-   z=par_z
-   ! tstep=par_tstep
-   ! tmax=par_tmax
    L_jet=par_L_j
    gamma_bulk=par_gamma_bulk
    gmin=par_gmin
    gmax=par_gmax
    numin=par_numin
    numax=par_numax
+
    numbins=par_NG
    numdt=par_NT
    numdf=par_NF
-   time_grid=par_time_grid
-
+   ninj=par_ed2 !efficienty of driving frequency to plasma
+   R=par_R !distance from black hole
+   R_turbm=par_R0 !tubulence scale multiplier
+   del_ph=par_ed1 !fraction of jet energy converted into turbulence
+   sig = par_sigma
+   no_rad_case=par_lg1!only caclulate radiation on last iteration
+   norad = .true.
+   nossc = .true.
+   no_photon_cooling = .true.
+   if(no_rad_case=='F') then
+     norad = .false.
+   end if
 
    allocate(t(0:numdt),freqs(numdf),Ntot(0:numdt),g(numbins),dfreq(numdf),&
          dt(numdt),Inu(numdf),dg(numbins),urad(numbins))
    allocate(tempg(numbins),tempnu(numdf),Ap(numbins),Dpp(numbins),ubol(numdt),&
-         total(numbins),Mgam(numdt))
+         total(numbins),Mgam(numdt),dotgKN(numbins),gdot_db(numbins))
    allocate(n1(numbins,0:numdt),gdotty(numbins,0:numdt),&
          ambs(numdf,numdt),jmbs(numdf,numdt),jnut(numdf,numdt),&
          jssc(numdf,numdt),anut(numdf,numdt),jeic(numdf,numdt),&
-         Qinj(numbins,numdt),Diff(numbins,0:numdt))
-   allocate(dotg_temp(numbins,numdt),dotg_temp2(numbins,numdt))
+         Diff(numbins,0:numdt))
 
    build_f: do j=1,numdf
       freqs(j)=numin*((numax/numin)**(dble(j-1)/dble(numdf-1)))
@@ -83,7 +86,6 @@ subroutine turBlaz(params_file, output_file, cool_withKN, with_abs)
 
    build_g: do k=1,numbins
       g(k)=gmin*(gmax/gmin)**(dble(k-1)/dble(numbins-1))
-      ! g(k)=(gmin-1d0)*((gmax-1d0)/(gmin-1d0))**(dble(k-1)/dble(numbins-1))+1d0
       if (k>1) dg(k)=g(k)-g(k-1)
    end do build_g
    dg(1)=dg(2)
@@ -94,167 +96,131 @@ subroutine turBlaz(params_file, output_file, cool_withKN, with_abs)
    !   # #  # # #   #      #      #    # #  # # #    #
    !   # #   ## #   #      #    # #    # #   ## #    #
    !   # #    # #   #       ####   ####  #    # #####
-   mfp=1.5d0!1.85d0 !<--- lambda_mfp multiplier
-   tcm=1d0
-
+   do_full_radiation = .true.
    with_cool=.true.
-
+   cool_after=.false.
    zero1=1d-200
    zero2=0d0
    t(0)=0d0
-   n0=1d0
-
-   beta_bulk=bofg(gamma_bulk)           ! Beta bulk
-   theta_obs=par_theta_obs*pi/180d0 ! Observer viewing angle
-   mu_obs=dcos(theta_obs)
-   D=Doppler(gamma_bulk,mu_obs)        ! Doppler factor
-
-   ! ------------   zhdankin parameters   ------------
-   !    Middle (1),top (2),bottom (3) panels in Fig. 17 from Zhdankin et al. (2020)
-   mtb_case=3
-   select case(mtb_case)
-   case(1)
-      l_rho=28.3d0!m
-      kk=0.033d0
-      sig=0.9d0
-      Gamma0=1.8d0
-      Gammah=-3d0
-      Gammaa=-8d0
-      tcorg=0.45512721235884102d0
-      mtb_label="m"
-   case(2)
-      l_rho=29.6d0!t
-      !l_rho=21.4
-      kk=0.014d0
-      sig=0.2d0
-      Gamma0=3d0
-      Gammah=-1d0
-      Gammaa=-20d0
-      tcorg=7.6608494666808964d0
-      ! tmax=tmax*1d1
-      mtb_label="t"
-   case(3)
-      !l_rho=38.9d0
-      l_rho=39.1d0!b
-      kk=0.058d0
-      sig=3.4d0
-      Gamma0=1.4d0
-      Gammah=-5d0
-      Gammaa=-3.5d0
-      tcorg=6.7050164467544707d-2
-      mtb_label="b"
-   case default
-      stop
-   end select
-   output_file=trim(mtb_label)//trim(output_file)
-   ! -------------------------------------------------
-
-   th=1d2
-   thss=75d0
-   gam0=3d2
+   Gamma0=0.05d0*sig + 2.09d0
+   Gammaa=0.124d0*sig - 9.5d0
+   Gammah = -0.42*sig - 2.46d0
    Gamma2=Gamma0
    va=cLight*dsqrt(sig/(sig+1d0)) !<--- Alfven speed
-
-   !R=(1d0)*tc*sig*va/4
-
-   !   ---> Mean magnetic field,B_0,in Zhdankin et al. (2020)
-   B_0=dsqrt(sig*16d0*pi*n0*gam0*mass_e*cLight**2/6d0)
-   ! B_lab=dsqrt(sig*16d0*pi*n0*gam0*mass_e*cLight**2/(2d0*3d0))
-   B_rms=dsqrt(B_0**2*2d0)
-   uB=B_0**2/(8d0*pi)
-
-   ! ---> Larmor radius
-   rho=gam0*mass_e*cLight**2/(eCharge*B_rms)
-
-   R=l_rho*rho*2d0*pi !!stay ar
-
-   volume=4d0*pi*R**3/3d0
-   tlc=R/cLight
+   omega_j=2d0*Pi*(1d0-dcos(1d0/gamma_bulk))
+   R_turb=(R_turbm)*R/(gamma_bulk)
+   B_0=dsqrt(L_jet*(4d0*Pi)/(omega_j*(R**2)*(gamma_bulk**2)*cLight))
+   B_rms=dsqrt((B_0**2)*2d0)
+   uB=(B_rms**2d0)/(8d0*pi)
+   uph=del_ph*(gamma_bulk**2)*(1d11)*(1 + ((1-(1/(gamma_bulk**2)))/3))/(4d0*Pi*cLight)
+   n0 = 2*uB/(sig* mass_p* (cLight**2))
+   c1 = (32d0/(81d0))*dsqrt(3d0)
+   hplank=6.62607015d-27
+   hbar2=hplank/(2d0*pi)
+   P0 = (eCharge**2d0)/((hbar2**2d0)*cLight*2d0*dsqrt(3d0))
+   A0 = 3d0 * c1 * sigmaT * P0 *(hbar2**2d0)*(eCharge ** 2d0)*(8*pi) / ((mass_e**3d0) * (cLight ** 4d0))
+   if(printout .eqv. .true.) then
+     write(*,*) "P0: ",P0
+   end if
+   if(printout .eqv. .true.) then
+     write(*,*) "A0: ",A0
+   end if
+   a = A0*R_turb*n0 * uB*(mass_e*(cLight**2d0))
+   b = (16d0/9d0)*sigmaT*cLight*(uB + uph)
+   c = -ninj*va*uB/(2*n0*R_turb)
+   !Cooling type
+   if((dsqrt((b**2) - 4*a*c) - b)/(2*a)< 1d-20 .or. nossc .eqv. .true. .or. no_photon_cooling .eqv. .true.)then
+     !synchrotron and eic
+     gam0=(-c/b)**0.5d0
+     write(*,*) "NO SSC"
+     if(no_photon_cooling .eqv. .true.)then
+       write(*,*) "NO PHOTON COOLING"
+       !just synchrotron
+       b = (16d0/9d0)*sigmaT*cLight*(uB)
+       gam0=(-c/b)**0.5d0
+     end if
+   else
+     !synch, ssc, and eic
+     gam0=((dsqrt((b**2) - 4*a*c) - b)/(2*a))**0.5d0
+   end if
+   tc1 = 1/(((16/9)*sigmaT*cLight*(uB + uph)*gam0/(mass_e*(cLight**2))))
+   tc2 = 1/((A0*n0*uB*R_turb*(gam0**3))/(mass_e*(cLight**2)))
+   !tc0 = tc1 !without ssc
+  if((dsqrt((b**2) - 4*a*c) - b)/(2*a)< 1d-20 .or. nossc .eqv. .true. .or. no_photon_cooling .eqv. .true.)then
+    !no ssc cooling
+    tc0=tc1
+    if(no_photon_cooling .eqv. .true.) then
+      !just synchrotron
+      tc0 =1/((16/9)*sigmaT*cLight*(uB)*gam0/(mass_e*(cLight**2)))
+    end if
+  else
+    !ssc eic and synch coolingtime
+    tc0 =1/(((16/9)*sigmaT*cLight*(uB + uph)*gam0/(mass_e*(cLight**2))) + ((A0*n0*uB*R_turb*(gam0**3))/(mass_e*(cLight**2))))
+  end if
+  if(printout .eqv. .true.) then
+    write(*,*) "A0: ", A0, "a: ",a,"b: ",b,"c:",c,"gam0:",gam0,"tc0:",tc0,"tc1:",tc1,"tc2:",tc2,"R_turb",R_turb
+    write(*,*) "tc1*gam0",tc1*gam0 ,"tc2*gam0**3",tc2*(gam0)
+  end if
+   tlc=1d0!R_turb/cLight
    tesc=1d200
-   tinj=tlc
-
-   Rva=R/va ! <--- Alfven corssing time
-
-   !   ---> Eq. (A10) in Zhdankin et al. (2020).
-   !!!!!NOTE: they assume eta_inj=1
-   tc=4d0*R/(sig*va)
-   tmax=tc*1d0
-   tstep=tc*1e-3
-
-   !   ---> Following Eq. (39) from Comisso & Sironi (2019)
-   !!!!!FIXME
-   t2=3d0*(mfp*cLight/R)/(gofb(va/cLight)*va/cLight)**2
-   ! t2=(((dsqrt(2d0)/3d0)*((1d0-((va/cLight)**2d0))**-1d0)*((va/cLight)**2d0)*(cLight/(mfp*R)))**(-1))
-
-   ! tc=(1d0/dlog(kk)) +1
-   ! t2=t2
+   gam0=gam0
+   tc=tc0
+   tmax=tc*3d0!par_tmax
+   th=gam0/3d2 !injection temperature
+   tstep=tmax/numdt
 
    !   ---> Followeing Eqs. (A7) in Zhdankin et al. (2020)
-   Ap=(Gammah*gam0+Gammaa*g)/tc
-   Dpp=(Gamma0*gam0**2+Gamma2*g**2)/tc
+   Ap=(Gammah*gam0 + Gammaa*g)/tc
+   Dpp=(Gamma0*(gam0**2d0) + Gamma2*(g**2d0))/tc
    ! Dpp=((g**2d0)/t2)+((gam0**2d0)/t2)
 
-   ! ------------- External radiation field -------------
-   ! ---> Following Eq. (7) in Zhdankin et al. (2020)
-   uph=mass_e*cLight*sig*va/(16d0*sigmaT*thss *R)
-   nu_ext=par_nu_ext
-   ! uext=par_uext*gamma_bulk**2*(1d0+beta_bulk**2/3d0) ! Eq. (5.25) Dermer & Menon (2009)
-   urad_const=4d0*sigmaT*cLight/(3d0*energy_e)
-   ! -------------
+
+   ! ----->    External radiation field
+   nu_ext=par_nu_ext!*gamma_bulk
+
    !distribution parameters
-   ! gdotty(:,0)=urad_const*(uB+uext)*pofg(g)**2
-   call rad_cool_mono(dotg_temp(:,0),g,nu_ext,uph,cool_withKN)
-   ! dotg_temp(:,0) = dotg_temp(:,0)
-   gdotty(:,0)=-(Ap + (1d0*2d0*Gamma2*g/tc) + (2d0*Dpp/g) - dotg_temp(:,0))! - (g**2/(gam0*tc)))
-   !gdotty= (-1d0)*(Ap+(1)*2d0*g/t2+2d0*Dpp/g-(g**2)/(gam0*tc))
+   gdot_db = (-1d0)*(Ap+ 2d0*Gamma2*g/tc+ 2d0*Dpp/g)
+   gdotty(:,0)=((g**2d0)/(gam0*tc))
    Diff(:,0)=2d0*Dpp
-
-   n1(:,0)=RMaxwell(g,th)
-   !!!!!WARNING: The following expression is not normalized
-   ! n1(:,0)=n0*dexp(-g/th)/(8d0*pi*(th*mass_e*cLight)**3)
-
-   p=0.5d0
-
+   Diff(:2,0)=1d-100
+   gdotty(:2,0)=1d-100
+   gdot_db(:2) = 1d-100
+   n1(:,0)=n0*RMaxwell(g,th)
+   Ntot(0)=sum((n1(:,0)+n1(:,0))*dg*0.5d0)
+   n1(:,0)=n0*n1(:,0)/Ntot(0)
 
    ! -----> Output with initial setup
-   write(*,"('--> Simulation setup')")
-   write(*,"('theta_obs =',ES15.7)") par_theta_obs
-   write(*,"('Doppler   =',ES15.7)") D
-   write(*,"('L_jet     =',ES15.7)") L_jet
-   write(*,"('Q_nth     =',ES15.7)") Qnth
-   write(*,"('u_B       =',ES15.7)") uB
-   write(*,"('B         =',ES15.7)") B_0
-   write(*,"('nu_ext    =',ES15.7)") par_nu_ext
-   write(*,"('Gamma     =',ES15.7)") gamma_bulk
-   write(*,"('t_dyn     =',ES15.7)") tlc
-   write(*,"('t_esc     =',ES15.7)") tesc
-   write(*,"('t_inj     =',ES15.7)") tinj
-   ! -------------------------------
-   write(*,"('tc        =',ES15.7)") tc
-   write(*,"('tstep     =',ES15.7)") tstep
-   write(*,"('tmax      =',ES15.7)") tmax
-   write(*,"('sig       =',ES15.7)") sig
-   write(*,"('R         =',ES15.7)") R
-   write(*,"('Theta     =',ES15.7)") Th
-   write(*,"('va        =',ES15.7)") va
-   write(*,"('uph       =',ES15.7)") uph
-   Ntot(0)=sum(n1(:,0)*dg)!,mask=n1(:,i)>1d-200)
-   write(*,"('Ntot      =',ES15.7)") Ntot(0)
+   if(printout .eqv. .true.) then
+     write(*,"('--> Simulation setup')")
+     write(*,"('L_jet     =',ES15.7)") L_jet
+     write(*,"('ninj       =',ES15.7)") ninj
+     write(*,"('del_ph         =',ES15.7)") del_ph
+     write(*,"('nu_ext    =',ES15.7)") par_nu_ext
+     write(*,"('GB     =',ES15.7)") gamma_bulk
+     write(*,"('t_dyn     =',ES15.7)") tlc
+     write(*,"('t_esc     =',ES15.7)") tesc
+     write(*,"('R_turbm     =',ES15.7)") R_turbm
+     write(*,"('sig       =',ES15.7)") sig
+     write(*,"('R         =',ES15.7)") R
+     ! -------------------------------
+     write(*,"('tc        =',ES15.7)") tc
+     write(*,"('tstep     =',ES15.7)") tstep
+     write(*,"('tmax      =',ES15.7)") tmax
+     write(*,"('Theta     =',ES15.7)") Th
+     write(*,"('va        =',ES15.7)") va
+     write(*,"('uph       =',ES15.7)") uph
+     Ntot(0)=sum(n1(:,0)*dg)!,mask=n1(:,i)>1d-200)
+     write(*,"('Ntot      =',ES15.7)") Ntot(0)
+     write(*,"('n0        =',ES15.7)") n0
+     write(*,"('gam0        =',ES15.7)") gam0
+      write(*,"('sigmat        =',ES15.7)") sigmaT
 
-
-   write(*,"('--> Calculating the emission')")
-   if (cool_withKN) then
-      write(*, "('--> Radiative cooling: Klein-Nishina')")
-      output_file="KNcool-"//trim(output_file)
-   else
-      write(*, "('--> Radiative cooling: Thomson')")
-      output_file="Thcool-"//trim(output_file)
+     write(*,"('--> Calculating the emission')")
+     write(*,*) ''
+     write(*,"('Using tstep =   ',F5.3)") tstep
+     write(*,*) ''
+     write(*,*) screan_head
    end if
-   write(*,*) ''
-   write(*,"('Using tstep =',ES10.3)") tstep
-   write(*,"('Wrting data in: ',A)") trim(output_file)
-   write(*,*) ''
-   write(*,*) screan_head
 
 
    ! ###### #    #  ####  #      #    # ##### #  ####  #    #
@@ -279,54 +245,61 @@ subroutine turBlaz(params_file, output_file, cool_withKN, with_abs)
             &             g,&
             &             n1(:,i-1),&
             &             n1(:,i),&
-            &             gdotty(:,0),&
-            &             Diff(:,0),&
-            &             zeros1D(numbins,.true.),&
+            &             gdotty(:,i-1)+ gdot_db,& !change 1 to i if you want iteration
+            &             Diff(:,1-1),&
+            &             zeros1D(numbins, .true.),&
             &             tesc,&
-            &             tlc)
+            &             tlc,.false.)
 
       do l=2,numbins
-         total(l-1)=(n1(l-1,i)+n1(l,i))*dg(l-1)/2d0
-         tempg(l-1)=(g(l-1)*n1(l-1,i)+n1(l,i)*g(l))*dg(l-1)/2d0
+        ! if(g(l)>0 .and. g(l)<1e6) then
+        total(l-1)=(n1(l-1,i)+n1(l,i))*dg(l-1)/2d0
+        tempg(l-1)=(g(l-1))*total(l-1)
+        ! end if
       end do
 
-      Mgam(i)=sum(tempg)
+
+
+      Mgam(i)=sum(tempg)/n0
+      Mgam(i) = Mgam(i)
       tempg=0
-      ! B_co=B_lab!*Bulk_lorentz
-      ! Uph_co=Uph!*(Bulk_lorentz**2)
+      if(i == numdt) then
+        norad = .false.
+      end if
 
+      if(norad .eqv. .false.) then
+        !  #####    ##   #####  #   ##   ##### #  ####  #    #
+        !  #    #  #  #  #    # #  #  #    #   # #    # ##   #
+        !  #    # #    # #    # # #    #   #   # #    # # #  #
+        !  #####  ###### #    # # ######   #   # #    # #  # #
+        !  #   #  #    # #    # # #    #   #   # #    # #   ##
+        !  #    # #    # #####  # #    #   #   #  ####  #    #
+        !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) PRIVATE(j)
+        do j=1,numdf
+           call syn_emissivity(jmbs(j,i),freqs(j),g,n1(:,i),B_0)
+           ! if (with_abs) call syn_absorption(ambs(j,i),freqs(j),g,n1(:,i),B_0)
+        end do
+        !$OMP END PARALLEL DO
 
-      !  #####    ##   #####  #   ##   ##### #  ####  #    #
-      !  #    #  #  #  #    # #  #  #    #   # #    # ##   #
-      !  #    # #    # #    # # #    #   #   # #    # # #  #
-      !  #####  ###### #    # # ######   #   # #    # #  # #
-      !  #   #  #    # #    # # #    #   #   # #    # #   ##
-      !  #    # #    # #####  # #    #   #   #  ####  #    #
-      !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) PRIVATE(j)
-      do j=1,numdf
-         call syn_emissivity(jmbs(j,i),freqs(j),g,n1(:,i),B_0)
-         if (with_abs) call syn_absorption(ambs(j,i),freqs(j),g,n1(:,i),B_0)
-      end do
-      !$OMP END PARALLEL DO
+        call RadTrans_blob(Inu,R_turb,jmbs(:,i),ambs(:,i))
 
-      call RadTrans_blob(Inu,R,jmbs(:,i),ambs(:,i))
-      !---> energy density
-      call bolometric_integ(freqs,4d0*pi*Inu/cLight,ubol(i))
-      ! U(i)=(sum(tempnu)/(nuj(numdf)-nuj(1)))*(4/3)*Pi*(R**3)*(R/cLight)
-
-      !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) PRIVATE(j)
-      do j=1,numdf
-         call IC_iso_powlaw(jssc(j,i),freqs(j),freqs,Inu,n1(:,i),g)
-         call IC_iso_monochrom(jeic(j,i),freqs(j),uph,nu_ext,n1(:,i),g)
-         jnut(j,i)=jmbs(j,i)+jssc(j,i)+jeic(j,i)
-         anut(j,i)=ambs(j,i)
-      end do
-      !$OMP END PARALLEL DO
-
-      do j=2,numdf
-         tempnu(j-1)=(jmbs(j-1,i)+jmbs(j,i))*dfreq(j-1)/2d0
-      end do
-
+        !---> energy density
+        call bolometric_integ(freqs,4d0*pi*Inu/cLight,ubol(i))
+        if (do_full_radiation) then
+          !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) PRIVATE(j)
+          do j=1,numdf
+             call IC_iso_powlaw(jssc(j,i),freqs(j),freqs,Inu,n1(:,i),g)
+             call IC_iso_monochrom(jeic(j,i),freqs(j),uph,nu_ext,n1(:,i),g)
+             jnut(j,i)=jmbs(j,i)+jssc(j,i)+jeic(j,i)
+             anut(j,i)=ambs(j,i)
+          end do
+          !$OMP END PARALLEL DO
+        end if
+        !
+        ! do j=2,numdf
+        !    tempnu(j-1)=(jmbs(j-1,i)+jmbs(j,i))*dfreq(j-1)/2d0
+        ! end do
+      end if
 
       !   ####   ####   ####  #      # #    #  ####
       !  #    # #    # #    # #      # ##   # #    #
@@ -336,44 +309,44 @@ subroutine turBlaz(params_file, output_file, cool_withKN, with_abs)
       !   ####   ####   ####  ###### # #    #  ####
       ! gdotty(:,i)=0d0
       if (with_cool) then
-         call bolometric_integ(freqs,4d0*pi*Inu/cLight,usyn)
-      !    ! call RadTrans_blob(Inu,R,jssc(:,i)+jeic(:,i),anut(:,i))
-      !    ! call RadTrans_blob(Inu,R,jmbs(:,i),ambs(:,i))
-         call rad_cool_pwl(dotg_temp2(:,i),g,freqs,4d0*pi*Inu/cLight,cool_withKN)
-      !    call rad_cool_mono(dotg_temp(:,i),g,nu_ext,uph,cool_withKN)
+          ! call bolometric_integ(freqs,4d0*pi*Inu/cLight,ubol(i))
+          call RadTrans_blob(Inu,R_turb,jssc(:,i)+jeic(:,i),anut(:,i))
+          ! call bolometric_integ(freqs,4d0*pi*Inu/cLight,ubol(i))
+          ! call RadTrans_blob(Inu,R_turb,jmbs(:,i),ambs(:,i))
+          call rad_cool_pwl(dotgKN,g,freqs,4d0*pi*Inu/cLight,cool_withKN)
+          ! call rad_cool_mono(dotg_temp(:,i),g,nu_ext,uph,cool_withKN)
       end if
-      ! gdotty(:,i)=gdotty(:,0)!+dotg_temp(:,i)
-      dotg_temp(:,i)=dotg_temp(:,0)
+
+      gdotty(:,i)=dotgKN + (4d0/3d0)*sigmaT*cLight*uB*(g**2)/(mass_e*(cLight**2d0))
+      ! gdotty(:,i)=dotgKN + (g**2)/(gam0*tc)
+      ! ! gdotty(:,i)=(4d0/3d0)*sigmaT*cLight*uB*(g**2)
+      !
+      !
+      ! ! gdotty(:,i)=(4d0/3d0)*sigmaT*cLight*(ubol(i) + uph)*(g**2)
+      !
+      !redefine parameters
+      ! if(mod(i, 50) == 0) then
+      !   ml = minloc(abs(g - Mgam(i)),DIM=1)
+      !   tc = (gdotty(ml,i)/g(ml))**-1d0
+      !   Ap=(Gammah*Mgam(i) + Gammaa*g)/tc
+      !   Dpp=(Gamma0*(Mgam(i)**2d0) + Gamma2*(g**2d0))/tc
+      !   gdot_db = (-1d0)*(Ap + (1d0)*2d0*Gamma2*g/tc + 2d0*Dpp/g)
+      !   Diff(:,0) = 2d0*Dpp
+      !   Diff(:2,0)=1d-100
+      !   gdotty(:2,i)=1d-100
+      !   gdot_db(:2) = 1d-100
+      ! end if
+
 
       ! ----->   N_tot
       Ntot(i)=sum((n1(:,i)+n1(:,i-1))*dg*0.5d0)!,mask=n1(:,i)>1d-200)
 
-      if (mod(i,nmod)==0.or.i==1) &
-            ! write(*,on_screen) i,t(i),ubol(i),Ntot(i)/Ntot(0),Ntot(i)
-            write(*,on_screen) i,t(i),tstep,maxval(dotg_temp2(:, i)),Ntot(i)
+      ! write(*,*) 'delta n', Ntot(i) - Ntot(i-1), 'delta other', sum(((2d0*g/(gam0*tc)) - (Gammaa/tc) - (4d0*Gamma2/tc) + (2d0*Gamma2*(gam0**2d0)/((g**2d0)*tc)) + (2d0*Gamma2/tc))*n1(:,i)*dg)*dt(i)
+      if ( i == numdt .or. i==1 .or. mod(i,10) ==0 .and. printout .eqv. .true.) &
+            write(*,*) i,t(i),"n_0",n0,"percent_N",Ntot(i)/n0,"Ntotal: ",Ntot(i),"gavg: ",Mgam(i),"predicted_gam0: ",gam0
+            ! write(*,*) "gdotty(:,i)/gdotty(:,0): ", max(gdotty(:,i)/gdotty(:,0))," min: ", min(gdotty(:,i)/gdotty(:,0))
 
    end do time_loop
-
-   !!! use the final distribution at t=tc and use it as the injection term for a new evolution
-
-   ! Qinj = n1(:,numdt)
-   ! time_loop2: do i=1,numt2
-   !    !  ###### ###### #####
-   !    !  #      #      #    #
-   !    !  #####  #####  #    #
-   !    !  #      #      #    #
-   !    !  #      #      #    #
-   !    !  ###### ###### #####
-   !    call FP_FinDif_difu(dt(i),&
-   !    &             g,&
-   !    &             n1(:,i-1),&
-   !    &             n1(:,i),&
-   !    &             gdotty(:,0),&
-   !    &             zeros1D()!Diff(:,0),&
-   !    &             Qinj,&
-   !    &             tesc,&
-   !    &             tlc)
-   ! end do time_loop2
 
 
    !  ####    ##   #    # # #    #  ####
@@ -382,8 +355,9 @@ subroutine turBlaz(params_file, output_file, cool_withKN, with_abs)
    !      # ###### #    # # #  # # #  ###
    ! #    # #    #  #  #  # #   ## #    #
    !  ####  #    #   ##   # #    #  ####
-   write(*,*) "---> Saving"
-#ifdef HDF5
+   if(printout .eqv. .true.) then
+     write(*,*) "---> Saving",trim(output_file)
+   end if
    !----->   Opening output file
    call h5open_f(herror)
    call h5io_createf(trim(output_file),file_id,herror)
@@ -394,34 +368,30 @@ subroutine turBlaz(params_file, output_file, cool_withKN, with_abs)
    call h5io_wint0(group_id,'numbins',numbins,herror)
    call h5io_wdble0(group_id,'t_max',tmax,herror)
    call h5io_wdble0(group_id,'tstep',tstep,herror)
-   call h5io_wdble0(group_id,'R_b',R,herror)
-   call h5io_wdble0(group_id,'R_em',Rdis,herror)
-   call h5io_wdble0(group_id,'d_lum',d_lum,herror)
-   call h5io_wdble0(group_id,'redshift',z,herror)
    call h5io_wdble0(group_id,'Gamma_bulk',gamma_bulk,herror)
    call h5io_wdble0(group_id,'sigma',sig,herror)
-   call h5io_wdble0(group_id,'theta_obs_deg',par_theta_obs,herror)
    call h5io_wdble0(group_id,'gamma_min',gmin,herror)
    call h5io_wdble0(group_id,'gamma_max',gmax,herror)
-   call h5io_wdble0(group_id,'gamma_1',g1,herror)
-   call h5io_wdble0(group_id,'gamma_2',g2,herror)
-   call h5io_wdble0(group_id,'pwl-index',pind,herror)
    call h5io_wdble0(group_id,'u_ext',uph,herror)
    call h5io_wdble0(group_id,'nu_ext',par_nu_ext,herror)
-   call h5io_wdble0(group_id,'L_jet',L_jet,herror)
    call h5io_wdble0(group_id,'nu_min',numin,herror)
    call h5io_wdble0(group_id,'nu_max',numax,herror)
    call h5io_closeg(group_id,herror)
    !----->   Saving data
+   call h5io_wdble0(file_id,'R_turb',R_turb,herror)
+   call h5io_wdble0(file_id,'R',R,herror)
+   call h5io_wdble0(file_id,'Lj',L_jet,herror)
+   call h5io_wdble0(file_id,'gam0',gam0,herror)
    call h5io_wdble0(file_id,'tc',tc,herror)
-   call h5io_wdble0(file_id,'t_inj',tinj,herror)
    call h5io_wdble0(file_id,'t_esc',tesc,herror)
    call h5io_wdble0(file_id,'Bfield',B_0,herror)
+   call h5io_wdble0(file_id,'n0',n0,herror)
    call h5io_wdble0(file_id,'uB',uB,herror)
    call h5io_wdble0(file_id,'uph',uph,herror)
-   call h5io_wdble0(file_id,'usyn',usyn,herror)
    call h5io_wdble1(file_id,'time',t(1:),herror)
    call h5io_wdble1(file_id,'nu',freqs,herror)
+   call h5io_wdble1(file_id,'ubol',ubol(1:),herror)
+   call h5io_wdble1(file_id,'dotgkn',dotgKN,herror)
    call h5io_wdble1(file_id,'gamma',g,herror)
    call h5io_wdble2(file_id,'jnut',jnut,herror)
    call h5io_wdble2(file_id,'jmbs',jmbs,herror)
@@ -431,13 +401,13 @@ subroutine turBlaz(params_file, output_file, cool_withKN, with_abs)
    call h5io_wdble2(file_id,'ambs',ambs,herror)
    call h5io_wdble2(file_id,'n_e',n1(:,1:),herror)
    call h5io_wdble2(file_id,'dgdt',gdotty(:,1:),herror)
-   call h5io_wdble2(file_id,'cool_coef_eic',dotg_temp,herror)
-   call h5io_wdble2(file_id,'cool_coef_ssc',dotg_temp2,herror)
+
    !----->   Closing output file
    call h5io_closef(file_id,herror)
    call h5close_f(herror)
-#endif
-   write(*,*) '=======  FINISHED  ======='
-   write(*,*) ''
+   if(printout .eqv. .true.) then
+     write(*,*) '=======  FINISHED  ======='
+     write(*,*) ''
+   end if
 
 end subroutine turBlaz

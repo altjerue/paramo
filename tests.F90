@@ -37,8 +37,8 @@ TEST_CHOICE = char2int(targ)
 
 if (TEST_CHOICE == 1) then
    call steady_state(params_file,output_file)
-! else if (TEST_CHOICE == 2) then
-!    call rad_procs
+else if (TEST_CHOICE == 2) then
+   call rad_procs(params_file,output_file)
 else if (TEST_CHOICE == 3) then
    call BlackBody_tests(.true.)
 else if (TEST_CHOICE == 4) then
@@ -50,6 +50,200 @@ else if (TEST_CHOICE == 6) then
 end if
 
 contains
+
+
+  !> This subroutine produces simple radiation results used to compare to analytical results
+  subroutine rad_procs(params_file, output_file)
+     implicit none
+     character(len=*), intent(in) :: output_file, params_file
+     integer :: i, k, numg, numt, numf, j
+     real(dp) :: g1, g2, gmin, gmax, tmax, tstep, qind, tacc, tesc, R, B, numax, numin, uB
+     real(dp), allocatable, dimension(:) :: t, g, Q0, D0, C0, aux0, dt, dg, &
+        Ntot1, Ntot2, Ntot3, Ntot4, Ntot5, Ntot6, zero1, zero2, freqs, &
+        Inu1, Inu4, Inu5, Inu6
+     real(dp), allocatable, dimension(:,:) :: n1, n2, n3, n4, n5, n6
+     real(dp), allocatable, dimension(:,:) :: jmbs1, ambs1, jssc1, jmbs4, ambs4, jssc4, jmbs5, ambs5, jssc5, jmbs6, ambs6, jssc6
+     logical :: dorad
+
+     write(*,*) 'output file: ', output_file
+
+     call read_params(params_file)
+     tstep = par_tstep
+     tmax = par_tmax
+     gmin = par_gmin
+     gmax = par_gmax
+     numin = par_numin
+     numax = par_numax
+     numg = par_NG
+     numt = par_NT
+     numf = par_NF
+     qind = par_pind
+     g1 = par_g1
+     g2 = par_g2
+
+     if ( par_lg1 == "T" ) then
+       dorad = .true.
+     else if (par_lg1 == "F") then
+       dorad = .false.
+     else
+       dorad = .false.
+     end if
+
+
+
+     R = 1e16
+     B = 1d0
+     uB = B**2 / (8d0 * pi)
+
+     allocate(g(numg), Q0(numg), D0(numg), t(0:numt), dt(numt), dg(numg), &
+        Ntot1(numt), Ntot2(numt), Ntot3(numt), Ntot4(numt), Ntot5(numt), &
+        Ntot6(numt), C0(numg), aux0(numg), zero1(numg), zero2(numg), &
+        freqs(numf), Inu1(numf), Inu4(numf), Inu5(numf), Inu6(numf))
+     allocate(n1(0:numt, numg), n2(0:numt, numg), n3(0:numt, numg), &
+        n4(0:numt, numg), n5(0:numt, numg), n6(0:numt, numg), &
+        jmbs1(numf, numt), ambs1(numf, numt), jssc1(numf, numt), &
+        jmbs4(numf, numt), ambs4(numf, numt), jssc4(numf, numt), &
+        jmbs5(numf, numt), ambs5(numf, numt), jssc5(numf, numt), &
+        jmbs6(numf, numt), ambs6(numf, numt), jssc6(numf, numt))
+
+     build_f: do j=1,numf
+        freqs(j) = numin * ( (numax / numin)**(dble(j - 1) / dble(numf - 1)) )
+     end do build_f
+
+     build_g: do k = 1, numg
+        g(k) = gmin * (gmax / gmin)**(dble(k - 1) / dble(numg - 1))
+        ! g(k) = dsqrt((g(k)**2) - 1d0)
+        ! g(k) = (k-1)*(gmax-gmin)/numg
+        if ( k > 1 ) dg(k) = g(k) - g(k - 1)
+     end do build_g
+     dg(1) = dg(2)
+
+     t(0) = 0d0
+     zero1 = 1d-200
+     zero2 = 0d0
+     C0 = 3.48d-11 ! 4d0 * sigmaT * uB / (3d0 * mass_e * cLight)
+     tacc = 1d0 / (C0(1) * ((10d0)**(4.5d0))) !tesc
+     tesc = tacc ! 1d200 ! 1.5d0 * R / cLight !
+     tmax = tacc*200d0
+     tstep = tmax*1e-7
+
+
+     D0 = 0.5d0 * (g**2) / tacc
+
+     n1(0, :) = powlaw_dis_v(g, g1, g2, qind,.false.)
+     n2(0, :) = n1(0, :)
+     n3(0, :) = n1(0, :)
+     n4(0, :) = n1(0, :)
+     n5(0, :) = n1(0, :)
+     n6(0, :) = n1(0, :)
+
+     i=1
+
+    !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) PRIVATE(j)
+    do j = 1, numf
+      call syn_emissivity(jmbs1(j, i), freqs(j), g, n1(0, :), B)
+       ! call syn_emissivity(jmbs4(j, i), freqs(j), g, n4(i, :), B)
+       ! call syn_emissivity(jmbs5(j, i), freqs(j), g, n5(i, :), B)
+       ! call syn_emissivity(jmbs6(j, i), freqs(j), g, n6(i, :), B)
+       ! call syn_absorption(ambs1(j, i), freqs(j), g, n1(i, :), B)
+       ! call syn_absorption(ambs4(j, i), freqs(j), g, n4(i, :), B)
+       ! call syn_absorption(ambs5(j, i), freqs(j), g, n5(i, :), B)
+       ! call syn_absorption(ambs6(j, i), freqs(j), g, n6(i, :), B)
+    end do
+    !$OMP END PARALLEL DO
+
+    ! call RadTrans_blob(Inu1, R, jmbs1(:, i), ambs1(:, i))
+    ! call RadTrans_blob(Inu4, R, jmbs4(:, i), ambs4(:, i))
+    ! call RadTrans_blob(Inu5, R, jmbs5(:, i), ambs5(:, i))
+    ! call RadTrans_blob(Inu6, R, jmbs6(:, i), ambs6(:, i))
+    !
+    ! !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) PRIVATE(j)
+    ! do j = 1, numf
+    !    call IC_iso_powlaw(jssc1(j, i), freqs(j), freqs, Inu1, n1(i, :), g)
+    !    call IC_iso_powlaw(jssc4(j, i), freqs(j), freqs, Inu4, n4(i, :), g)
+    !    call IC_iso_powlaw(jssc5(j, i), freqs(j), freqs, Inu5, n5(i, :), g)
+    !    call IC_iso_powlaw(jssc6(j, i), freqs(j), freqs, Inu6, n6(i, :), g)
+    ! end do
+    ! !$OMP END PARALLEL DO
+
+     write(*, "('--> Radiation solver test')")
+
+
+           !  ####    ##   #    # # #    #  ####
+           ! #       #  #  #    # # ##   # #    #
+           !  ####  #    # #    # # # #  # #
+           !      # ###### #    # # #  # # #  ###
+           ! #    # #    #  #  #  # #   ## #    #
+           !  ####  #    #   ##   # #    #  ####
+#ifdef HDF5
+     ! write(*, *) ''
+     write(*, "('---> Creating HDF5')")
+     ! ------  Opening output file  ------
+     call h5open_f(herror)
+     call h5io_createf(output_file, file_id, herror)
+     ! ------  Saving initial parameters  ------
+     call h5io_createg(file_id, "Parameters", group_id, herror)
+     call h5io_wint0 (group_id, 'numt',        numt, herror)
+     call h5io_wint0 (group_id, 'numf',        numf, herror)
+     call h5io_wint0 (group_id, 'numg',        numg, herror)
+     call h5io_wdble0(group_id, 't_max',       tmax, herror)
+     call h5io_wdble0(group_id, 'tstep',       tstep, herror)
+     call h5io_wdble0(group_id, 'gamma_min',   gmin, herror)
+     call h5io_wdble0(group_id, 'gamma_max',   gmax, herror)
+     call h5io_wdble0(group_id, 'gamma_1',     g1, herror)
+     call h5io_wdble0(group_id, 'gamma_2',     g2, herror)
+     call h5io_wdble0(group_id, 'pwl-index',   qind, herror)
+     call h5io_wdble0(group_id, 'nu_min',      numin, herror)
+     call h5io_wdble0(group_id, 'nu_max',      numax, herror)
+     call h5io_wdble0(group_id, 'emission_R',      R, herror)
+     call h5io_wdble0(group_id, 'B_0',      B, herror)
+     call h5io_wdble0(group_id, 'uB',      uB, herror)
+     call h5io_wdble0(group_id, 'C0',   C0(1), herror)
+     call h5io_wdble0(group_id, 'tacc',   tacc, herror)
+     call h5io_wdble0(group_id, 'tesc',   tesc, herror)
+     call h5io_wdble1(group_id, 'D0',    D0, herror)
+     call h5io_closeg(group_id, herror)
+     ! ------  saving numerical data  ------
+     call h5io_createg(file_id, "Numeric", group_id, herror)
+     call h5io_wdble1(group_id, 'freqs',    freqs, herror)
+     call h5io_wdble1(group_id, 'gamma',   g, herror)
+     call h5io_wdble1(group_id, 'dg',   dg, herror)
+     call h5io_wdble1(group_id, 'time',       t(1:), herror)
+     call h5io_wdble1(group_id, 'dt',       dt(1:), herror)
+     call h5io_wdble1(group_id, 'Inu1',   Inu1, herror)
+     call h5io_wdble1(group_id, 'Inu4',   Inu4, herror)
+     call h5io_wdble1(group_id, 'Inu5',   Inu5, herror)
+     call h5io_wdble1(group_id, 'Inu6',   Inu6, herror)
+     call h5io_wdble1(group_id, 'Ntot1',   Ntot1, herror)
+     call h5io_wdble1(group_id, 'Ntot2',   Ntot2, herror)
+     call h5io_wdble1(group_id, 'Ntot3',   Ntot3, herror)
+     call h5io_wdble1(group_id, 'Ntot4',   Ntot4, herror)
+     call h5io_wdble1(group_id, 'Ntot5',   Ntot5, herror)
+     call h5io_wdble1(group_id, 'Ntot6',   Ntot6, herror)
+     call h5io_wdble2(group_id, 'jmbs1',    jmbs1, herror)
+     call h5io_wdble2(group_id, 'jssc1',    jssc1, herror)
+     call h5io_wdble2(group_id, 'ambs1',    ambs1, herror)
+     call h5io_wdble2(group_id, 'n1',     n1(:, 1:), herror)
+     ! call h5io_wdble2(group_id, 'n2',     n2(:, 1:), herror)
+     ! call h5io_wdble2(group_id, 'n3',     n3(:, 1:), herror)
+     call h5io_wdble2(group_id, 'jmbs4',    jmbs4, herror)
+     call h5io_wdble2(group_id, 'jssc4',    jssc4, herror)
+     call h5io_wdble2(group_id, 'ambs4',    ambs4, herror)
+     ! call h5io_wdble2(group_id, 'n4',     n4(:, 1:), herror)
+     call h5io_wdble2(group_id, 'jmbs5',    jmbs5, herror)
+     call h5io_wdble2(group_id, 'jssc5',    jssc5, herror)
+     call h5io_wdble2(group_id, 'ambs5',    ambs5, herror)
+     ! call h5io_wdble2(group_id, 'n5',     n5(:, 1:), herror)
+     call h5io_wdble2(group_id, 'jmbs6',    jmbs6, herror)
+     call h5io_wdble2(group_id, 'jssc6',    jssc6, herror)
+     call h5io_wdble2(group_id, 'ambs6',    ambs6, herror)
+     ! call h5io_wdble2(group_id, 'n6',     n6(:, 1:), herror)
+     call h5io_closeg(group_id, herror)
+     ! ------  Closing output file  ------
+     call h5io_closef(file_id, herror)
+     call h5close_f(herror)
+#endif
+  end subroutine rad_procs
 
    !> This subroutine produces the steady state solutions of the kinetic equation.
    subroutine steady_state(params_file, output_file)
@@ -326,8 +520,6 @@ contains
 
       build_g: do k = 1, numg
          g(k) = gmin * (gmax / gmin)**(dble(k - 1) / dble(numg - 1))
-         ! g(k) = dsqrt((g(k)**2) - 1d0)
-         ! g(k) = (k-1)*(gmax-gmin)/numg
          if ( k > 1 ) dg(k) = g(k) - g(k - 1)
       end do build_g
       dg(1) = dg(2)
@@ -343,6 +535,7 @@ contains
 
       D0 = 1d0 * (g**3)
       call eq_59_park1995(1d-4,g,n1(0,:))
+      n1(0,:) = (1d0/sum(n1(0, :) * dg))*n1(0,:)
       ! write(*,*) 'gcompare', g(minloc(abs(g-1d2)))
 
 

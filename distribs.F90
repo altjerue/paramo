@@ -60,9 +60,10 @@ contains
             Gf(i) = 1d200
           end if
           if(Gf(i)<1d-100) then
-            Gf(i) = 1e-100
+            Gf(i) = 1d-100
           end if
         end do
+
 
       end subroutine eq_59_Park1995
 
@@ -280,7 +281,7 @@ contains
       BBm2(2:) = 0.5d0 * ((DD(2:) - DD(:Ng1)) / dxm2(2:) + (gdot(2:) + gdot(:Ng1)))
       BBp2(Ng) = 0.5d0 * ((DD(Ng) - DD(Ng1)) / dxp2(Ng) + (gdot(Ng) + gdot(Ng1)))
       ! should allow for momentum space use but is not tested.
-      if ( g(1) .lt. 1d-200 ) then
+      if ( (g(1) - 1).gt. 1d-50 ) then
         call polint(g(2:), BBm2(2:), g(1), BBm2(1), dBB)
       else
         BBm2(1) = 0.5d0 * ((DD(2) - DD(1)) / dxm2(2) + (gdot(2) + gdot(1)))
@@ -316,7 +317,7 @@ contains
 
          ! if ( 127d0 * WWp2(i)**8 < eps * 154828800d0 ) then
          if ( dabs(WWp2(i)) < 0.1d0 ) then
-            YYp2(i) = 1d0 - WWp2(i)**2 / 24d0 + 7d0 * WWp2(i)**4 / 5760d0 - 31d0 * WWp2(i)**6 / 967680d0
+            YYp2(i) = 1d0 - (WWp2(i)**2) / 24d0 + 7d0 * (WWp2(i)**4 )/ 5760d0 - 31d0 *( WWp2(i)**6) / 967680d0
          else
             YYp2(i) = dabs(WWp2(i)) * dexp(-dabs(ZZp2(i))) / ( 1d0 - dexp(-2d0 * dabs(ZZp2(i))) )
             ! YYp2(i) = dabs(WWp2(i)) / ( (1d0 - 1d0 / ZZp2(i)**2 ) * ZZp2(i) )
@@ -324,15 +325,13 @@ contains
 
          ! if ( 127d0 * WWm2(i)**8 < eps * 154828800d0 ) then
          if ( dabs(WWm2(i)) < 0.1d0 ) then
-            YYm2(i) = 1d0 - WWm2(i)**2 / 24d0 + 7d0 * WWm2(i)**4 / 5760d0 - 31d0 * WWm2(i)**6 / 967680d0
+            YYm2(i) = 1d0 - (WWm2(i)**2) / 24d0 + 7d0 * (WWm2(i)**4) / 5760d0 - 31d0 * (WWm2(i)**6) / 967680d0
          else
             YYm2(i) = dabs(WWm2(i)) / ( dexp(dabs(ZZm2(i))) - dexp(-dabs(ZZm2(i))) )
          end if
       end do
 
       !!!YYp2 * dexp(ZZp2) = Wm+1/2
-
-
 
       r = nin + dt * QQ
       c = -dt * CCp2 * YYp2 * dexp(ZZp2) / (dx * dxp2)

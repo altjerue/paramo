@@ -316,6 +316,7 @@ contains
 
    !> Solver of a tridiagonal matrix. Based on the code in "Numberical Recipes".
    subroutine tridag_ser(a, b, c, r, u)
+     !todo look into parallelizing this as mentioned in numerical recipes
       implicit none
       real(dp), dimension(:), intent(in) :: a, b, c, r
       real(dp), dimension(:), intent(out) :: u

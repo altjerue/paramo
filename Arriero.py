@@ -62,6 +62,9 @@ class parameters(object):
         self.lg1 = "d"              # logical parameter 1 with default = 'd'
         self.lg2 = "d"                # logical parameter 2 with default = 'd'
         self.lg3 = "d"                # logical parameter 3 with default = 'd'
+        self.ed1 = 1e0  # extra double one
+        self.ed2 = 1e0  #extra double two
+        self.ed3 = 1e0  # extra double three
         self.params_file = 'input.par'  # name of the parameters file
 
     def __init__(self, **kwargs):
@@ -110,6 +113,9 @@ class parameters(object):
             print( self.lg1, ' !  logical parameter 1 with default=d', file=f)
             print( self.lg2, ' !  logical parameter 2 with default=d', file=f)
             print( self.lg3, ' !  logical parameter 3 with default=d', file=f)
+            print( self.ed1, ' !  extra double one', file=f)
+            print( self.ed2, ' !  extra double one', file=f)
+            print( self.ed3, ' !  extra double one', file=f)
             # print(self.file_label, ' ! label to identify each output', file=f)
         print("--> Parameters file: ", self.params_file)
 
@@ -339,15 +345,14 @@ class Runner(object):
     # ----->   turbulence compilation and run
     def run_turb(self, cmd_args=(None, None), pream=None, clean=False, cl=False):
         if cmd_args[0] is None or cmd_args[0] is False:
-            wCool = False
+            wCool = 'F'
         else:
-            wCool = True
+            wCool = 'T'
         if cmd_args[1] is None or cmd_args[1] is False:
-            wAbs = False
+            wAbs = 'F'
         else:
-            wAbs = True
-
-        comp = compiler(rules='xTurBlaz', **self.comp_kw)
+            wAbs = 'T'
+        comp = compiler(CONFIG=3, **self.comp_kw)
 
         if clean:
             comp.cleanup()
@@ -355,9 +360,9 @@ class Runner(object):
         outfile = self.flabel + '.jp.h5'
 
         if pream is None:
-            run_cmd = '{0}xTurBlaz {1} {2} {3} {4}'.format(comp.compileDir, self.par.params_file, wCool, wAbs, outfile)
+            run_cmd = '{0}Paramo {1} {2} {3} {4}'.format(comp.compileDir, self.par.params_file,outfile, wCool, wAbs)
         else:
-            run_cmd = '{0} {1}xTurBlaz {2} {3} {4} {5}'.format(pream, comp.compileDir, self.par.params_file, wCool, wAbs, outfile)
+            run_cmd = '{0} {1}Paramo {2} {3} {4} {5}'.format(pream, comp.compileDir, self.par.params_file,outfile, wCool, wAbs)
         print("\n--> Parameters:")
         os.system("cat -n " + self.par.params_file)
         if cl:

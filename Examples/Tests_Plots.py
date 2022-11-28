@@ -5,8 +5,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import Arriero as ar
 import Eduviges.extractor as extr
+import Eduviges.magnetobrem as mb
 import matplotlib.cm as cm
 import scipy.integrate as intergrate
+import scipy.special as scisp
 import Eduviges.constants as aCons
 import matplotlib
 import analytical_solutions as ansol
@@ -162,10 +164,6 @@ def run_convergence_test(numts, numgs,test_choice=1):
             rr.par.NG = numg
             rr.par.NT = numt
             rr.par.NF = 192
-            # rr.par.g1 = 1e4
-            # rr.par.g2 = 1e6
-            # rr.par.gmin = 1e0 + 1e-10
-            # rr.par.gmax = 1.5e2 * rr.par.g2
             g1 = 1e4
             g2=1e6
             rr.par.g1 =g1#Eduviges.SRtoolkit.pofg(g1)*aCons.me*aCons.cLight
@@ -186,97 +184,9 @@ def get_convergence_results(numt, numg):
     return ssr
 
 
+
 def get_error(ef, efg, ei, eig):
     er = []
-    for i in range(len(eig)):
-        closest=np.argsort(np.abs(efg - eig[i]))
-        if(efg[closest[0]] - eig[i] == 0 ):
-            ci = np.argmin(np.abs(efg - eig[i]))
-            e = (ef[ci] - ei[i]) ** 2
-            er.append(e)
-        else:
-            eic = ei[i]
-            c0 = closest[0]
-            c1 = closest[1]
-            gf0 = efg[c0]
-            gf1 = efg[c1]
-            nf0 = ef[c0]
-            nf1 = ef[c1]
-            ncomp = nf0
-            m= (nf1-nf0)/(gf1-gf0)
-            ncomp += m*np.abs(eig[i] - gf0)
-            e = ((ncomp - eic)) ** 2
-            er.append(e)
-
-
-    er = np.sqrt(sum(er) )/ len(eig)
-    # er = np.sqrt(sum(er))
-    return er
-
-
-def get_error2(ef, efg, ei, eig):
-    er = []
-    # g1cut = 1e1
-    # g2cut = 1e5
-    # gcmin,gcmax=np.argmin(np.abs(efg-g1cut)),np.argmin(np.abs(efg-g2cut))
-    # gcimin,gcimax = np.argmin(np.abs(eig-g1cut)),np.argmin(np.abs(eig-g2cut))
-    # ef = ef[gcmin:gcmax]
-    # efg = efg[gcmin:gcmax]
-    # ei = ei[gcimin:gcimax]
-    # eig = eig[gcimin:gcimax]
-    for i in range(len(efg)):
-        closest=np.argsort(np.abs(eig - efg[i]))
-        fucku = True
-        if(eig[closest[0]] - efg[i] == 0 or fucku):
-            ci = np.argmin(np.abs(eig - efg[i]))
-            e = (ei[ci] - ef[i]) ** 2
-            er.append(e)
-        else:
-            efc = ef[i]
-            c0 = closest[0]
-            c1 = closest[1]
-            gi0 = eig[c0]
-            gi1 = eig[c1]
-            ni0 = ei[c0]
-            ni1 = ei[c1]
-            ncomp = ni0
-            m= np.abs((ni1-ni0)/(gi1-gi0))
-            # if(efg[i]<gi0):
-            #     m=-m
-            ncomp += (m*(efg[i] - gi0))
-            e = ((ncomp - efc)/ncomp) ** 2
-            # if(efg[i]>= 3e4):
-            #     print("afd")
-            er.append(e)
-    # fig,ax = plt.subplots()
-    # # ax.plot(range(len(efg)),er)
-    # ax.plot(efg,er)
-    # ax.set_xscale('log')
-    # ax.set_yscale('log')
-    # plt.show()
-    eers = np.sqrt(er)/len(eig)
-    er = np.sqrt(sum(er) / len(efg))
-
-
-
-    return er,eers
-
-
-def get_error3(ef, efg, ei, eig):
-    er = []
-    eers =[]
-    # g1cut = 1.001e1
-    # g2cut = 1.8e7
-    # gcmin,gcmax=np.argmin(np.abs(efg-g1cut)),np.argmin(np.abs(efg-g2cut))
-    # gcimin,gcimax = np.argmin(np.abs(eig-g1cut)),np.argmin(np.abs(eig-g2cut))
-    # ef = ef[gcmin:gcmax]
-    # efg = efg[gcmin:gcmax]
-    # ei = ei[gcimin:gcimax]
-    # eig = eig[gcimin:gcimax]
-    # ef = np.log10(ef)
-    # efg = np.log10(efg)
-    # ei = np.log10(ei)
-    # eig = np.log10(eig)
     for i in range(len(eig)):
         closest=np.argsort(np.abs(efg - eig[i]))
         fucku = True
@@ -294,22 +204,12 @@ def get_error3(ef, efg, ei, eig):
             nf1 = ef[c1]
             ncomp = nf0
             m= np.abs((nf1-nf0)/(gf1-gf0))
-            # if (efg[i] >= 3e4):
-            #     m=-m
             if(efg[i]<gf0):
                 m=-m
             ncomp -= (m*np.abs(eig[i] - gf0))
             e = ((ncomp - eic)/ncomp) ** 2
-            # if(efg[i]>= 3e4):
-            #     print("afd")
             er.append(e)
     eers = np.array(er)/len(eig)
-    # fig,ax = plt.subplots()
-    # # ax.plot(range(len(efg)),er)
-    # ax.plot(eig,er)
-    # ax.set_xscale('log')
-    # # ax.set_yscale('log')
-    # plt.show()
 
     er = sum(er) / len(eig)
 
@@ -317,24 +217,6 @@ def get_error3(ef, efg, ei, eig):
 
     return er,eers
 
-def get_error4(ef, efg, ei, eig):
-    g1cut = 1e1
-    g2cut = 1e5
-    # gcmin,gcmax=np.argmin(np.abs(efg-g1cut)),np.argmin(np.abs(efg-g2cut))
-    # gcimin,gcimax = np.argmin(np.abs(eig-g1cut)),np.argmin(np.abs(eig-g2cut))
-    # ef = ef[gcmin:gcmax]
-    # efg = efg[gcmin:gcmax]
-    # ei = ei[gcimin:gcimax]
-    # eig = eig[gcimin:gcimax]
-    ef = np.log10(ef)
-    efg = np.log10(efg)
-    ei = np.log10(ei)
-    eig = np.log10(eig)
-    eef = np.trapz(ef,efg)
-    eei=np.trapz(ei,eig)
-    er = ((eef-eei)**2)
-    er = np.sqrt(er)/ len(eig)
-    return er
 
 def analytical_form(g):
     C0 = 3.48e-11
@@ -353,7 +235,6 @@ def get_error_analytic(ei, eig,n0):
             er.append(((ef-ei[i])/ef)**2)
         else:
             er.append(0)
-        # er.append(((ef-ei[i]))**2)
     eers = np.sqrt(er)
     er = np.sqrt(sum(er)/len(eig))
     return er,eers
@@ -376,12 +257,13 @@ def convergence_plots_analytic(numt,numgs):
         eissr = get_convergence_results(numt, mg)
         ei = eissr.n4[:, -1]
         eig = eissr.g
+        xs.append(len(eig))
         nio = np.trapz(ei,eig)
         nio0 = np.trapz(eissr.n4[:, 0],eig)
         nios.append(nio/nio0)
         # ei = n0*ei/nio
 
-        gminci = np.argmin(np.abs(eig - 10e0))
+        gminci = np.argmin(np.abs(eig - 1e0))
         gmaxci = np.argmin(np.abs(eig - 1e7))
         eig=eig[gminci:gmaxci]
         ei=ei[gminci:gmaxci]
@@ -390,7 +272,7 @@ def convergence_plots_analytic(numt,numgs):
         ns.append(ei)
         eers.append(eer)
         ys.append(er)
-        xs.append(len(eig))
+
 
     fig, ax = plt.subplots()
     ax.set_yscale('log')
@@ -407,16 +289,76 @@ def convergence_plots_analytic(numt,numgs):
     pl2 = ax2.plot()
     pl = ax.scatter(xs, ys)
     pl3 = ax3.scatter(xs,nios)
-    xc = np.logspace(0.5, 1.7)
-    xc2 = np.logspace(1.5, 2.9)
-    pl = ax.plot(xc*xc[1], ys[1] * (xc / xc[1]) ** -2, label='p=-2')
-    pl = ax.plot(xc2, ys[4] * (xc2 / xc2[0]) ** -1, label='p=-1')
+    xc2 = np.logspace(1.5, 3.8)
+    pl = ax.plot(xc2, ys[2] * (xc2 / xs[2]) ** -1, label='$\propto N^{-1}$',color='black')
     for i in range(len(gs)):
             pl2 = ax2.scatter(gs[i], eers[i], 4)
-            pl2 = ax1.plot(gs[i], ns[i], label='line: ' + str(i))
+            pl2 = ax1.plot(gs[i], ns[i], label='N=' + str(xs[i]))
     ax1.plot(gs[-1],analytical_solution(n0,gs[-1]),'--')
-    ax1.legend()
+
+    ax.set_ylim([1e-3, 3e-1])
+    ax.set_xlim([5e1, 4e3])
+    ax1.set_ylim([1e-5, 5e1])
+    ax1.set_xlim([1e1, 1e6])
+
+    ax1.set_ylabel(r"n $[cm^{-3}]$", fontsize=18)
+    ax1.set_xlabel("$\gamma$", fontsize=18)
+    ax1.set_title(" Steady State Solutions ", y=1.0, pad=-14,loc='left')
+    ax1.tick_params(
+        axis='x',
+        which='minor',
+        top=False,
+        labelbottom=False
+    )
+
+    ax1.tick_params(
+        axis='both',
+        which='both',
+        labelsize=15
+    )
+    ax1.tick_params(
+        axis='both',
+        which='major',
+        size=10
+    )
+    ax1.tick_params(
+        axis='y',
+        which='minor',
+        size=5
+    )
+
+    ax.set_xlabel("Number of bins (N)", fontsize=18)
+    ax.set_ylabel("Error", fontsize=18)
+    ax.set_title("  Convergence at steady state", y=1.0, pad=-14, loc='left')
+    ax.tick_params(
+        axis='x',
+        which='minor',
+        top=False,
+        labelbottom=False
+    )
+
+    ax.tick_params(
+        axis='both',
+        which='both',
+        labelsize=15
+    )
+    ax.tick_params(
+        axis='both',
+        which='major',
+        size=10
+    )
+    ax.tick_params(
+        axis='y',
+        which='minor',
+        size=5
+    )
+    ax.tick_params(
+        axis='x',
+        which='minor',
+        size=5
+    )
     ax.legend()
+    ax1.legend(loc='lower center')
     plt.show()
 
 def convergence_plots_numg(numt, numgs):
@@ -455,7 +397,7 @@ def convergence_plots_numg(numt, numgs):
         gcimin,gcimax = np.argmin(np.abs(eig-g1cut)),np.argmin(np.abs(eig-g2cut))
         ei = ei[gcimin:gcimax]
         eig = eig[gcimin:gcimax]
-        er,eer= get_error3(ef, efg, ei, eig)
+        er,eer= get_error(ef, efg, ei, eig)
         gs.append(eig)
         ns.append(ei)
         # er = get_error(ef, efg, ei, eig)
@@ -666,19 +608,7 @@ def build_g(gmax,gmin,numg):
     plt.show()
     return g
 
-# g1 = build_g(1.5e0 * 1e6,1.01e0,8)
-# g2 = build_g(1.5e0 * 1e6,1.01e0,64)
-# print("")
-# run_steady_state_test()
-# ssr_n_plots()
-# ssr_j_plots()
-# run_convergence_test(np.logspace(1,4,4),np.logspace(1,4,4))
-# garr = [5,10,20,30,50,60,80,100,150,200,300,400,500,600,800,2000,3000,3500]
-garr = [20,30,60,80,100,150,200,250,300]#,3500]
-numtarr =[2000]
-# run_convergence_test(numtarr,garr)
-# convergence_plots_numg(300, garr)
-# build_g(1.5e6,1.0001,9000)
+
 
 def debug_distribsFP():
     numg = int(5000)
@@ -704,13 +634,14 @@ def debug_distribsFP():
     eissr = get_convergence_results(numt, numg)
     print("afd")
 
-def get_error_analytic_time(ei, eig,t):
+def get_error_analytic_time(ei,ef, eig):
 
     er = []
     for i in range(len(eig)):
-        ef = ansol.eq_59_Park1995(t + 1e-4,eig[i])
-        if(ef>0):
-            er.append(((ef-ei[i])/ef)**2)
+        if(eig[i]>1e2):
+            print("afsd")
+        if(ef[i]>0):
+            er.append(((ef[i]-ei[i])/ef[i])**2)
         else:
             er.append(0)
         # er.append(((ef-ei[i]))**2)
@@ -728,27 +659,56 @@ def convergence_plots_analytic_time(numts,numg):
     ns = []
     nios=[]
     eers = []
+    efs=[]
     p = 0e0
     gmin = 1e4
     gmax = 1e6
     n0 = intergrate.quad(lambda x: x**p,gmin,gmax)[0]
-    t=2e-4
+    t4=1e-2
+    t3=5e-3
+    t2=1e-3
+    t1=5e-4
+    efgs=[]
+    ts = [t1,t2,t3,t4]
+    t=ts[3]
     for i in range(len(numts)):
         mt = numts[i]
         eissr = get_convergence_results(mt, numg)
         tind = np.argmin(np.abs(eissr.t - t))
         ei = eissr.n1[:, tind]
         eig = eissr.g
+        n0 = 1e0
+        ef = []
+        for j in range(len(eig)):
+            ef.append(ansol.eq_59_Park1995(t + 1e-4, eig[j]))
+        nio = np.trapz(ansol.eq_59_Park1995(1e-4, eig), eig)
+        ef = np.array(ef)
+        ef = n0 * ef / nio
+        efs.append(ef)
+        efgs.append(eig)
         nio = np.trapz(ei,eig)
         nio0 = np.trapz(eissr.n1[:, 0],eig)
         nios.append(nio/nio0)
         # ei = n0*ei/nio
-        print("t/t: " + str(t/eissr.t[tind]))
-        gminci = np.argmin(np.abs(eig - 30e0))
-        gmaxci = np.argmin(np.abs(eig - 8e2))
+
+
+        minargs= np.argsort(np.abs(ei - 1e-8))
+        ma1 = minargs[0]
+        ma2 = minargs[1]
+        for k in range(len(minargs)):
+            if(np.abs(minargs[k]-ma1)>10):
+                ma2=minargs[k]
+                break
+        if(ma1 > ma2):
+            gmaxci = ma1
+            gminci = ma2
+        else:
+            gmaxci = ma2
+            gminci = ma1
         eig=eig[gminci:gmaxci]
         ei=ei[gminci:gmaxci]
-        er, eer = get_error_analytic_time(ei, eig,t)
+        ef=ef[gminci:gmaxci]
+        er, eer = get_error_analytic_time(ei,ef, eig)
         gs.append(eig)
         ns.append(ei)
         eers.append(eer)
@@ -772,17 +732,76 @@ def convergence_plots_analytic_time(numts,numg):
     pl = ax.scatter(xs, ys)
     pl3 = ax3.scatter(xs,nios)
     xc = np.logspace(0.5, 1.7)
-    xc2 = np.logspace(1.5, 2.9)
-    pl = ax.plot(xc*xc[1], ys[1] * (xc / xc[1]) ** -2, label='p=-2')
-    pl = ax.plot(xc2, ys[4] * (xc2 / xc2[0]) ** -1, label='p=-1')
+    xc2 = np.logspace(2,3.2)
+    # pl = ax.plot(xc*xc[1], ys[1] * (xc / xc[1]) ** -2, label='p=-2')
+    pl = ax.plot(xc2, ys[0] * (xc2 / xs[0]) ** -1, label='$\propto N^{-1}$',color='black')
+    # [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1500]
+    res_colors=['tab:blue','tab:orange','tab:green','tab:red','tab:purple','tab:brown','tab:pink','tab:gray','tab:olive','tab:cyan']
     for i in range(len(gs)):
             pl2 = ax2.scatter(gs[i], eers[i], 4)
-            pl2 = ax1.plot(gs[i], ns[i], label='line: ' + str(i))
-    ax1.plot(gs[-2],ansol.eq_59_Park1995(t + 1e-4,gs[-2]),'--')
-    ax1.set_ylim([1e-8, 1e2])
-    ax1.set_xlim([1e-4, 1e4])
-    ax1.legend()
+            pl2 = ax1.plot(gs[i], ns[i], label='number of bins: ' + str(numtarr[i]))
+    ax1.plot(efgs[-1],efs[-1],'--',label='analytic solution')
+    ax1.set_ylim([1e-8, 1e-1])
+    ax1.set_xlim([1e1, 1e4])
+
+    ax.set_ylim([1e-1, 3e0])
+    ax.set_xlim([8e1, 2e3])
+
+    tstr =  "{:.2E}".format(t)
+    ax1.set_title("  Solution for t="+tstr, y=1.0, pad=-14,loc='left')
+    ax1.tick_params(
+        axis='x',
+        which='minor',
+        top=False,
+        labelbottom=False
+    )
+
+    ax1.tick_params(
+        axis='both',
+        which='both',
+        labelsize=15
+    )
+    ax1.tick_params(
+        axis='both',
+        which='major',
+        size=10
+    )
+    ax1.tick_params(
+        axis='y',
+        which='minor',
+        size=5
+    )
+
+    ax.set_title("  Convergence at t=" + tstr, y=1.0, pad=-14, loc='left')
+    ax.tick_params(
+        axis='x',
+        which='minor',
+        top=False,
+        labelbottom=False
+    )
+
+    ax.tick_params(
+        axis='both',
+        which='both',
+        labelsize=15
+    )
+    ax.tick_params(
+        axis='both',
+        which='major',
+        size=10
+    )
+    ax.tick_params(
+        axis='y',
+        which='minor',
+        size=5
+    )
+    ax.tick_params(
+        axis='x',
+        which='minor',
+        size=5
+    )
     ax.legend()
+    ax1.legend()
     plt.show()
 
 def convergence_plots_analytic_time_manupilate(t):
@@ -802,37 +821,172 @@ def convergence_plots_analytic_time_manupilate(t):
     tind = np.argmin(np.abs(eissr.t - t))
     ei = eissr.n1[:, tind]
     y2 = ansol.eq_59_Park1995(t+1e-4,eissr.g)
+    yt = ansol.eq_59_Park1995(0e0+1e-4,eissr.g)
+    nio = np.trapz(yt, eissr.g)
+    y2 = np.array(y2)
+    y2 = 1e0 * y2 / nio
     return  [ei,y2]
 
 
 
+def run_analytic_time_manupilate(numtarr,garr):
 
-# debug_distribsFP()
+    eissr = get_convergence_results(numtarr[0], garr[0])
+    irs = []
+    n1test=eissr.n1[:,0]
+    t0 = 1e-4
+    irs.append(PE.inputRange(t0,t0,1e-2,'t'))
+    ep = PE.explorerPlot(convergence_plots_analytic_time_manupilate,eissr.g,irs)
+    dd = PL.dataset()
 
-garr = [2000]
-numtarr = [50,100,300,450,600,1000]
-t0=1e-4
-y =ansol.eq_59_Park1995(t0,np.logspace(0,8,garr[0]))
-run_convergence_test(numtarr,garr,test_choice=6)
-convergence_plots_analytic_time(numtarr,garr[0])
+    y = ansol.eq_59_Park1995(t0, np.logspace(0, 8, garr[0]))
+    dd.x =eissr.g
+    dd.y = y
+    dd.marker='--'
+    dd.plot_type=dd.scattertype
+    # ep.dataset=[dd]
+    ep.line_y_scale='log'
+    ep.line_x_scale='log'
+    ep.plot_y_bound=(1e0,1e-12)
+    dd = PL.dataset()
+    dd.plot_type=dd.scattertype
+    ep.buildPlot()
+    ep.figret.pyplt.show()
 
-# eissr = get_convergence_results(numtarr[0], garr[0])
-# irs = []
-# n1test=eissr.n1[:,0]
-# irs.append(PE.inputRange(t0,t0,1e-3,'t'))
-# ep = PE.explorerPlot(convergence_plots_analytic_time_manupilate,eissr.g,irs)
-# dd = PL.dataset()
+def run_syn_power_solution():
+    outfile = __file__.split('Tests_Plots.py')[0] + 'syn_test'
+    rr = ar.Runner(flabel=outfile, comp_kw={'OMP': True, 'HDF5': True, 'compileDir': './'})
+    ##adjust parameters
+    rr.par.numax = 1e28
+    rr.par.NG = 900
+    rr.par.NT = 10
+    rr.par.NF = 900
+    rr.par.g1 = 1e2
+    rr.par.g2 = 1e4
+    rr.par.gmin = 1.01e0
+    rr.par.gmax = 1.5e0 * rr.par.g2
+    rr.par.numin = 1e10
+    rr.par.numax = 1e20
+    rr.par.pind = 0e0
+    rr.par.lg1 = 'F'
+    rr.par.wParams()
+    ###
+    rr.run_test(clean=True, test_choice=2)
+
+def a_dermer(p):
+    num = (2**((p-1)/2))*np.sqrt(3)*scisp.gamma((3*p - 1)/12)*scisp.gamma((3*p + 19)/12)*scisp.gamma((p+5)/4)
+    den = 8 * np.sqrt(np.pi) * (p+1)*scisp.gamma((p+7)/4)
+    return num/den
+
+def dermer_eq_7_53(n0,B,p,nu):
+    L = (np.pi*4*(n0/(4*np.pi))*(aCons.eCharge**3) * (B**((p+1)/2))/(aCons.me*(aCons.cLight**2)))*((3*aCons.eCharge/(4*np.pi * aCons.me*aCons.cLight))**((p-1)/2)) * a_dermer(p)* (nu**((1-p)/2))
+    # uB = (B**2)/(8*np.pi)
+    # nuB = (aCons.eCharge)*B/(np.pi*2*aCons.me*aCons.cLight)
+    # nuB = 1e14
+    # L= ((3**((p+3)/2))/(2**((p+1)/2)))*a_dermer(p)*(4/3)*aCons.sigmaT*aCons.cLight*uB*(n0/(4*np.pi))*((nu/nuB)**((3-p)/2))
+    # L = (a_dermer(p)/np.pi)*((3/2)**((p+1)/2))*aCons.cLight*aCons.sigmaT*uB*
+    return L
+
+# def mimica_2_69():
 #
-#
-# dd.x =eissr.g
-# dd.y = y
-# dd.marker='--'
-# dd.plot_type=dd.scattertype
-# # ep.dataset=[dd]
-# ep.line_y_scale='log'
-# ep.line_x_scale='log'
-# ep.plot_y_bound=(1e0,1e-12)
-# dd = PL.dataset()
-# dd.plot_type=dd.scattertype
-# ep.buildPlot()
-# ep.figret.pyplt.show()
+
+
+def syn_pwllaw_comparison():
+    fig, ax = plt.subplots()
+    ax.set_yscale('log')
+    ax.set_xscale('log')
+    outfile= __file__.split('Tests_Plots.py')[0] + 'syn_test'
+    ssr = SS_results(outfile=outfile + '.jp.h5')
+    nu = ssr.nu
+    jm = ssr.jmbss[0]
+    # jssc = ssr.jsscs[j]
+
+    cmap = cm.rainbow
+    # sm = plt.cm.ScalarMappable(cmap=cmap, norm=matplotlib.colors.LogNorm(vmin=t[0], vmax=t[-1]))
+
+    pls = []
+    my = None
+
+
+    y = jm[0, :]
+    if (my == None):
+        my = max(y)
+    if (max(y) > my):
+        my = max(y)
+    pl = ax.plot(nu, y)
+    # y2 = dermer_eq_7_53(1,1,4,nu)
+    n = ssr.n1[:,0]
+    g = ssr.g
+    B = ssr.B
+    y2 = mb.j_syn_explicit(nu,B,n,g,rtol=1.48e-10, tol=1.48e-10, divmax=15)
+    pl2 = ax.plot(nu,y2)
+    pls.append(pl)
+    pls.append(pl2)
+
+    ax.set_ylim(my / 1e10, 2 * my)
+    ax.set_xlim(ssr.numin, ssr.numax)
+
+    cbticks = []
+    for i in range(8):
+        cbticks.append(r"$10^{{{0}}}$".format(i))
+    # cbar = plt.colorbar(sm, anchor=(-0.6, 0.0), ticks=np.logspace(0, 7, 8))
+    # cbar.ax.set_yticklabels(cbticks)
+    # cbar.ax.minorticks_off()
+    # cbar.ax.set_ylabel(r"t [s]", fontsize=18)
+    # cbar.ax.tick_params(
+    #     labelsize=15
+    # )
+
+    plt.tick_params(
+        axis='x',
+        which='minor',
+        bottom=False,
+        top=False,
+        labelbottom=False
+    )
+
+    plt.tick_params(
+        axis='both',
+        which='both',
+        labelsize=15
+    )
+    plt.tick_params(
+        axis='both',
+        which='major',
+        size=10
+    )
+    plt.tick_params(
+        axis='y',
+        which='minor',
+        size=5
+    )
+
+    ax.set_xlabel(r"$\nu$ [Hz]", fontsize=18)
+    ax.set_ylabel(r"j $[\frac{erg}{s cm^{3}}]$", fontsize=18)
+
+    plt.tight_layout()
+
+    # plt.savefig(plots_folder+"n1vsg.png")
+    plt.show()
+
+#t convergence
+garr = [900]
+# numtarr = [100,200,300,400,500,600,700,800,900,1000,1500]
+numtarr = [100,300,900]
+# numtarr = [600]
+# t0=1e-4
+# y =ansol.eq_59_Park1995(t0,np.logspace(0,8,garr[0]))
+# run_convergence_test(numtarr,garr,test_choice=6)
+# convergence_plots_analytic_time(numtarr,garr[0])
+
+#g convergence
+# garr = [100,150,200,300,400,500,600,800,2000,3000,3500]
+# garr = [100,500,3500]
+numtarr =[600]
+# run_convergence_test(numtarr,garr,test_choice=1)
+# convergence_plots_analytic(numtarr[0], garr)
+# run_convergence_test(numtarr, garr, test_choice=6)
+# run_analytic_time_manupilate(numtarr,garr)
+
+run_syn_power_solution()
+syn_pwllaw_comparison()

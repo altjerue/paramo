@@ -331,8 +331,8 @@ contains
       nu_b = nuconst * B
       chi = nu / nu_b
       I2 = RMA_qromb(chi, qq, dlog(gmin), dlog(gmax), RMAfunc)
-      emiss = pi * eCharge**2 * nu_b * n0 * I2 * gmin**qq / (2d0 * cLight)
-      ! emiss = jmbconst * nu_b * n0 * I2 * gmin**qq
+      ! emiss = pi * eCharge**2 * nu_b * n0 * I2 * gmin**qq / (2d0 * cLight)
+      emiss = jmbconst * nu_b * n0 * I2 * gmin**qq
    end function j_mb
 
    subroutine RMA_trapzd(chi, q, lga, lgb, s, n, RMAfunc)
@@ -648,11 +648,11 @@ contains
          u = 1d0
       else
          if ( tau > 100d0 ) then
-            u = 0.5d0 - 1d0 / tau**2
+            u = 0.5d0 - 1d0 / tau**2d0
          else if ( tau >= 0.01d0 .and. tau <= 100d0 ) then
             u = 0.5d0 * (1d0 - 2d0 * (1d0 - (1d0 + tau) * dexp(-tau)) / tau**2)
          else
-            u = (tau / 3d0) - 0.125d0 * tau**2
+            u = (tau / 3d0) - 0.125d0 * tau**2d0
          end if
          u = 3d0 * u / tau
       end if

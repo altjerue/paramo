@@ -9,7 +9,7 @@ module params
          par_tstep, par_tmax, par_tmin, par_eps_B, par_tvar, par_frec, par_pind,&
          par_g1, par_g2, par_gmin, par_gmax, par_nu_ext, par_uext, par_numin, &
          par_numax, par_E0, par_n_ext, par_B, par_mu_mag, par_eta_j, par_fesc, &
-         par_eps_acc
+         par_eps_acc,par_ed1,par_ed2,par_ed3
 
   character(len=1) :: par_lg1,par_lg2,par_lg3
 
@@ -19,7 +19,7 @@ module params
          par_tstep, par_tmax, par_tmin, par_eps_B, par_tvar, par_frec, par_pind,&
          par_g1, par_g2, par_gmin, par_gmax, par_nu_ext, par_uext, par_numin, &
          par_numax, par_E0, par_B, par_mu_mag, par_eta_j, par_fesc, par_eps_acc,&
-         par_lg1,par_lg2,par_lg3
+         par_lg1,par_lg2,par_lg3,par_ed1,par_ed2,par_ed3
 
 contains
 
@@ -69,6 +69,9 @@ contains
       read(77, *) par_lg1 !!logical condition one Default = 'd'
       read(77, *) par_lg2 !!logical condition two
       read(77, *) par_lg3 !!logical condition three
+      read(77, *) par_ed1 !!extra double one
+      read(77, *) par_ed2 !!extra double two
+      read(77, *) par_ed3 !!extra double three
       close(77)
    end subroutine read_params
 

@@ -37,6 +37,7 @@ program main
          else if ( args(i) == 'F' ) then
             with_arg(i - 2) = .false.
          else
+            write(*,*) "arg: ",args(i)
             call an_error(args_error)
          end if
       end if
