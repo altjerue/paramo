@@ -873,22 +873,6 @@ def run_syn_power_solution():
     ###
     rr.run_test(clean=True, test_choice=2)
 
-def a_dermer(p):
-    num = (2**((p-1)/2))*np.sqrt(3)*scisp.gamma((3*p - 1)/12)*scisp.gamma((3*p + 19)/12)*scisp.gamma((p+5)/4)
-    den = 8 * np.sqrt(np.pi) * (p+1)*scisp.gamma((p+7)/4)
-    return num/den
-
-def dermer_eq_7_53(n0,B,p,nu):
-    L = (np.pi*4*(n0/(4*np.pi))*(aCons.eCharge**3) * (B**((p+1)/2))/(aCons.me*(aCons.cLight**2)))*((3*aCons.eCharge/(4*np.pi * aCons.me*aCons.cLight))**((p-1)/2)) * a_dermer(p)* (nu**((1-p)/2))
-    # uB = (B**2)/(8*np.pi)
-    # nuB = (aCons.eCharge)*B/(np.pi*2*aCons.me*aCons.cLight)
-    # nuB = 1e14
-    # L= ((3**((p+3)/2))/(2**((p+1)/2)))*a_dermer(p)*(4/3)*aCons.sigmaT*aCons.cLight*uB*(n0/(4*np.pi))*((nu/nuB)**((3-p)/2))
-    # L = (a_dermer(p)/np.pi)*((3/2)**((p+1)/2))*aCons.cLight*aCons.sigmaT*uB*
-    return L
-
-# def mimica_2_69():
-#
 
 
 def syn_pwllaw_comparison():
@@ -899,10 +883,6 @@ def syn_pwllaw_comparison():
     ssr = SS_results(outfile=outfile + '.jp.h5')
     nu = ssr.nu
     jm = ssr.jmbss[0]
-    # jssc = ssr.jsscs[j]
-
-    cmap = cm.rainbow
-    # sm = plt.cm.ScalarMappable(cmap=cmap, norm=matplotlib.colors.LogNorm(vmin=t[0], vmax=t[-1]))
 
     pls = []
     my = None
@@ -913,29 +893,18 @@ def syn_pwllaw_comparison():
         my = max(y)
     if (max(y) > my):
         my = max(y)
-    pl = ax.plot(nu, y)
-    # y2 = dermer_eq_7_53(1,1,4,nu)
+    pl = ax.plot(nu, y,label='Computed Solution')
     n = ssr.n1[:,0]
     g = ssr.g
     B = ssr.B
     y2 = mb.j_syn_explicit(nu,B,n,g,rtol=1.48e-10, tol=1.48e-10, divmax=15)
-    pl2 = ax.plot(nu,y2)
+    pl2 = ax.plot(nu,y2,'--',label='Analytic Solution')
     pls.append(pl)
     pls.append(pl2)
 
-    ax.set_ylim(my / 1e10, 2 * my)
-    ax.set_xlim(ssr.numin, ssr.numax)
+    ax.set_ylim(my / 1e5, 2 * my)
+    ax.set_xlim(ssr.numin, 1e16)
 
-    cbticks = []
-    for i in range(8):
-        cbticks.append(r"$10^{{{0}}}$".format(i))
-    # cbar = plt.colorbar(sm, anchor=(-0.6, 0.0), ticks=np.logspace(0, 7, 8))
-    # cbar.ax.set_yticklabels(cbticks)
-    # cbar.ax.minorticks_off()
-    # cbar.ax.set_ylabel(r"t [s]", fontsize=18)
-    # cbar.ax.tick_params(
-    #     labelsize=15
-    # )
 
     plt.tick_params(
         axis='x',
@@ -963,7 +932,7 @@ def syn_pwllaw_comparison():
 
     ax.set_xlabel(r"$\nu$ [Hz]", fontsize=18)
     ax.set_ylabel(r"j $[\frac{erg}{s cm^{3}}]$", fontsize=18)
-
+    ax.legend()
     plt.tight_layout()
 
     # plt.savefig(plots_folder+"n1vsg.png")
@@ -988,5 +957,5 @@ numtarr =[600]
 # run_convergence_test(numtarr, garr, test_choice=6)
 # run_analytic_time_manupilate(numtarr,garr)
 
-run_syn_power_solution()
+# run_syn_power_solution()
 syn_pwllaw_comparison()
