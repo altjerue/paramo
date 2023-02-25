@@ -6,7 +6,6 @@ module specialf
    public K1_init, K2_init
 
 contains
-
    !===========================================================================
    ! K_1
    function K1_func(x) result(res)

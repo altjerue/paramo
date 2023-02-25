@@ -84,7 +84,7 @@ def run_Turblaz():
 
     rr.par.wParams()
     ###
-    rr.run_turb(cmd_args=(False, True),clean=True) #cmd_arges cool_withKN,with_abs
+    rr.run_turb(cmd_args=(True, True),clean=True) #cmd_arges cool_withKN,with_abs
 
 def get_tb_results():
     tbr = tb_results(outfile=outfile+'.jp.h5')
@@ -110,8 +110,8 @@ def tb_n_plot():
     #         tempdgdt[i,j] =  tempdgdt[i,j]/ ((tempdgdt[0,0]/(g[0]**2))*(g[j]**2))
     # for j  in range(len(t)):
     #     n[j,:] = tbr.dotgkn
-    # n = tempdgdt# tbr.n
-    n =tbr.n
+    n = tempdgdt# tbr.n
+    # n =tbr.n
     # tempdgdt = tempdgdt[:,-1]/((4/3)*acons.sigmaT*acons.cLight*(tbr.uph * tbr.uB)*(tbr.g**2))
     cmap = cm.rainbow
     sm = plt.cm.ScalarMappable(cmap=cmap,  norm=matplotlib.colors.LogNorm(vmin=t[0], vmax=t[-1]))

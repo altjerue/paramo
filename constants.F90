@@ -48,7 +48,8 @@ module constants
       energy_e = 8.187105776823886d-7, &    ! m_e cLight^2
       energy_p = 1.5032776159851257d-3, &   ! m_p cLight^2
       mec2_h = 1.235589963807414d20, &      ! m_e c^2 / h
-      h_mec2 = 6.53745089363765d-21         ! h / m_e c^2
+      h_mec2 = 6.53745089363765d-21, &      ! h / m_e c^2
+      gg_abs_con = (mec2_h**4d0)*(4d0*(pi**2d0))*(((eCharge**2d0)/energy_e)**2d0)/(mass_e*(cLight**3d0))
 
 
    !

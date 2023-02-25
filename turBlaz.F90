@@ -34,7 +34,7 @@ subroutine turBlaz(params_file,output_file,cool_withKN,with_abs)
             ambs,anut,Diff
    real(dp),allocatable,dimension(:) :: freqs,t,Ntot,Inu,g,dt,dg,urad,dfreq
    real(dp),allocatable,dimension(:) :: tempg,tempnu,Ap,Dpp,total,Mgam,ubol,&
-         dotgKN,gdot_db
+         dotgKN,gdot_db,dotgKN2
    logical :: with_cool,cool_after,do_full_radiation,norad,printout,nossc,no_photon_cooling
 
 
@@ -72,7 +72,7 @@ subroutine turBlaz(params_file,output_file,cool_withKN,with_abs)
    allocate(t(0:numdt),freqs(numdf),Ntot(0:numdt),g(numbins),dfreq(numdf),&
          dt(numdt),Inu(numdf),dg(numbins),urad(numbins))
    allocate(tempg(numbins),tempnu(numdf),Ap(numbins),Dpp(numbins),ubol(numdt),&
-         total(numbins),Mgam(numdt),dotgKN(numbins),gdot_db(numbins))
+         total(numbins),Mgam(numdt),dotgKN(numbins),dotgKN2(numbins),gdot_db(numbins))
    allocate(n1(numbins,0:numdt),gdotty(numbins,0:numdt),&
          ambs(numdf,numdt),jmbs(numdf,numdt),jnut(numdf,numdt),&
          jssc(numdf,numdt),anut(numdf,numdt),jeic(numdf,numdt),&
@@ -277,7 +277,7 @@ subroutine turBlaz(params_file,output_file,cool_withKN,with_abs)
         !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) PRIVATE(j)
         do j=1,numdf
            call syn_emissivity(jmbs(j,i),freqs(j),g,n1(:,i),B_0)
-           ! if (with_abs) call syn_absorption(ambs(j,i),freqs(j),g,n1(:,i),B_0)
+           if (with_abs) call syn_absorption(ambs(j,i),freqs(j),g,n1(:,i),B_0)
         end do
         !$OMP END PARALLEL DO
 
@@ -310,14 +310,14 @@ subroutine turBlaz(params_file,output_file,cool_withKN,with_abs)
       ! gdotty(:,i)=0d0
       if (with_cool) then
           ! call bolometric_integ(freqs,4d0*pi*Inu/cLight,ubol(i))
-          call RadTrans_blob(Inu,R_turb,jssc(:,i)+jeic(:,i),anut(:,i))
+          ! call RadTrans_blob(Inu,R_turb,jssc(:,i)+jeic(:,i),anut(:,i))
           ! call bolometric_integ(freqs,4d0*pi*Inu/cLight,ubol(i))
           ! call RadTrans_blob(Inu,R_turb,jmbs(:,i),ambs(:,i))
           call rad_cool_pwl(dotgKN,g,freqs,4d0*pi*Inu/cLight,cool_withKN)
-          ! call rad_cool_mono(dotg_temp(:,i),g,nu_ext,uph,cool_withKN)
+          call rad_cool_mono(dotgKN2,g,nu_ext,uph,cool_withKN)
       end if
 
-      gdotty(:,i)=dotgKN + (4d0/3d0)*sigmaT*cLight*uB*(g**2)/(mass_e*(cLight**2d0))
+      gdotty(:,i)=dotgKN + (4d0/3d0)*sigmaT*cLight*uB*(g**2)/(mass_e*(cLight**2d0)) + dotgKN2
       ! gdotty(:,i)=dotgKN + (g**2)/(gam0*tc)
       ! ! gdotty(:,i)=(4d0/3d0)*sigmaT*cLight*uB*(g**2)
       !

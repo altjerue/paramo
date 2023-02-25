@@ -6,6 +6,8 @@ import numpy as np
 import Arriero as ar
 import Eduviges.extractor as extr
 import Eduviges.magnetobrem as mb
+import Eduviges.distributions as dis
+import Eduviges.iCompton as IC
 import matplotlib.cm as cm
 import scipy.integrate as intergrate
 import scipy.special as scisp
@@ -873,6 +875,24 @@ def run_syn_power_solution():
     ###
     rr.run_test(clean=True, test_choice=2)
 
+def run_ssc_blackbody():
+    outfile = __file__.split('Tests_Plots.py')[0] + 'ssc_blackbody_test'
+    rr = ar.Runner(flabel=outfile, comp_kw={'OMP': True, 'HDF5': True, 'compileDir': './'})
+    ##adjust parameters
+    rr.par.NG = 100
+    rr.par.NT = 10
+    rr.par.NF = 300
+    rr.par.g1 = 1e0
+    rr.par.g2 = 1e5
+    rr.par.gmin = 1.01e1
+    rr.par.gmax = 1.5e0 * rr.par.g2
+    rr.par.numin = 1e16
+    rr.par.numax = 1e26
+    rr.par.pind = 2e0
+    rr.par.lg1 = 'F'
+    rr.par.wParams()
+    ###
+    rr.run_test(clean=True, test_choice=2)
 
 
 def syn_pwllaw_comparison():
@@ -938,6 +958,79 @@ def syn_pwllaw_comparison():
     # plt.savefig(plots_folder+"n1vsg.png")
     plt.show()
 
+#compares to rybicki 7.31
+def ssc_blackbody_comparison():
+    fig, ax = plt.subplots()
+    ax.set_yscale('log')
+    ax.set_xscale('log')
+    outfile= __file__.split('Tests_Plots.py')[0] + 'ssc_blackbody_test'
+    ssr = SS_results(outfile=outfile + '.jp.h5')
+    nu = ssr.nu
+    jm = ssr.jssc1
+
+    pls = []
+    my = None
+
+
+    y = jm[0, :]
+    if (my == None):
+        my = max(y)
+    if (max(y) > my):
+        my = max(y)
+    pl = ax.plot(nu, y,label='Computed Solution')
+    n = ssr.n1[:,0]
+    g = ssr.g
+    B = ssr.B
+    p = ssr.qind
+    ic = IC.iCompton()
+    y2 = ic.j_ic_rybicki_blackbody(p, 1, 100, nu)/nu
+    def f(nu):
+        return dis.black_body_energy_density(nu,100)
+    y3= ic.j_ic_rybicki_iso_explicit_v(1,ssr.g1,ssr.g2,p,nu,nu,f,rtol=1e-8,tol=1e-8)#/(nu*4*np.pi)
+    # pl2 = ax.plot(nu,y2,'--',label='Analytic Solution')
+    print(f"y3: {y3[10]}")
+    pl3 = ax.plot(nu,y3,'--',label='Analytic Solution integral')
+    pls.append(pl)
+    # pls.append(pl2)
+    pls.append(pl3)
+
+    ax.set_ylim(my / 1e5, 2 * my)
+    ax.set_xlim(ssr.numin, ssr.numax)
+
+
+    plt.tick_params(
+        axis='x',
+        which='minor',
+        bottom=False,
+        top=False,
+        labelbottom=False
+    )
+
+    plt.tick_params(
+        axis='both',
+        which='both',
+        labelsize=15
+    )
+    plt.tick_params(
+        axis='both',
+        which='major',
+        size=10
+    )
+    plt.tick_params(
+        axis='y',
+        which='minor',
+        size=5
+    )
+
+    ax.set_xlabel(r"$\nu$ [Hz]", fontsize=18)
+    ax.set_ylabel(r"j $[\frac{erg}{s cm^{3}}]$", fontsize=18)
+    ax.legend()
+    plt.tight_layout()
+
+    # plt.savefig(plots_folder+"n1vsg.png")
+    plt.show()
+
+
 #t convergence
 garr = [900]
 # numtarr = [100,200,300,400,500,600,700,800,900,1000,1500]
@@ -958,4 +1051,7 @@ numtarr =[600]
 # run_analytic_time_manupilate(numtarr,garr)
 
 # run_syn_power_solution()
-syn_pwllaw_comparison()
+# syn_pwllaw_comparison()
+
+run_ssc_blackbody()
+ssc_blackbody_comparison()

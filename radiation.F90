@@ -477,8 +477,8 @@ contains
       nu_b = nuconst * B
       chi = nu / nu_b
       A2 = ARMA_qromb(chi, qq, dlog(gmin), dlog(gmax), RMAfunc)
-      absor = pi * eCharge**2 * nu_b * n0 * A2 * gmin**qq / (4d0 * mass_e * cLight * nu**2)
-      ! absor = ambconst * nu_b * n0 * A2 * gmin**qq / nu**2
+    !  absor = pi * eCharge**2 * nu_b * n0 * A2 * gmin**qq / (4d0 * mass_e * cLight * nu**2)
+      absor = ambconst * nu_b * n0 * A2 * gmin**qq / nu**2
    end function a_mb
 
    subroutine ARMA_trapzd(chi, q, lga, lgb, s, n, RMAfunc)
@@ -572,6 +572,202 @@ contains
       end do calc_anu
       if ( anu < 1d-200 ) anu = 0d0
    end subroutine syn_absorption
+
+  !!todo comment
+   subroutine gg_absorption_trapzd(nu1, qq, lnu_a, lnu_b, s, n, func)
+      implicit none
+      integer, intent(in) :: n
+      real(dp), intent(in) :: nu1, qq, lnu_a, lnu_b
+      real(dp), intent(inout) :: s
+      interface
+         function func(nu1_t, nu_t, qq_t)
+            use data_types
+            real(dp), intent(in) :: nu1_t, nu_t, qq_t
+            real(dp) :: func
+         end function func
+      end interface
+      integer :: it, i
+      real(dp) :: del, fsum, lnu, fa, fb, enu_a, enu_b, enu
+      if (n == 1) then
+         enu_a = dexp(lnu_a)
+         enu_b = dexp(lnu_b)
+         fa = func(nu1,enu_a,qq)
+         fb = func(nu1,enu_b,qq)
+         s = 0.5d0 * (lnu_b - lnu_a) * (fa + fb)
+      else
+         it = 2**(n - 2)
+         del = (lnu_b - lnu_a) / dble(it)
+         lnu = lnu_a + 0.5d0 * del
+         enu = dexp(lnu)
+         fsum = 0d0
+         itloop: do i=1,it
+            fsum = fsum + func(nu1,enu,qq) !eg**(-q) * RMAfunc(chi, eg) * (q + 1d0 + eg**2 / (eg**2 - 1d0))
+            lnu = lnu + del
+            enu = dexp(lnu)
+            ! write(*,*) fsum
+         end do itloop
+         s = 0.5d0 * (s + del * fsum) ! where del = (lgb - lga) / it
+      end if
+   end subroutine gg_absorption_trapzd
+
+   !todo comment
+   function gg_absorption_qromb(lnu_a, lnu_b, func,nu1, qq) result(qromb)
+      implicit none
+      real(dp), intent(in) :: lnu_a, lnu_b, nu1, qq
+      interface
+         function func(nu1_t, nu_t, qq_t)
+            use data_types
+            real(dp), intent(in) :: nu1_t, nu_t, qq_t
+            real(dp) :: func
+         end function func
+      end interface
+      integer, parameter :: JMAX = 30, JMAXP = JMAX + 1, K = 10, KM = K - 1
+      real(dp), parameter :: EPS = 1d-3
+      real(dp), dimension(JMAXP) :: h, s
+      real(dp) :: dqromb, qromb
+      integer :: j
+      h(1) = 1d0
+      do j = 1, JMAX
+         call gg_absorption_trapzd(nu1, qq, lnu_a, lnu_b, s(j), j, func)
+         if (j >= K) then
+            call polint(h(j-KM:j), s(j-KM:j), 0d0, qromb, dqromb)
+            if (dabs(dqromb) .le. EPS * dabs(qromb)) return
+         end if
+         s(j + 1) = s(j)
+         h(j + 1) = 0.25d0 * h(j)
+      end do
+      print*,'gg_absorption_qromb error'
+      print*,'nu1    =', nu1
+      print*,'qq     =', qq
+      print*,'nu_a     =', dexp(lnu_a)
+      print*,'nu_b     =', dexp(lnu_b)
+      print*,'qromb  =', qromb
+      print*,'dqromb =', dqromb
+      call an_error('gg_absorption_qromb: too many steps')
+   end function gg_absorption_qromb
+
+   !!calculates 10.9 from dermer and menon 2009
+   !!eps is the convergence value for teh series
+   function phi_bar(s0_d, eps) result(res)
+     implicit none
+     real(dp), intent(in) :: s0_d, eps
+     real(dp) :: res, beta_0, w_0,a,b,c,d,sum,sum_temp,s0
+     integer :: k,Nmax
+
+     if(s0_d<1.0001d0) then
+        s0=1.0001d0
+     else
+       s0 = s0_d
+     end if
+     ! write(*,*) s0_d
+     if(s0_d < 1d0) then
+       write(*,*) s0_d
+     end if
+     if(s0 > 100) then
+       s0 = 100
+     end if
+     Nmax = 10 !usually converges ~10
+     beta_0 = dsqrt(1d0 - (s0**(-1d0)))
+     ! if(beta_0 > 1d0 - 1d-20) then
+     !   beta_0 = 1d0 - 1d-20
+     ! end if
+     w_0 = (1d0 + beta_0)/(1d0 - beta_0)
+     !
+     ! if(w_0 > 1d100) then
+     !   w_0 = 1d100
+     ! end if
+     a = ((1d0 + (beta_0**2d0))/(1d0 - (beta_0**2d0)))*LN1(w_0,1d-6)
+     b = -(beta_0**2d0)*LN1(w_0,1d-6) - LN2(w_0,1d-6) - (4d0 * beta_0/(1d0 - (beta_0**2d0)))
+     c = (2d0 * beta_0) + (4d0 * LN1(w_0,1d-6) * LN1(w_0 + 1d0,1d-6))
+     sum = 0d0
+     do k = 1, Nmax
+       sum_temp = sum
+       sum = sum + ((-1d0)**dble(k-1))*(dble(k)**(-2d0))*(w_0**(-dble(k)))
+       if(isnan(sum))then
+          write(*,*) 'sum: ',sum
+          write(*,*) 'sumtemp', sum_temp
+          write(*,*) 'w0', w_0
+       end if
+       ! write(*,*) 'entering loop3' ,abs(sum-sum_temp), w_0, beta_0, s0
+       if(abs(sum-sum_temp) < eps) then
+          ! write(*,*) 'exit loop3'
+          exit
+       end if
+     end do
+     d = -(4d0)*( (0.5d0)*LN2(w_0,1d-6)  + (pi**2d0)/(12d0) - sum)
+     res = a + b + c + d
+     ! write(*,*) 'a: ',a,' b: ',b, ' c: ', c ,' d:', d
+     if(isnan(a)) write(*,*) 'a'
+     if(isnan(b)) write(*,*) 'b'
+     if(isnan(c)) write(*,*) 'c'
+     if(isnan(d)) write(*,*) 'd: ',d
+     if(isnan(sum)) write(*,*) 'sum: ',sum
+     if(isnan(w_0)) write(*,*) 'w0: ',w_0
+
+
+   end function phi_bar
+
+   function gg_integration_function(nu1,nu,qq) result(res)
+     implicit none
+     real(dp), intent(in) :: nu1, nu,qq
+     real(dp) :: res,phi_b,s0
+
+     s0 = ((h_mec2)**2d0)*nu1*nu
+     phi_b = phi_bar(s0,1d-1)
+     if(s0<1d0) then
+       write(*,*) s0,h_mec2, nu1, nu
+     end if
+     res = (nu**(-(qq + 3d0)))*phi_b
+     ! if(isnan(phi_b)) write(*,*) 'phi_b'
+     ! if(isnan(res)) write(*,*) 'res_gg_integration_function'
+   end function gg_integration_function
+
+   !!todo comment
+   subroutine gg_absorption_i(nu_a,nu_b,anu_i,Inu_a,Inu_b,nu1)
+      implicit none
+      real(dp), intent(in) :: nu_a, nu_b,Inu_a,Inu_b,nu1
+      real(dp), intent(out) :: anu_i
+      real(dp), dimension(10):: x,f
+      real(dp) :: qq,nu_min
+      integer :: i
+
+      ! nu_min = min(nu_a,(mec2_h**2d0)/nu1)
+      nu_min = nu_a
+      anu_i = 0d0
+      if ( Inu_a > 1d-100 .and. Inu_b > 1d-100 .and. nu_b>nu_min) then
+        qq = -dlog(Inu_b / Inu_a) / dlog(nu_b /nu_a)
+        if ( qq > 8d0 ) qq = 8d0
+        if ( qq < -8d0 ) qq = -8d0
+        ! build_x: do i=1,10
+        !   x(i) = nu_min * (nu_b / nu_min)**(dble(i - 1) / dble(10 - 1))
+        !   ! write(*,*) x(i)
+        !   f(i) = gg_integration_function(nu1,x(i),qq)
+        ! end do build_x
+        anu_i = gg_abs_con*(Inu_a/(nu1))*(nu_a**(qq))*gg_absorption_qromb(dlog(nu_a), dlog(nu_b), gg_integration_function,nu1, qq)!qromb_arr(x, nu_min, nu_b, f)
+      end if
+      if ( anu_i < 1d-200 ) anu_i = 0d0
+   end subroutine gg_absorption_i
+
+   subroutine gg_absorption(nu,anu,Inu,nu1)
+     implicit none
+     real(dp), intent(in) :: nu1
+     real(dp), intent(in), dimension(:) :: Inu, nu
+     real(dp), intent(out) :: anu
+     integer :: k, Nf
+     real(dp) :: qq, anu_tmp
+     Nf = size(nu, dim=1)
+     anu = 0d0
+     calc_anu: do k = 1, Nf - 1
+       ! write(*,*) 'loop 2'
+       if(nu1*nu(k) > 1/(h_mec2**2d0) .and. nu1*nu(k+1) > 1/(h_mec2**2d0)) then
+         ! write(*,*) 'loop 2'
+         call gg_absorption_i(nu(k),nu(k+1),anu_tmp,Inu(k),Inu(k+1),nu1)
+         anu = anu + anu_tmp
+       end if
+     end do calc_anu
+     if ( anu < 1d-200 ) anu = 0d0
+   end subroutine gg_absorption
+
    !============================================================================
 
 
@@ -1045,7 +1241,7 @@ contains
                         else
                            emis = 0d0
                         end if
-                        jnu = jnu + emis * n(k) * g(k)**q * Inu(j) * sigmaT * f1**(-l)
+                        jnu = jnu + emis * n(k) * (g(k)**q) * Inu(j) * sigmaT * (f1**(-l))
                      end if contrib_if
                   end if e_dist
                end do g_loop
@@ -1149,7 +1345,7 @@ contains
                      ueval = uxi(k, j) * xi(k, j) * Pinteg(xi_rat, uind, 1d-6)
                   end if
                else
-                  ueval = uxi(k, j) * xi(k, j) * Pinteg(xi_rat, uind, 1d-6)
+                 ueval = uxi(k, j) * xi(k, j) * Pinteg(xi_rat, uind, 1d-6)
                end if
             end if
             usum = usum + ueval

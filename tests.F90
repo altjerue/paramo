@@ -4,6 +4,8 @@
 #define SYN_AFTERGLOW (4)
 #define ODE_SOLVER    (5)
 #define time_dependence_test  (6)
+#define katarzynski_2006  (7)
+
 ! #define TEST_CHOICE (SYN_AFTERGLOW)
 
 program tests
@@ -47,6 +49,8 @@ else if (TEST_CHOICE == 5) then
    call ode_solver_test(50, 2, 0d0, 5d0, (/ 0d0, 1d0 /), 2)
 else if (TEST_CHOICE == 6) then
    call test_time_dependence(params_file,output_file)
+else if (TEST_CHOICE == 7) then
+   call katarzynski_example(params_file,output_file)
 end if
 
 contains
@@ -157,14 +161,16 @@ contains
     ! call RadTrans_blob(Inu5, R, jmbs5(:, i), ambs5(:, i))
     ! call RadTrans_blob(Inu6, R, jmbs6(:, i), ambs6(:, i))
     !
-    ! !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) PRIVATE(j)
-    ! do j = 1, numf
-    !    call IC_iso_powlaw(jssc1(j, i), freqs(j), freqs, Inu1, n1(i, :), g)
-    !    call IC_iso_powlaw(jssc4(j, i), freqs(j), freqs, Inu4, n4(i, :), g)
-    !    call IC_iso_powlaw(jssc5(j, i), freqs(j), freqs, Inu5, n5(i, :), g)
-    !    call IC_iso_powlaw(jssc6(j, i), freqs(j), freqs, Inu6, n6(i, :), g)
-    ! end do
-    ! !$OMP END PARALLEL DO
+
+    Inu1 = (cLight/(4d0*pi))*(8d0*pi*hPlanck/(hPlanck*(cLight**3d0)))*(freqs**2d0)*((exp(hPlanck*freqs/(100d0*energy_e)) - 1d0)**(-1d0))
+    !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) PRIVATE(j)
+    do j = 1, numf
+       call IC_iso_powlaw(jssc1(j, i), freqs(j), freqs, Inu1, n1(0, :), g)
+       ! call IC_iso_powlaw(jssc4(j, i), freqs(j), freqs, Inu4, n4(i, :), g)
+       ! call IC_iso_powlaw(jssc5(j, i), freqs(j), freqs, Inu5, n5(i, :), g)
+       ! call IC_iso_powlaw(jssc6(j, i), freqs(j), freqs, Inu6, n6(i, :), g)
+    end do
+    !$OMP END PARALLEL DO
 
      write(*, "('--> Radiation solver test')")
 
@@ -466,6 +472,271 @@ contains
             call h5close_f(herror)
 #endif
    end subroutine steady_state
+
+   !> This subroutine produces the solutions to match Katarzynski 2006
+   subroutine katarzynski_example(params_file, output_file)
+      implicit none
+      character(len=*), intent(in) :: output_file, params_file
+      integer :: i, k, numg, numt, numf, j, nucut1, nucut2
+      real(dp) :: g1, g2, gmin, gmax, tmax, tstep, qind, tacc,tacc2,tesc2, tesc, R, B, numax, numin, uB,ubol,vol_factor
+      real(dp), allocatable, dimension(:) :: t, g, Q0, D0,D02, C0, aux0, dt, dg, &
+         Ntot1, Ntot2, Ntot3, Ntot4, Ntot5, Ntot6, Ntot7, Ntot8, zero1, zero2, freqs, &
+         dotgKN7,dotgKN8
+      real(dp), allocatable, dimension(:,:) :: n1, n2, n3, n4, n5, n6, n7, n8
+      real(dp), allocatable, dimension(:,:) :: jmbs7, ambs7, jssc7, jmbs8, ambs8, jssc8,gdot7,gdot8, &
+      Inu7, Inu8, agg7, agg8
+      logical :: dorad,cool_withKN
+      real(dp), dimension(13) :: t_tac
+
+      write(*,*) 'output file: ', output_file
+
+      call read_params(params_file)
+      tstep = par_tstep
+      tmax = par_tmax
+      gmin = par_gmin
+      gmax = par_gmax
+      numin = par_numin
+      numax = par_numax
+      numg = par_NG
+      numt = par_NT
+      numf = par_NF
+      qind = par_pind
+      g1 = par_g1
+      g2 = par_g2
+
+      if ( par_lg1 == "T" ) then
+        dorad = .true.
+      else if (par_lg1 == "F") then
+        dorad = .false.
+      else
+        dorad = .false.
+      end if
+
+      cool_withKN = .true.
+
+      R = 3.2d15
+      B = 0.05d0
+      uB = B**2 / (8d0 * pi)
+
+      allocate(g(numg), Q0(numg), D0(numg), D02(numg), t(0:numt), dt(numt), dg(numg), &
+         Ntot1(numt), Ntot2(numt), Ntot3(numt), Ntot4(numt), Ntot5(numt), &
+         Ntot6(numt),Ntot7(numt),Ntot8(numt), C0(numg), aux0(numg), zero1(numg), zero2(numg), &
+         freqs(numf),dotgKN7(numg),dotgKN8(numg))
+      allocate(n1(0:numt, numg), n2(0:numt, numg), n3(0:numt, numg), &
+         n4(0:numt, numg), n5(0:numt, numg), n6(0:numt, numg), &
+         n7(0:numt, numg),n8(0:numt, numg),gdot7(0:numt,numg),gdot8(0:numt,numg), &
+         jmbs7(numf, numt), Inu7(numf, numt), Inu8(numf, numt), ambs7(numf, numt), jssc7(numf, numt), &
+         jmbs8(numf, numt), ambs8(numf, numt), jssc8(numf, numt), agg7(numf, numt), agg8(numf, numt))
+
+      build_f: do j=1,numf
+         freqs(j) = numin * ( (numax / numin)**(dble(j - 1) / dble(numf - 1)) )
+      end do build_f
+
+      build_g: do k = 1, numg
+         g(k) = gmin * (gmax / gmin)**(dble(k - 1) / dble(numg - 1))
+         ! g(k) = dsqrt((g(k)**2) - 1d0)
+         ! g(k) = (k-1)*(gmax-gmin)/numg
+         if ( k > 1 ) dg(k) = g(k) - g(k - 1)
+      end do build_g
+      dg(1) = dg(2)
+
+      t(0) = 0d0
+      zero1 = 1d-200
+      zero2 = 0d0
+      C0 = 3.48d-11 ! 4d0 * sigmaT * uB / (3d0 * mass_e * cLight)
+      tacc = 1d0 / (C0(1) * ((10d0)**(4d0))) !tesc
+      tesc = tacc ! 1d200 ! 1.5d0 * R / cLight !
+      tacc2=R/cLight
+      tesc2=tacc2
+      tmax = tacc2*120d0
+      tstep = tmax/numt
+
+
+
+      t_tac = (/0.01d0,0.1d0,0.5d0,1d0,2d0,3d0,5d0,10d0,15d0,20d0,40d0,60d0,80d0/)
+
+      D0 = 0.5d0 * (g**2) / tacc
+      D02 = (0.5d0 * (g**2) / tacc2)
+    !  gdot7(0,:)  = 4d0 * sigmaT*(bofg_v(g)**2)* uB *((g)**2d0)/ (3d0 * mass_e * cLight)
+      gdot7(0,:)  =(1d0)* 4d0 * sigmaT* uB *((g)**2d0)/ (3d0 * mass_e * cLight)
+      gdot8(0,:) = gdot7(0,:)
+
+      n1(0, :) = powlaw_dis_v(g, 1d0, 2d0, qind,.true.)
+      n2(0, :) = powlaw_dis_v(g, 1d6, 2d6, qind,.true.)
+      n3(0, :) = powlaw_dis_v(g, 1d1, 1d6, qind,.true.)
+      n4(0, :) = powlaw_dis_v(g, 1d0, 2d0, qind,.true.)
+      n5(0, :) = powlaw_dis_v(g, 1d6, 2d6, qind,.true.)
+      n6(0, :) = powlaw_dis_v(g, 1d1, 1d6, qind,.true.)
+      n7(0, :) = (7d0)*powlaw_dis_v(g, 1d0, 2d0, qind,.true.)
+      n8(0, :) = n1(0, :)
+
+      write(*, "(4ES15.7)") C0(1), D0(1), tacc, tmax
+
+      time_loop: do i = 1, numt
+
+         t(i) = tstep * ( (tmax / tstep)**(dble(i - 1) / dble(numt - 1)) )
+         ! t(i) =(tmax / dble(numt))*(dble(i))
+         do j =1,10
+           if(t(i) >= t_tac(j)*tacc .and. t_tac(j) /= -1d0 )  then
+              write(*,*) "asdfasdf"
+              t(i) = t_tac(j)*tacc
+              t_tac(j) = -1d0
+              exit
+           end if
+         end do
+         dt(i) = t(i) - t(i - 1)
+
+         Q0 = injection_pwl(t(i), tacc, g, g1, g2, qind, 1d0)
+         call FP_FinDif_difu(dt(i), g, n1(i - 1, :), n1(i, :), C0(1) * (g**2)- 4d0*D0/g - g/tacc, 2*D0, zero2, 1d200, R/cLight,.false.)
+         call FP_FinDif_difu(dt(i), g, n2(i - 1, :), n2(i, :), C0(1) * (g**2)- 4d0*D0/g - g/tacc, 2*D0, zero2, 1d200, R/cLight,.false.)
+         call FP_FinDif_difu(dt(i), g, n3(i - 1, :), n3(i, :), C0(1) * (g**2)- 4d0*D0/g - g/tacc, 2*D0, zero2, 1d200, R/cLight,.false.)
+         call FP_FinDif_difu(dt(i), g, n4(i - 1, :), n4(i, :), C0(1) * (g**2)- 4d0*D0/g - g/tacc, 2*D0, 4.7d4*n4(0,:)/tesc, tesc,R/cLight,.false.)
+         call FP_FinDif_difu(dt(i), g, n5(i - 1, :), n5(i, :), C0(1) * (g**2)- 4d0*D0/g - g/tacc, 2*D0, 4.7d4*n5(0,:)/tesc, tesc,R/cLight,.false.)
+         call FP_FinDif_difu(dt(i), g, n6(i - 1, :), n6(i, :), C0(1) * (g**2)- 4d0*D0/g - g/tacc, 2*D0, 4.7d4*n6(0,:)/tesc, tesc,R/cLight,.false.)
+         call FP_FinDif_difu(dt(i), g, n7(i - 1, :), n7(i, :), gdot7(i-1,:)- 4d0*D02/g - g/tacc, 2*D02, zero2, 1d200,2d0*R/cLight,.false.)
+         call FP_FinDif_difu(dt(i), g, n8(i - 1, :), n8(i, :), gdot8(i-1,:)- 4d0*D02/g - g/tacc, 2*D02, 4.7d4*n8(0,:)/tesc2, tesc2,R/cLight,.false.)
+
+         Ntot1(i) = sum(n1(i, :) * dg)
+         Ntot2(i) = sum(n2(i, :) * dg)
+         Ntot3(i) = sum(n3(i, :) * dg)
+         Ntot4(i) = sum(n4(i, :) * dg)
+         Ntot5(i) = sum(n5(i, :) * dg)
+         Ntot6(i) = sum(n6(i, :) * dg)
+         Ntot7(i) = sum(n7(i, :) * dg)
+         Ntot8(i) = sum(n8(i, :) * dg)
+
+         if ( dorad .eqv. .true. ) then
+
+           !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) PRIVATE(j)
+           do j = 1, numf
+              call syn_emissivity(jmbs7(j, i), freqs(j), g, n7(i, :), B)
+              call syn_emissivity(jmbs8(j, i), freqs(j), g, n8(i, :), B)
+              call syn_absorption(ambs7(j, i), freqs(j), g, n7(i, :), B)
+              call syn_absorption(ambs8(j, i), freqs(j), g, n8(i, :), B)
+           end do
+           !$OMP END PARALLEL DO
+
+           call RadTrans_blob(Inu7(:,i), R, jmbs7(:, i), ambs7(:, i))
+           call RadTrans_blob(Inu8(:,i), R, jmbs8(:, i), ambs8(:, i))
+
+
+           !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) PRIVATE(j)
+           do j = 1, numf
+              call IC_iso_powlaw(jssc7(j, i), freqs(j), freqs, Inu7(:,i), n7(i, :), g)
+              call IC_iso_powlaw(jssc8(j, i), freqs(j), freqs, Inu8(:,i), n8(i, :), g)
+           end do
+           !$OMP END PARALLEL DO
+
+           ! call RadTrans_blob(Inu7(:,i),R,jssc7(:,i),ambs7(:,i))
+           call rad_cool_pwl(dotgKN7,g,freqs,4d0*pi*(0.5d0)*Inu7(:,i)/(cLight),cool_withKN)
+           ! call RadTrans_blob(Inu8,R,jssc8(:,i),ambs8(:,i))
+           call rad_cool_pwl(dotgKN8,g,freqs,4d0*pi*Inu8(:,i)/cLight,cool_withKN)
+
+
+           ! do k =1, numg
+           !   call bolometric_integ(freqs(:minloc(abs(freqs - (3d0*mec2_h/(4d0*g(k)))),DIM=1)),4d0*pi*Inu7(:minloc(abs(freqs - (3d0*mec2_h/(4d0*g(k)))),DIM=1),i)/cLight,ubol)
+           !   dotgKN7(k) = gdot7(0,k)*ubol/uB
+           ! end do
+
+           ! call RadTrans_blob(Inu7(:,i),R,jssc7(:,i),ambs7(:,i))
+           !
+           ! !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) PRIVATE(j)
+           ! do j = 1, numf
+           !   ! if(j>numf*0.4d0) then
+           !      ! write(*,*) 'loop1'
+           !      call gg_absorption(freqs,agg7(j,i),Inu7(:,i),freqs(j))
+           !   ! end if
+           ! end do
+           ! !$OMP END PARALLEL DO
+           vol_factor = 1
+           ! if((dt(i)/(R/cLight))<1) vol_factor = (dt(i)/(R/cLight))
+           gdot7(i,:) = gdot7(0,:) + dotgKN7*vol_factor!*0.66
+           gdot8(i,:) = gdot8(0,:) + dotgKN8!*0.58
+         end if
+
+         write(*,'(A)') 'iteration: '//trim(int2char(i))//' of '//trim(int2char(numt))
+
+      end do time_loop
+
+      write(*, "('--> Fokker-Planck solver test')")
+
+
+            !  ####    ##   #    # # #    #  ####
+            ! #       #  #  #    # # ##   # #    #
+            !  ####  #    # #    # # # #  # #
+            !      # ###### #    # # #  # # #  ###
+            ! #    # #    #  #  #  # #   ## #    #
+            !  ####  #    #   ##   # #    #  ####
+#ifdef HDF5
+            ! write(*, *) ''
+            write(*, "('---> Creating HDF5')")
+            ! ------  Opening output file  ------
+            call h5open_f(herror)
+            call h5io_createf(output_file, file_id, herror)
+            ! ------  Saving initial parameters  ------
+            call h5io_createg(file_id, "Parameters", group_id, herror)
+            call h5io_wint0 (group_id, 'numt',        numt, herror)
+            call h5io_wint0 (group_id, 'numf',        numf, herror)
+            call h5io_wint0 (group_id, 'numg',        numg, herror)
+            call h5io_wdble0(group_id, 't_max',       tmax, herror)
+            call h5io_wdble0(group_id, 'tstep',       tstep, herror)
+            call h5io_wdble0(group_id, 'gamma_min',   gmin, herror)
+            call h5io_wdble0(group_id, 'gamma_max',   gmax, herror)
+            call h5io_wdble0(group_id, 'gamma_1',     g1, herror)
+            call h5io_wdble0(group_id, 'gamma_2',     g2, herror)
+            call h5io_wdble0(group_id, 'pwl-index',   qind, herror)
+            call h5io_wdble0(group_id, 'nu_min',      numin, herror)
+            call h5io_wdble0(group_id, 'nu_max',      numax, herror)
+            call h5io_wdble0(group_id, 'emission_R',      R, herror)
+            call h5io_wdble0(group_id, 'B_0',      B, herror)
+            call h5io_wdble0(group_id, 'uB',      uB, herror)
+            call h5io_wdble0(group_id, 'C0',   C0(1), herror)
+            call h5io_wdble0(group_id, 'tacc',   tacc, herror)
+            call h5io_wdble0(group_id, 'tesc',   tesc, herror)
+            call h5io_wdble1(group_id, 'D0',    D0, herror)
+            call h5io_closeg(group_id, herror)
+            ! ------  saving numerical data  ------
+            call h5io_createg(file_id, "Numeric", group_id, herror)
+            call h5io_wdble1(group_id, 'freqs',    freqs, herror)
+            call h5io_wdble1(group_id, 'gamma',   g, herror)
+            call h5io_wdble1(group_id, 'dg',   dg, herror)
+            call h5io_wdble1(group_id, 'time',       t(1:), herror)
+            call h5io_wdble1(group_id, 'dt',       dt(1:), herror)
+            call h5io_wdble2(group_id, 'Inu7',   Inu7, herror)
+            call h5io_wdble2(group_id, 'Inu8',   Inu8, herror)
+            call h5io_wdble1(group_id, 'dotgKN7',   dotgKN7, herror)
+            call h5io_wdble1(group_id, 'dotgKN8',   dotgKN8, herror)
+            call h5io_wdble1(group_id, 'Ntot1',   Ntot1, herror)
+            call h5io_wdble1(group_id, 'Ntot2',   Ntot2, herror)
+            call h5io_wdble1(group_id, 'Ntot3',   Ntot3, herror)
+            call h5io_wdble1(group_id, 'Ntot4',   Ntot4, herror)
+            call h5io_wdble1(group_id, 'Ntot5',   Ntot5, herror)
+            call h5io_wdble1(group_id, 'Ntot6',   Ntot6, herror)
+            call h5io_wdble1(group_id, 'Ntot7',   Ntot6, herror)
+            call h5io_wdble1(group_id, 'Ntot8',   Ntot6, herror)
+            call h5io_wdble2(group_id, 'n1',     n1(:, 1:), herror)
+            call h5io_wdble2(group_id, 'n2',     n2(:, 1:), herror)
+            call h5io_wdble2(group_id, 'n3',     n3(:, 1:), herror)
+            call h5io_wdble2(group_id, 'n4',     n4(:, 1:), herror)
+            call h5io_wdble2(group_id, 'n5',     n5(:, 1:), herror)
+            call h5io_wdble2(group_id, 'n6',     n6(:, 1:), herror)
+            call h5io_wdble2(group_id, 'n7',     n7(:, 1:), herror)
+            call h5io_wdble2(group_id, 'n8',     n8(:, 1:), herror)
+            call h5io_wdble2(group_id, 'gdot7',     gdot7(:, 1:), herror)
+            call h5io_wdble2(group_id, 'gdot8',     gdot8(:, 1:), herror)
+            call h5io_wdble2(group_id, 'jmbs7',    jmbs7, herror)
+            call h5io_wdble2(group_id, 'jssc7',    jssc7, herror)
+            call h5io_wdble2(group_id, 'ambs7',    ambs7, herror)
+            call h5io_wdble2(group_id, 'agg7',    agg7, herror)
+            call h5io_wdble2(group_id, 'jmbs8',    jmbs8, herror)
+            call h5io_wdble2(group_id, 'jssc8',    jssc8, herror)
+            call h5io_wdble2(group_id, 'ambs8',    ambs8, herror)
+            call h5io_closeg(group_id, herror)
+            ! ------  Closing output file  ------
+            call h5io_closef(file_id, herror)
+            call h5close_f(herror)
+#endif
+   end subroutine katarzynski_example
 
    !> made to test time dependence via a solution(eq 59) from Fokker-Planck Equations of Stochastic Acceleration: Green's Functions and Boundary Conditions by Park and Petrosian 1995
    subroutine test_time_dependence(params_file, output_file)
