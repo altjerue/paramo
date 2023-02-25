@@ -877,7 +877,7 @@ def run_syn_power_solution():
 
 def run_ssc_blackbody():
     outfile = __file__.split('Tests_Plots.py')[0] + 'ssc_blackbody_test'
-    rr = ar.Runner(flabel=outfile, comp_kw={'OMP': True, 'HDF5': True, 'compileDir': './'})
+    rr = ar.Runner(flabel=outfile, comp_kw={'OMP': True, 'HDF5': True, 'compileDir': '../'})
     ##adjust parameters
     rr.par.NG = 100
     rr.par.NT = 10
@@ -986,7 +986,7 @@ def ssc_blackbody_comparison():
     y2 = ic.j_ic_rybicki_blackbody(p, 1, 100, nu)/nu
     def f(nu):
         return dis.black_body_energy_density(nu,100)
-    y3= ic.j_ic_rybicki_iso_explicit_v(1,ssr.g1,ssr.g2,p,nu,nu,f,rtol=1e-8,tol=1e-8)#/(nu*4*np.pi)
+    y3= -ic.j_ic_rybicki_iso_explicit_v(1,ssr.g1,ssr.g2,p,nu,nu,f,rtol=1e-3,tol=1e-3)/1e28#/(nu*4*np.pi)
     # pl2 = ax.plot(nu,y2,'--',label='Analytic Solution')
     print(f"y3: {y3[10]}")
     pl3 = ax.plot(nu,y3,'--',label='Analytic Solution integral')
