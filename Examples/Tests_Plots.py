@@ -881,13 +881,13 @@ def run_ssc_blackbody():
     ##adjust parameters
     rr.par.NG = 100
     rr.par.NT = 10
-    rr.par.NF = 300
+    rr.par.NF = 200
     rr.par.g1 = 1e0
     rr.par.g2 = 1e5
     rr.par.gmin = 1.01e1
     rr.par.gmax = 1.5e0 * rr.par.g2
-    rr.par.numin = 1e16
-    rr.par.numax = 1e26
+    rr.par.numin = 1e18
+    rr.par.numax = 1e22
     rr.par.pind = 2e0
     rr.par.lg1 = 'F'
     rr.par.wParams()
@@ -986,7 +986,7 @@ def ssc_blackbody_comparison():
     y2 = ic.j_ic_rybicki_blackbody(p, 1, 100, nu)/nu
     def f(nu):
         return dis.black_body_energy_density(nu,100)
-    y3= -ic.j_ic_rybicki_iso_explicit_v(1,ssr.g1,ssr.g2,p,nu,nu,f,rtol=1e-3,tol=1e-3)/1e28#/(nu*4*np.pi)
+    y3= ic.j_ic_rybicki_iso_explicit_v(1,ssr.g1,ssr.g2,p,nu,nu,f,rtol=1e-20,tol=1e-20)/1e28#/(nu*4*np.pi)
     # pl2 = ax.plot(nu,y2,'--',label='Analytic Solution')
     print(f"y3: {y3[10]}")
     pl3 = ax.plot(nu,y3,'--',label='Analytic Solution integral')
