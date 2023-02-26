@@ -986,7 +986,7 @@ def ssc_blackbody_comparison():
     y2 = ic.j_ic_rybicki_blackbody(p, 1, 100, nu)/nu
     def f(nu):
         return dis.black_body_energy_density(nu,100)
-    y3= ic.j_ic_rybicki_iso_explicit_v(1,ssr.g1,ssr.g2,p,nu,nu,f,rtol=1e-20,tol=1e-20)/1e28#/(nu*4*np.pi)
+    y3= ic.j_ic_rybicki_iso_explicit_v(1,ssr.g1,ssr.g2,p,nu,nu,f,divmax=10,rtol=1e-5,tol=1e-5)#/(nu*4*np.pi)
     # pl2 = ax.plot(nu,y2,'--',label='Analytic Solution')
     print(f"y3: {y3[10]}")
     pl3 = ax.plot(nu,y3,'--',label='Analytic Solution integral')
