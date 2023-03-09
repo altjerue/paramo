@@ -1,6 +1,7 @@
 import os
 
 import Eduviges.SRtoolkit
+import eduviges.paramo
 import matplotlib.pyplot as plt
 import numpy as np
 import Arriero as ar
@@ -877,7 +878,7 @@ def run_syn_power_solution():
 
 def run_ssc_blackbody():
     outfile = __file__.split('Tests_Plots.py')[0] + 'ssc_blackbody_test'
-    rr = ar.Runner(flabel=outfile, comp_kw={'OMP': True, 'HDF5': True, 'compileDir': '../'})
+    rr = ar.Runner(flabel=outfile, comp_kw={'OMP': True, 'HDF5': True, 'compileDir': './'})
     ##adjust parameters
     rr.par.NG = 100
     rr.par.NT = 10
@@ -968,6 +969,8 @@ def ssc_blackbody_comparison():
     nu = ssr.nu
     jm = ssr.jssc1
 
+    os.system('pip3 install /home/zach/PycharmProjects/eduviges')
+
     pls = []
     my = None
 
@@ -983,13 +986,15 @@ def ssc_blackbody_comparison():
     B = ssr.B
     p = ssr.qind
     ic = IC.iCompton()
-    y2 = ic.j_ic_rybicki_blackbody(p, 1, 100, nu)/nu
-    def f(nu):
-        return dis.black_body_energy_density(nu,100)
-    y3= ic.j_ic_rybicki_iso_explicit_v(1,ssr.g1,ssr.g2,p,nu,nu,f,divmax=10,rtol=1e-5,tol=1e-5)#/(nu*4*np.pi)
+    # y2 = ic.j_ic_rybicki_blackbody(p, 1, 100, nu)/nu
+    eps = nu*aCons.hPlanck/(aCons.me*(aCons.cLight**2))
+    def f(eps):
+        return dis.black_body_energy_density(eps*aCons.me*(aCons.cLight**2)/aCons.hPlanck,100)
+    y3 = ic.j_ic_iso_pwl_full(e_s=eps,e_i=eps,u=f,n0=1,p=2,g1=g[0],g2=g[-1])
+    # y3= ic.j_ic_rybicki_iso_explicit_v(1,ssr.g1,ssr.g2,p,nu,nu,f,divmax=12,rtol=1e-15,tol=1e-15)*1e35#/(nu*4*np.pi)
     # pl2 = ax.plot(nu,y2,'--',label='Analytic Solution')
     print(f"y3: {y3[10]}")
-    pl3 = ax.plot(nu,y3,'--',label='Analytic Solution integral')
+    pl3 = ax.plot(nu,y3,'o',label='Analytic Solution integral')
     pls.append(pl)
     # pls.append(pl2)
     pls.append(pl3)
