@@ -883,12 +883,12 @@ def run_ssc_blackbody():
     rr.par.NG = 100
     rr.par.NT = 10
     rr.par.NF = 200
-    rr.par.g1 = 1e0
+    rr.par.g1 = 1e2
     rr.par.g2 = 1e5
-    rr.par.gmin = 1.01e1
-    rr.par.gmax = 1.5e0 * rr.par.g2
-    rr.par.numin = 1e18
-    rr.par.numax = 1e22
+    rr.par.gmin = 1.01e0
+    rr.par.gmax = 1.5e1 * rr.par.g2
+    rr.par.numin = 1e15
+    rr.par.numax = 1e26
     rr.par.pind = 2e0
     rr.par.lg1 = 'F'
     rr.par.wParams()
@@ -959,7 +959,7 @@ def syn_pwllaw_comparison():
     # plt.savefig(plots_folder+"n1vsg.png")
     plt.show()
 
-#compares to rybicki 7.31
+
 def ssc_blackbody_comparison():
     fig, ax = plt.subplots()
     ax.set_yscale('log')
@@ -987,14 +987,22 @@ def ssc_blackbody_comparison():
     p = ssr.qind
     ic = IC.iCompton()
     # y2 = ic.j_ic_rybicki_blackbody(p, 1, 100, nu)/nu
-    eps = nu*aCons.hPlanck/(aCons.me*(aCons.cLight**2))
+    nu2 =  np.logspace(np.log10(nu[0]),np.log10(nu[-1]),50)
+    eps = nu2*aCons.hPlanck/(aCons.me*(aCons.cLight**2))
+
+    def u_black_body(eps):
+        #eq B15 Dermer
+        f1 = 8 * np.pi * aCons.me * (aCons.cLight ** 2) * (eps ** 3)
+        lc = aCons.hPlanck / (aCons.me * aCons.cLight)
+        f = f1 / ((lc ** 3) * (np.exp(eps / 0.01) - 1))
+        return f
     def f(eps):
         return dis.black_body_energy_density(eps*aCons.me*(aCons.cLight**2)/aCons.hPlanck,100)
-    y3 = ic.j_ic_iso_pwl_full(e_s=eps,e_i=eps,u=f,n0=1,p=2,g1=g[0],g2=g[-1])
+    y3 = ic.j_ic_iso_pwl_full(e_s=eps,e_i=eps,u=u_black_body,n0=1,p=2,g1=ssr.g1,g2=ssr.g2)*1e5
     # y3= ic.j_ic_rybicki_iso_explicit_v(1,ssr.g1,ssr.g2,p,nu,nu,f,divmax=12,rtol=1e-15,tol=1e-15)*1e35#/(nu*4*np.pi)
     # pl2 = ax.plot(nu,y2,'--',label='Analytic Solution')
     print(f"y3: {y3[10]}")
-    pl3 = ax.plot(nu,y3,'o',label='Analytic Solution integral')
+    pl3 = ax.plot(nu2,y3,'o',label='Analytic Solution integral')
     pls.append(pl)
     # pls.append(pl2)
     pls.append(pl3)

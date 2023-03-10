@@ -162,7 +162,7 @@ contains
     ! call RadTrans_blob(Inu6, R, jmbs6(:, i), ambs6(:, i))
     !
 
-    Inu1 = (cLight/(4d0*pi))*(8d0*pi*hPlanck/(hPlanck*(cLight**3d0)))*(freqs**2d0)*((exp(hPlanck*freqs/(100d0*energy_e)) - 1d0)**(-1d0))
+    Inu1 = (cLight/(4d0*pi))*(8d0*pi*hPlanck/(hPlanck*(cLight**3d0)))*(freqs**3d0)*((exp(hPlanck*freqs/((1d-2)*energy_e)) - 1d0)**(-1d0))
     !$OMP PARALLEL DO COLLAPSE(1) SCHEDULE(AUTO) DEFAULT(SHARED) PRIVATE(j)
     do j = 1, numf
        call IC_iso_powlaw(jssc1(j, i), freqs(j), freqs, Inu1, n1(0, :), g)
