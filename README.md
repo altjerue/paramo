@@ -1,14 +1,10 @@
 # Paramo
 
-"Vine a Comala porque me dijeron que acá vivía mi padre, un tal Pedro Páramo."
-
-## What it does
-
-Paramo stands for: PArticles and RAdiation MOnitor. In a few words: this code solves que Fokker-Planck equation and calculates synchrotron and inverse Compton emission.
+`Paramo` stands for: PArticles and RAdiation MOnitor. `Paramo` is a Fortran 95 code with a Fokker-Planck equation solver and calculates synchrotron and inverse Compton emission.
 
 ## Prerequisites
 
-- Fortran (either GNU or Intel)
+- Fortran
 - HDF5
 
 ## How to run it
