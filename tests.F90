@@ -389,7 +389,7 @@ contains
       t_lab(0) = 0d0
       dt = 0.1d0
 
-      Gbulk(0) = adiab_bw(r(0), G0, E0, n_ext)
+      Gbulk(0) = adiab_blastwave(r(0), 1, G0=G0, E0=E0, Aw=n_ext)
       Bbulk(0) = bofg(Gbulk(0))
 
       !--->  Magnetic field
@@ -446,7 +446,7 @@ contains
       ! ######   ##    ####  ######  ####    #   #  ####  #    #
       do i=1, numt
          r(i) = r0 * ( (rmax / r0)**(dble(i) / dble(numt)) )
-         Gbulk(i) = adiab_bw(R(i), G0, E0, n_ext)
+         Gbulk(i) = adiab_blastwave(R(i), 1, G0=G0, E0=E0, Aw=n_ext)
          dr = r(i) - r(i - 1)
          Bbulk(i) = bofg(Gbulk(i))
          call rk2_arr(t(i-1), 1d0 / (Bbulk(i-1:i) * Gbulk(i-1:i) * cLight), dr, t(i))
