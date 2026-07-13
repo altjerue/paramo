@@ -27,13 +27,13 @@ subroutine interJets(params_file, output_file)
 #endif
    integer :: i, j, k, NG, NT, NF
    real(dp) :: uB, uext, R, gmin, gmax, numin, numax, pind, B, D, g1, g2, &
-         tstep, Qnth, tmax, d_lum, z, tinj, gamma_bulk, theta_obs, &
-         mu_obs, nu_ext, tesc, tlc, L_jet, volume, sigma, beta_bulk, L_B, &
-         eps_B, f_rec, urad_const, f_esc, eps_acc, L_e
+      tstep, Qnth, tmax, d_lum, z, tinj, gamma_bulk, theta_obs, &
+      mu_obs, nu_ext, tesc, tlc, L_jet, volume, sigma, beta_bulk, L_B, &
+      eps_B, f_rec, urad_const, f_esc, eps_acc, L_e
    real(dp), allocatable, dimension(:) :: freqs, t, Ntot, Inu, gg, dt, nu_obs, &
-         t_obs, dg, urad
+      t_obs, dg, urad
    real(dp), allocatable, dimension(:,:) :: dotg, nn, jnut, jmbs, jssc, jeic, &
-         ambs, anut, Qinj, Ddiff
+      ambs, anut, Qinj, Ddiff
    logical :: with_cool
 
 
@@ -66,10 +66,10 @@ subroutine interJets(params_file, output_file)
    with_cool = .false.
 
    allocate(t(0:NT),freqs(NF),Ntot(NT),Inu(NF),dt(NT),nu_obs(NF),t_obs(NT),&
-         dg(NG),urad(NG))
+      dg(NG),urad(NG))
    allocate(nn(NG,0:NT),dotg(NG,0:NT),gg(NG),ambs(NF,NT),jmbs(NF,NT),&
-         jnut(NF,NT),jssc(NF,NT),anut(NF,NT),jeic(NF,NT),Qinj(NG,NT),&
-         Ddiff(NG,0:NT))
+      jnut(NF,NT),jssc(NF,NT),anut(NF,NT),jeic(NF,NT),Qinj(NG,NT),&
+      Ddiff(NG,0:NT))
 
    !   # #    # # #####     ####   ####  #    # #####
    !   # ##   # #   #      #    # #    # ##   # #    #
@@ -100,7 +100,7 @@ subroutine interJets(params_file, output_file)
    else
       g1 = par_g1
       g2 = par_g2
-   !    g2 = dsqrt(6d0 * pi * eCharge * 1d-3 / (sigmaT * B))
+      !    g2 = dsqrt(6d0 * pi * eCharge * 1d-3 / (sigmaT * B))
    end if
 
    volume = 4d0 * pi * R**3 / 3d0
@@ -275,13 +275,13 @@ subroutine plasmoid_phaseI !(params_file, output_file)
 #endif
    integer :: i, j, k, NG, NT, NF
    real(dp) :: uB, uext, R, gmin, gmax, numin, numax, pind, B, D, g1, g2, &
-         tstep, Qnth, tmax, d_lum, z, tinj, gamma_bulk, theta_obs, &
-         mu_obs, nu_ext, tesc, tlc, L_jet, volume, sigma, beta_bulk, L_B, &
-         eps_B, f_rec, urad_const, f_esc, eps_acc, L_e
+      tstep, Qnth, tmax, d_lum, z, tinj, gamma_bulk, theta_obs, &
+      mu_obs, nu_ext, tesc, tlc, L_jet, volume, sigma, beta_bulk, L_B, &
+      eps_B, f_rec, urad_const, f_esc, eps_acc, L_e
    real(dp), allocatable, dimension(:) :: freqs, t, Ntot, Inu, gg, dt, nu_obs, &
-         t_obs, dg, urad
+      t_obs, dg, urad
    real(dp), allocatable, dimension(:,:) :: dotg, nn, jnut, jmbs, jssc, jeic, &
-         ambs, anut, Qinj, Ddiff
+      ambs, anut, Qinj, Ddiff
    logical :: with_cool
 
 
@@ -314,10 +314,10 @@ subroutine plasmoid_phaseI !(params_file, output_file)
    with_cool = .false.
 
    allocate(t(0:NT),freqs(NF),Ntot(NT),Inu(NF),dt(NT),nu_obs(NF),t_obs(NT),&
-         dg(NG),urad(NG))
+      dg(NG),urad(NG))
    allocate(nn(NG,0:NT),dotg(NG,0:NT),gg(NG),ambs(NF,NT),jmbs(NF,NT),&
-         jnut(NF,NT),jssc(NF,NT),anut(NF,NT),jeic(NF,NT),Qinj(NG,NT),&
-         Ddiff(NG,0:NT))
+      jnut(NF,NT),jssc(NF,NT),anut(NF,NT),jeic(NF,NT),Qinj(NG,NT),&
+      Ddiff(NG,0:NT))
 
    !   # #    # # #####     ####   ####  #    # #####
    !   # ##   # #   #      #    # #    # ##   # #    #
@@ -430,14 +430,14 @@ subroutine plasmoid_phaseI !(params_file, output_file)
       !  #      #      #    #
       !  ###### ###### #####
       call FP_FinDif_difu(dt(i), &
-            &             gg, &
-            &             nn(:, i - 1), &
-            &             nn(:, i), &
-            &             dotg(:, i - 1), &
-            &             Ddiff(:, i - 1), &
-            &             Qinj(:, i - 1), &
-            &             tesc, &
-            &             tlc)
+      &             gg, &
+      &             nn(:, i - 1), &
+      &             nn(:, i), &
+      &             dotg(:, i - 1), &
+      &             Ddiff(:, i - 1), &
+      &             Qinj(:, i - 1), &
+      &             tesc, &
+      &             tlc)
 
       Qinj(:, i) = injection_pwl(t(i), tinj, gg, g1, g2, pind, Qnth)
       Ddiff(:, i) = 1d-200
@@ -527,13 +527,13 @@ subroutine plasmoid_phaseII!(params_file, output_file)
 #endif
    integer :: i, j, k, NG, NT, NF
    real(dp) :: uB, uext, R, gmin, gmax, numin, numax, pind, B, D, g1, g2, &
-         tstep, Qnth, tmax, d_lum, z, tinj, gamma_bulk, theta_obs, &
-         mu_obs, nu_ext, tesc, tlc, L_jet, volume, sigma, beta_bulk, L_B, &
-         eps_B, f_rec, urad_const, f_esc, eps_acc, L_e
+      tstep, Qnth, tmax, d_lum, z, tinj, gamma_bulk, theta_obs, &
+      mu_obs, nu_ext, tesc, tlc, L_jet, volume, sigma, beta_bulk, L_B, &
+      eps_B, f_rec, urad_const, f_esc, eps_acc, L_e
    real(dp), allocatable, dimension(:) :: freqs, t, Ntot, Inu, gg, dt, nu_obs, &
-         t_obs, dg, urad
+      t_obs, dg, urad
    real(dp), allocatable, dimension(:,:) :: dotg, nn, jnut, jmbs, jssc, jeic, &
-         ambs, anut, Qinj, Ddiff
+      ambs, anut, Qinj, Ddiff
    logical :: with_cool
 
    !TODO: Phse I: solve kinetic equation for dynamic cooling and with injection of particles
@@ -546,10 +546,10 @@ subroutine plasmoid_phaseII!(params_file, output_file)
    ! #    # #        #   #    # #
    !  ####  ######   #    ####  #
    allocate(t(0:NT),freqs(NF),Ntot(NT),Inu(NF),dt(NT),nu_obs(NF),t_obs(NT),&
-         dg(NG),urad(NG))
+      dg(NG),urad(NG))
    allocate(nn(NG,0:NT),dotg(NG,0:NT),gg(NG),ambs(NF,NT),jmbs(NF,NT),&
-         jnut(NF,NT),jssc(NF,NT),anut(NF,NT),jeic(NF,NT),Qinj(NG,NT),&
-         Ddiff(NG,0:NT))
+      jnut(NF,NT),jssc(NF,NT),anut(NF,NT),jeic(NF,NT),Qinj(NG,NT),&
+      Ddiff(NG,0:NT))
 
    !   # #    # # #####     ####   ####  #    # #####
    !   # ##   # #   #      #    # #    # ##   # #    #
@@ -580,7 +580,7 @@ subroutine plasmoid_phaseII!(params_file, output_file)
    else
       g1 = par_g1
       g2 = par_g2
-   !    g2 = dsqrt(6d0 * pi * eCharge * 1d-3 / (sigmaT * B))
+      !    g2 = dsqrt(6d0 * pi * eCharge * 1d-3 / (sigmaT * B))
    end if
 
    volume = 4d0 * pi * R**3 / 3d0
@@ -662,14 +662,14 @@ subroutine plasmoid_phaseII!(params_file, output_file)
       !  #      #      #    #
       !  ###### ###### #####
       call FP_FinDif_difu(dt(i), &
-            &             gg, &
-            &             nn(:, i - 1), &
-            &             nn(:, i), &
-            &             dotg(:, i - 1), &
-            &             Ddiff(:, i - 1), &
-            &             Qinj(:, i - 1), &
-            &             tesc, &
-            &             tlc)
+      &             gg, &
+      &             nn(:, i - 1), &
+      &             nn(:, i), &
+      &             dotg(:, i - 1), &
+      &             Ddiff(:, i - 1), &
+      &             Qinj(:, i - 1), &
+      &             tesc, &
+      &             tlc)
 
       Qinj(:, i) = injection_pwl(t(i), tinj, gg, g1, g2, pind, Qnth)
       Ddiff(:, i) = 1d-200

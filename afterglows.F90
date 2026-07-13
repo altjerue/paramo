@@ -45,17 +45,17 @@ subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob
 #endif
    integer :: i, j, k, numbins, numdf, numt, time_grid, flow_kind, bw_sol_type, Npts
    real(dp) :: uB, uext, L_j, gmin, gmax, numin, numax, pind, B, R0, Rmax, &
-         tinj, g1, g2, tstep, Q0, tmax, d_lum, z, n_ext, urad_const, Aw, sind, &
-         theta_obs, mu_obs, nu_ext, tesc_e, uext0, eps_e, tlc, g1_const, Rd2, &
-         Ejet, eps_B, E0, gamma_bulk0, L_e, nu_ext0, tmin, td, Rd, dr, &
-         b_const , eps_g2, theta_j0, cs_area, n_ext0, g2_const, &
-         Omega_j, dt, f_esc
+      tinj, g1, g2, tstep, Q0, tmax, d_lum, z, n_ext, urad_const, Aw, sind, &
+      theta_obs, mu_obs, nu_ext, tesc_e, uext0, eps_e, tlc, g1_const, Rd2, &
+      Ejet, eps_B, E0, gamma_bulk0, L_e, nu_ext0, tmin, td, Rd, dr, &
+      b_const , eps_g2, theta_j0, cs_area, n_ext0, g2_const, &
+      Omega_j, dt, f_esc
    real(dp), allocatable, dimension(:) :: freqs, t, Inu, gg, urad, beta_bulk, &
-         nu_obs, t_obs, gamma_bulk, R, Dopp, tcool, Rb, volume, dotg_tmp
+      nu_obs, t_obs, gamma_bulk, R, Dopp, tcool, Rb, volume, dotg_tmp
    real(dp), allocatable, dimension(:,:) :: dotg, n_e, jnut, jmbs, jssc, jeic, &
-         ambs, anut, Qinj, tau_gg, pow_syn, Ddiff
+      ambs, anut, Qinj, tau_gg, pow_syn, Ddiff
    logical :: bw_approx, radius_evol, pwl_over_trpzd_integ, &
-         with_ic, ssa_boiler, numerical
+      with_ic, ssa_boiler, numerical
 
 
    !  #####    ##   #####    ##   #    #  ####
@@ -103,14 +103,14 @@ subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob
    write(*, "('--> Simulation setup')")
 
    allocate(t(0:numt), freqs(numdf), Inu(numdf), gg(numbins), urad(numbins), &
-         nu_obs(numdf), t_obs(0:numt), R(0:numt), tcool(numbins), Rb(0:numt), &
-         gamma_bulk(0:numt), beta_bulk(0:numt), Dopp(0:numt), volume(0:numt), &
-         dotg_tmp(numbins))
+      nu_obs(numdf), t_obs(0:numt), R(0:numt), tcool(numbins), Rb(0:numt), &
+      gamma_bulk(0:numt), beta_bulk(0:numt), Dopp(0:numt), volume(0:numt), &
+      dotg_tmp(numbins))
    allocate(n_e(numbins, 0:numt), Ddiff(numbins, 0:numt), &
-         dotg(numbins, 0:numt), ambs(numdf, numt), jmbs(numdf, numt), &
-         jnut(numdf, numt), jssc(numdf, numt), anut(numdf, numt), &
-         jeic(numdf, numt), Qinj(numbins, 0:numt), pow_syn(numdf, numbins), &
-         tau_gg(numdf, numt))
+      dotg(numbins, 0:numt), ambs(numdf, numt), jmbs(numdf, numt), &
+      jnut(numdf, numt), jssc(numdf, numt), anut(numdf, numt), &
+      jeic(numdf, numt), Qinj(numbins, 0:numt), pow_syn(numdf, numbins), &
+      tau_gg(numdf, numt))
 
    call K1_init
    call K2_init
@@ -165,7 +165,7 @@ subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob
       R(0) = R0
       if ( numerical ) then
          gamma_bulk(0) = adiab_blastwave(R(0), bw_sol_type, Npts=Npts, &
-               filename='/home/lcombi/Dropbox/repository/astrograv_tools/comala_new/paramo/numerical_gshk.dat')
+            filename='/home/lcombi/Dropbox/repository/astrograv_tools/comala_new/paramo/numerical_gshk.dat')
       else
          gamma_bulk(0) = adiab_blastwave(R(0), bw_sol_type, G0=gamma_bulk0, E0=E0, Aw=Aw, s=sind)
       end if
@@ -271,12 +271,12 @@ subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob
          beta_bulk(i) = bofg(gamma_bulk(i))
          call rk2_arr(t(i - 1), 1d0 / (beta_bulk(i - 1:i) * gamma_bulk(i - 1:i) * cLight), dr, t(i))
          dt = t(i) - t(i - 1)
-         else
+      else
          R(i) = R0 * (Rmax / R0)**(dble(i) / dble(numt))
          dr = R(i) - R(i - 1)
          if ( numerical ) then
             gamma_bulk(i) = adiab_blastwave(R(i), bw_sol_type, Npts=Npts, &
-                  filename='/home/lcombi/Dropbox/repository/astrograv_tools/comala_new/paramo/numerical_gshk.dat')
+               filename='/home/lcombi/Dropbox/repository/astrograv_tools/comala_new/paramo/numerical_gshk.dat')
          else
             gamma_bulk(i) = adiab_blastwave(R(i), bw_sol_type, G0=gamma_bulk0, E0=E0, Aw=Aw, s=sind)
          end if
@@ -294,14 +294,14 @@ subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob
       !  #      #      #    #
       !  ###### ###### #####
       call FP_FinDif_difu(dt, &
-            &             gg, &
-            &             n_e(:, i - 1), &
-            &             n_e(:, i), &
-            &             dotg(:, i - 1), &
-            &             Ddiff(:, i - 1), &
-            &             Qinj(:, i - 1), &
-            &             1d200, &
-            &             tlc)
+      &             gg, &
+      &             n_e(:, i - 1), &
+      &             n_e(:, i), &
+      &             dotg(:, i - 1), &
+      &             Ddiff(:, i - 1), &
+      &             Qinj(:, i - 1), &
+      &             1d200, &
+      &             tlc)
 
       call bw_crossec_area(flow_kind, blob, R(i), gamma_bulk(i), theta_j0, Rb(i), volume(i), cs_area, Omega_j)
 
@@ -410,7 +410,7 @@ subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob
       !> Synchrotron cooling
       dotg(:, i) = urad_const * uB * pofg(gg)**2 + &
       !> Adiabatic cooling
-            adiab_cooling(gg, 0)
+         adiab_cooling(gg, 0)
       ! call bolometric_integ(freqs, 4d0 * pi * Inu / cLight, urad)
       ! call RadTrans_blob(Inu, R, jssc(:, i) + jeic(:, i), anut(:, i))
       call RadTrans_blob(Inu, Rb(i), jmbs(:, i), ambs(:, i))
@@ -426,7 +426,7 @@ subroutine bw1D_afterglow(params_file, output_file, with_wind, cool_withKN, blob
       !  #    # #   ##    #    # #    # #   #  #      #      #   ##
       !   ####  #    #     ####   ####  #    # ###### ###### #    #
       if ( mod(i, nmod) == 0 .or. i == 1 ) &
-            write(*, on_screen) i, t_obs(i), R(i), gamma_bulk(i), B
+         write(*, on_screen) i, t_obs(i), R(i), gamma_bulk(i), B
 
    end do time_loop
    write(*, "(' ---------------------------------------------------------------------')")
@@ -558,12 +558,12 @@ subroutine mezcal(params_file, output_file, with_ic, KNcool, assume_blob)
 #endif
    integer :: i, j, l, numt, numf, numg, numh
    real(dp) :: gmin, gmax, numin, numax, b_const, g1_const, eps_g2, g2_const, &
-         E0, eps_B, eps_e, R0, g1, g2, pind, Q0, L_e, uB, tlc, rb, dr, dt, &
-         d_lum, z, theta_los, cs_area, Omega_j, dth
+      E0, eps_B, eps_e, R0, g1, g2, pind, Q0, L_e, uB, tlc, rb, dr, dt, &
+      d_lum, z, theta_los, cs_area, Omega_j, dth
    real(dp), allocatable, dimension(:) :: nu_com, gamma_e, theta, t_lab, &
-         zeros_arr, Inu
+      zeros_arr, Inu
    real(dp), allocatable, dimension(:,:) :: Dopp, gamma_bulk, r, volume, rho, &
-         beta_bulk, Bfield, r_mu_obs, v_mu_obs, Qinj, dotg, t_com
+      beta_bulk, Bfield, r_mu_obs, v_mu_obs, Qinj, dotg, t_com
    real(dp), allocatable, dimension(:,:,:) :: jnut, anut, jsyn, jssc, n_e
    character(len=8) :: fmt = '(I3.3)'
    character(len=256) :: ifile, mezcal_file
@@ -593,11 +593,11 @@ subroutine mezcal(params_file, output_file, with_ic, KNcool, assume_blob)
 
    allocate(nu_com(numf), gamma_e(numg), theta(numh), t_lab(0:numt), Inu(numf))
    allocate(r(numh, 0:numt), gamma_bulk(numh, 0:numt), Dopp(numh, 0:numt), &
-         t_com(numh, 0:numt), volume(numh, 0:numt), dotg(numg, numh), &
-         rho(numh, 0:numt), beta_bulk(numh, 0:numt), Bfield(numh, 0:numt), &
-         r_mu_obs(numh, 0:numt), v_mu_obs(numh, 0:numt), Qinj(numg, numh))
+      t_com(numh, 0:numt), volume(numh, 0:numt), dotg(numg, numh), &
+      rho(numh, 0:numt), beta_bulk(numh, 0:numt), Bfield(numh, 0:numt), &
+      r_mu_obs(numh, 0:numt), v_mu_obs(numh, 0:numt), Qinj(numg, numh))
    allocate(n_e(numg, numh, 0:numt), jnut(numf, numh, numt), &
-         jssc(numf, numh, numt), anut(numf, numh, numt))
+      jssc(numf, numh, numt), anut(numf, numh, numt))
    zeros_arr = zeros1D(numg, .true.)
 
    call K1_init
@@ -708,14 +708,14 @@ subroutine mezcal(params_file, output_file, with_ic, KNcool, assume_blob)
 
          !> Solving the Fokker-Planck eq.
          call FP_FinDif_difu(dt, &
-               &             gamma_e, &
-               &             n_e(:, l, i - 1), &
-               &             n_e(:, l, i), &
-               &             dotg(:, i - 1), &
-               &             zeros_arr, &
-               &             Qinj(:, l), &
-               &             1d200, &
-               &             tlc)
+         &             gamma_e, &
+         &             n_e(:, l, i - 1), &
+         &             n_e(:, l, i), &
+         &             dotg(:, i - 1), &
+         &             zeros_arr, &
+         &             Qinj(:, l), &
+         &             1d200, &
+         &             tlc)
 
          !> Magnetic field
          Bfield(l, i) = b_const * dsqrt(rho(l, i) * (gamma_bulk(l, i) - 1d0) * gamma_bulk(l, i))
@@ -739,11 +739,11 @@ subroutine mezcal(params_file, output_file, with_ic, KNcool, assume_blob)
          dotg(:, l) = b_const * Bfield(l, i)**2 * gamma_e**2 &
          !> Adiabatic cooling
 #if( ADIABATIC_COOLING_TYPE == ADIABATIC_MSB00 )
-               + cLight * beta_bulk(l, i) * gamma_bulk(l, i) * gamma_e / r(l, i)
+            + cLight * beta_bulk(l, i) * gamma_bulk(l, i) * gamma_e / r(l, i)
 #elif( ADIABATIC_COOLING_TYPE == ADIABATIC_VOL_EVOL )
-               + pofg(gamma_e) * dlog(volume(l, i) / volume(l, i - 1)) / (3d0 * dt)
+         + pofg(gamma_e) * dlog(volume(l, i) / volume(l, i - 1)) / (3d0 * dt)
 #else
-               + 0d0
+         + 0d0
 #endif
 
          !> Radiation
@@ -770,7 +770,7 @@ subroutine mezcal(params_file, output_file, with_ic, KNcool, assume_blob)
       end do derroteros_loop
 
       if ( mod(i, nmod) == 0 .or. i == 1 ) &
-            write(*, on_screen) i, t_lab(i), r(i, 0)
+         write(*, on_screen) i, t_lab(i), r(i, 0)
 
    end do time_loop
 

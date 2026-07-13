@@ -1,13 +1,13 @@
 module pairs
-  use data_types
-  use constants
-  use misc
-  implicit none
+   use data_types
+   use constants
+   use misc
+   implicit none
 
-  interface Rgg_MK95
-     module procedure Rgg_MK95_s
-     module procedure Rgg_MK95_v
-  end interface Rgg_MK95
+   interface Rgg_MK95
+      module procedure Rgg_MK95_s
+      module procedure Rgg_MK95_v
+   end interface Rgg_MK95
 
 contains
 

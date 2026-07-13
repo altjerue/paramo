@@ -7,15 +7,15 @@ module radiation
 #endif
    use pwl_integ
    use SRtoolkit
-   !$ use omp_lib
+!$ use omp_lib
    implicit none
 
 #ifdef INTEL
    interface
       function tgamma(y) bind(c)
-        use ISO_C_BINDING
-        real(c_double), value :: y
-        real(c_double) :: tgamma
+         use ISO_C_BINDING
+         real(c_double), value :: y
+         real(c_double) :: tgamma
       end function tgamma
    end interface
 #endif
@@ -51,10 +51,10 @@ contains
       real(dp) :: cyclo
 #ifdef INTEL
       cyclo = 8d0 * pi**2 * nu_b * dble( (m + 1) * ( m**(2 * m + 1) ) ) * &
-      beta**(2 * m) / tgamma(dble(2 * m + 2))
+         beta**(2 * m) / tgamma(dble(2 * m + 2))
 #else
       cyclo = 8d0 * pi**2 * nu_b * dble( (m + 1) * ( m**(2 * m + 1) ) ) * &
-      beta**(2 * m) / dgamma(dble(2 * m + 2))
+         beta**(2 * m) / dgamma(dble(2 * m + 2))
 #endif
       if (cyclo.lt.1d-200) cyclo = 1d-200
    end function CyclotronLimit
@@ -76,9 +76,9 @@ contains
       !     / (2.7d1 * dgamma(4d0 / 3d0))
       P_nu = 8d0 * beta**2 * chi_new**(1d0 / 3d0) * dexp(- chi_new) &
 #ifdef INTEL
-           / (27d0 * tgamma(4d0 / 3d0))
+         / (27d0 * tgamma(4d0 / 3d0))
 #else
-           / (27d0 * dgamma(4d0 / 3d0))
+      / (27d0 * dgamma(4d0 / 3d0))
 #endif
       if (P_nu .lt. 1d-200) P_nu = 1d-200
    end function RJfAGN_eq340_pow
@@ -92,7 +92,7 @@ contains
       nu0 = 3d0 * B * nuconst / 2d0
       if ( (nu >= nu0 * g1**2) .and. (nu <= nu0* g2**2) ) then
          j_nu = 4d0 * cLight * (eCharge**2 / (mass_e * cLight**2))**2 * uB * &
-               n0 * nu0**((q - 3d0) / 2d0) * nu**((1d0 - q) / 2d0) / 9d0
+            n0 * nu0**((q - 3d0) / 2d0) * nu**((1d0 - q) / 2d0) / 9d0
       else
          j_nu = 1d-200
       end if
@@ -110,7 +110,7 @@ contains
       m = chi * (1d0 + t**2) / gam
       scrZ_max = t * dexp( 1d0 / dsqrt(1d0 + t**2) ) / ( 1d0 + dsqrt(1d0 + t**2) )
       jnu_of_theta = dsqrt(pi * chi) * ( (1d0 + 2d0 / (dtan(theta) * gam)**2) * &
-      (1d0 - (beta * dcos(theta))**2)**(2.5d-1) ) * scrZ_max**(2d0 * m) / gam
+         (1d0 - (beta * dcos(theta))**2)**(2.5d-1) ) * scrZ_max**(2d0 * m) / gam
    end function P81_eq8
 
 
@@ -170,7 +170,7 @@ contains
       implicit none
       real(dp), intent(in) :: chi, g
       real(dp), parameter :: c1 = 3.2180900500625734d-4, &
-            c2 = 6.50532122717873d-1, c3 = 1.5579904689804556d1
+         c2 = 6.50532122717873d-1, c3 = 1.5579904689804556d1
       real(dp) :: res, x
       if (chi > 0.75d0 / g) then
          x = 2d0 * chi / (3d0 * g**2)
@@ -178,11 +178,11 @@ contains
             res = 1.8084180211028020864d0 * x**(1d0 / 3d0)
          else if (x >= c1 .and. x <= c2) then
             res = dexp( -0.7871626401625178d0 &
-                  - 0.7050933708504841d0 * dlog(x) &
-                  - 0.35531869295610624d0 * dlog(x)**2 &
-                  - 0.06503312461868385d0 * dlog(x)**3 &
-                  - 0.0060901233982264096d0 * dlog(x)**4 &
-                  - 0.00022764616638053332d0 * dlog(x)**5 )
+               - 0.7050933708504841d0 * dlog(x) &
+               - 0.35531869295610624d0 * dlog(x)**2 &
+               - 0.06503312461868385d0 * dlog(x)**3 &
+               - 0.0060901233982264096d0 * dlog(x)**4 &
+               - 0.00022764616638053332d0 * dlog(x)**5 )
             ! res = 10d0**( -0.35564612225908254d0 &
             !       - 0.3421635631371654d0 * dlog10(x) &
             !       - 0.18290602166517914d0 * dlog10(x)**2 &
@@ -215,18 +215,18 @@ contains
       implicit none
       real(dp), intent(in) :: chi, g
       real(dp), parameter :: c1 = 3.2180900500625734d-4, &
-            c2 = 6.50532122717873d-1, c3 = 1.5579904689804556d1
+         c2 = 6.50532122717873d-1, c3 = 1.5579904689804556d1
       real(dp) :: res, x
       x = 2d0 * chi / (3d0 * g**2)
       if ( x < c1 ) then
          res = 1.8084180211028020864d0 * x**(1d0 / 3d0)
       else if (x >= c1 .and. x <= c2) then
          res = dexp( -0.7871626401625178d0 &
-               - 0.7050933708504841d0 * dlog(x) &
-               - 0.35531869295610624d0 * dlog(x)**2 &
-               - 0.06503312461868385d0 * dlog(x)**3 &
-               - 0.0060901233982264096d0 * dlog(x)**4 &
-               - 0.00022764616638053332d0 * dlog(x)**5 )
+            - 0.7050933708504841d0 * dlog(x) &
+            - 0.35531869295610624d0 * dlog(x)**2 &
+            - 0.06503312461868385d0 * dlog(x)**3 &
+            - 0.0060901233982264096d0 * dlog(x)**4 &
+            - 0.00022764616638053332d0 * dlog(x)**5 )
          ! res = 10d0**( -0.35564612225908254d0 &
          !       - 0.3421635631371654d0 * dlog10(x) &
          !       - 0.18290602166517914d0 * dlog10(x)**2 &
@@ -925,8 +925,8 @@ contains
       real(dp) :: del, fsum, x
       if ( n == 1 ) then
          s = 0.5d0 * (b - a) * ( &
-         dexp(a) * IC_integrand(fin, fout, dexp(a), gg, nn) + &
-         dexp(b) * IC_integrand(fin, fout, dexp(b), gg, nn) )
+            dexp(a) * IC_integrand(fin, fout, dexp(a), gg, nn) + &
+            dexp(b) * IC_integrand(fin, fout, dexp(b), gg, nn) )
       else
          it = 2**(n - 2)
          del = (b - a) / dble(it)
@@ -1039,7 +1039,7 @@ contains
                            emis = sscG1ISO(gmx_star**(-2), g(k)**(-2), w2, w1, s1, s2)
                         else if ( f1 <= g(k)**2 .and. f2 <= g(k)**2 ) then
                            emis = sscG1ISO(gmx_star**(-2), g(k)**(-2), w2, g(k)**2, s1, s2) &
-                                 + sscG2ISO(gmx_star**(-2), 1d0, g(k)**2, w1, s1, s2)
+                              + sscG2ISO(gmx_star**(-2), 1d0, g(k)**2, w1, s1, s2)
                         else if ( f2 <= gmx_star**2 .and. f2 > g(k)**2 ) then
                            emis = sscG2ISO(gmx_star**(-2), 1d0, w2, w1, s1, s2)
                         else
@@ -1085,10 +1085,10 @@ contains
             if ( q2 < -8d0 ) q2 = -8d0
             contrib_if: if ( 0.25d0 <= w .and. w <= g(k)**2 .and. g(k) <= gmx_star ) then
                emis = (w / gmx_star**2)**q2 * ( Pinteg((gmx_star / g(k))**2, -q1, eps) &
-                     - (w / gmx_star**2) * Pinteg((gmx_star / g(k))**2, -q2, eps) )
+                  - (w / gmx_star**2) * Pinteg((gmx_star / g(k))**2, -q2, eps) )
             else if ( g(k)**2 < w .and. w <= gmx_star**2 ) then
                emis = (w / gmx_star**2)**q2 * ( Pinteg(gmx_star**2 / w, -q1, eps) &
-                     - (w / gmx_star**2) * Pinteg(gmx_star**2 / w, -q2, eps) )
+                  - (w / gmx_star**2) * Pinteg(gmx_star**2 / w, -q2, eps) )
             else
                emis = 0d0
             end if contrib_if
@@ -1138,9 +1138,9 @@ contains
                if (withKN) then
                   if (xi(k, j) >= 1d2) then
                      ueval = 4.5d0 * uxi(k, j) &
-                           * ( Qinteg(xi_rat, uind + 2d0, 1d-6) &
-                           + (dlog(xi(k, j)) - (11d0 / 6d0)) &
-                           * Pinteg(xi_rat, uind + 2d0, 1d-6) ) / xi(k, j)
+                        * ( Qinteg(xi_rat, uind + 2d0, 1d-6) &
+                        + (dlog(xi(k, j)) - (11d0 / 6d0)) &
+                        * Pinteg(xi_rat, uind + 2d0, 1d-6) ) / xi(k, j)
                   else if (xi(k, j) >= 1d0 .and. xi(k, j) < 1d2) then
                      ueval = qromb_w2arg(transKN_fit,xi(k, j), xi(k, j + 1), uind) * uxi(k, j) * xi(k, j)**uind
                   else if (xi(k, j) >= 1d-3 .and. xi(k, j) < 1d0) then
@@ -1158,7 +1158,7 @@ contains
       end do
       !$OMP END PARALLEL DO
 
-      contains
+   contains
 
       function transKN(x, p) result(integrando)
          implicit none
@@ -1174,9 +1174,9 @@ contains
          real(dp), intent(in), dimension(:) :: x
          real(dp), dimension(size(x, dim=1)) :: integrando
          integrando = x**(-p) * dexp(-1.01819432d0 &
-               - 0.67980349d0 * dlog(x) &
-               - 0.14948459d0 * dlog(x)**2 &
-               + 0.00627589d0 * dlog(x)**3)
+            - 0.67980349d0 * dlog(x) &
+            - 0.14948459d0 * dlog(x)**2 &
+            + 0.00627589d0 * dlog(x)**3)
       end function transKN_fit
 
    end subroutine rad_cool_pwl
@@ -1202,9 +1202,9 @@ contains
                dotg(k) = urad_const * u0 * gg(k)**2 * 4.5d0 * (dlog(xi0(k)) - 11d0 / 6d0) / xi0(k)**2
             else if (xi0(k) >= 1d0 .and. xi0(k) < 1d2) then
                dotg(k) = urad_const * u0 * gg(k)**2 * dexp(-1.01819432d0 &
-                     - 0.67980349d0 * LN1(xi0(k), 1d-6) &
-                     - 0.14948459d0 * LN2(xi0(k), 1d-6) &
-                     + 0.00627589d0 * LN3(xi0(k), 1d-6))
+                  - 0.67980349d0 * LN1(xi0(k), 1d-6) &
+                  - 0.14948459d0 * LN2(xi0(k), 1d-6) &
+                  + 0.00627589d0 * LN3(xi0(k), 1d-6))
             else if (xi0(k) > 1d-3 .and. xi0(k) < 1d0) then
                dotg(k) = urad_const * u0 * pofg(gg(k))**2 * (1d0 + xi0(k))**(-1.5d0)
             else
@@ -1353,8 +1353,8 @@ contains
       do j=1, numf
          do i=2, numr
             flux(j, i) = dmax1(1d-200, (1d0 + z) * &
-                  qromb_arr(r(:i), r(1), r(i), jnut(j, :i) * (r(:i) * doppler(:i))**2) &
-                  / (fourpi * dlum**2))
+               qromb_arr(r(:i), r(1), r(i), jnut(j, :i) * (r(:i) * doppler(:i))**2) &
+               / (fourpi * dlum**2))
          end do
       end do
       !$OMP END PARALLEL DO
@@ -1374,7 +1374,7 @@ contains
       do j=1, numf
          do i=2, numr
             flux(j, i) = dmax1(1d-200, &
-                  qromb_arr(r(:i), r(1), r(i), nu(j, :i) * jnut(j, :i) * r(:i)**2 * doppler(:i)**3) / (fourpi * dlum**2))
+               qromb_arr(r(:i), r(1), r(i), nu(j, :i) * jnut(j, :i) * r(:i)**2 * doppler(:i)**3) / (fourpi * dlum**2))
          end do
       end do
       !$OMP END PARALLEL DO

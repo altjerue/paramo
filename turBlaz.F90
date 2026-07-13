@@ -29,14 +29,14 @@ subroutine turBlaz(params_file, output_file, cool_withKN, with_abs)
    integer :: i,j,k,numbins,numdf,numdt,time_grid
    integer :: l,mtb_case
    real(dp) :: uB,R,gmin,gmax,numin,numax,pind,D,g1,g2,tstep,Qnth,tmax,&
-         d_lum,z,tinj,gamma_bulk,theta_obs,Rdis,mu_obs,nu_ext,tesc,tlc,&
-         L_jet,volume,beta_bulk,urad_const,usyn
+      d_lum,z,tinj,gamma_bulk,theta_obs,Rdis,mu_obs,nu_ext,tesc,tlc,&
+      L_jet,volume,beta_bulk,urad_const,usyn
    real(dp) :: B_0,B_rms,gam0,Gamma0,Gamma2,Gammaa,Gammah,kk,l_rho,mfp,n0,p,&
-         rho,Rva,sig,t2,tcm,tcorg,th,thss,uph,va,zero1,zero2,tc
+      rho,Rva,sig,t2,tcm,tcorg,th,thss,uph,va,zero1,zero2,tc
    real(dp),allocatable,dimension(:) :: freqs,t,Ntot,Inu,g,dt,dg,urad,dfreq
    real(dp),allocatable,dimension(:) :: tempg,tempnu,Ap,Dpp,total,Mgam,ubol
    real(dp),allocatable,dimension(:,:) :: gdotty,n1,jnut,jmbs,jssc,jeic,&
-         ambs,anut,Qinj,Diff
+      ambs,anut,Qinj,Diff
    real(dp),allocatable,dimension(:,:) :: dotg_temp,dotg_temp2
    character(len=256) :: mtb_label
    logical :: with_cool
@@ -66,13 +66,13 @@ subroutine turBlaz(params_file, output_file, cool_withKN, with_abs)
 
 
    allocate(t(0:numdt),freqs(numdf),Ntot(0:numdt),g(numbins),dfreq(numdf),&
-         dt(numdt),Inu(numdf),dg(numbins),urad(numbins))
+      dt(numdt),Inu(numdf),dg(numbins),urad(numbins))
    allocate(tempg(numbins),tempnu(numdf),Ap(numbins),Dpp(numbins),ubol(numdt),&
-         total(numbins),Mgam(numdt))
+      total(numbins),Mgam(numdt))
    allocate(n1(numbins,0:numdt),gdotty(numbins,0:numdt),&
-         ambs(numdf,numdt),jmbs(numdf,numdt),jnut(numdf,numdt),&
-         jssc(numdf,numdt),anut(numdf,numdt),jeic(numdf,numdt),&
-         Qinj(numbins,numdt),Diff(numbins,0:numdt))
+      ambs(numdf,numdt),jmbs(numdf,numdt),jnut(numdf,numdt),&
+      jssc(numdf,numdt),anut(numdf,numdt),jeic(numdf,numdt),&
+      Qinj(numbins,numdt),Diff(numbins,0:numdt))
    allocate(dotg_temp(numbins,numdt),dotg_temp2(numbins,numdt))
 
    build_f: do j=1,numdf
@@ -113,7 +113,7 @@ subroutine turBlaz(params_file, output_file, cool_withKN, with_abs)
    !    Middle (1),top (2),bottom (3) panels in Fig. 17 from Zhdankin et al. (2020)
    mtb_case=3
    select case(mtb_case)
-   case(1)
+    case(1)
       l_rho=28.3d0!m
       kk=0.033d0
       sig=0.9d0
@@ -122,7 +122,7 @@ subroutine turBlaz(params_file, output_file, cool_withKN, with_abs)
       Gammaa=-8d0
       tcorg=0.45512721235884102d0
       mtb_label="m"
-   case(2)
+    case(2)
       l_rho=29.6d0!t
       !l_rho=21.4
       kk=0.014d0
@@ -133,7 +133,7 @@ subroutine turBlaz(params_file, output_file, cool_withKN, with_abs)
       tcorg=7.6608494666808964d0
       ! tmax=tmax*1d1
       mtb_label="t"
-   case(3)
+    case(3)
       !l_rho=38.9d0
       l_rho=39.1d0!b
       kk=0.058d0
@@ -143,7 +143,7 @@ subroutine turBlaz(params_file, output_file, cool_withKN, with_abs)
       Gammaa=-3.5d0
       tcorg=6.7050164467544707d-2
       mtb_label="b"
-   case default
+    case default
       stop
    end select
    output_file=trim(mtb_label)//trim(output_file)
@@ -276,14 +276,14 @@ subroutine turBlaz(params_file, output_file, cool_withKN, with_abs)
       !  #      #      #    #
       !  ###### ###### #####
       call FP_FinDif_difu(dt(i),&
-            &             g,&
-            &             n1(:,i-1),&
-            &             n1(:,i),&
-            &             gdotty(:,0),&
-            &             Diff(:,0),&
-            &             zeros1D(numbins,.true.),&
-            &             tesc,&
-            &             tlc)
+      &             g,&
+      &             n1(:,i-1),&
+      &             n1(:,i),&
+      &             gdotty(:,0),&
+      &             Diff(:,0),&
+      &             zeros1D(numbins,.true.),&
+      &             tesc,&
+      &             tlc)
 
       do l=2,numbins
          total(l-1)=(n1(l-1,i)+n1(l,i))*dg(l-1)/2d0
@@ -337,10 +337,10 @@ subroutine turBlaz(params_file, output_file, cool_withKN, with_abs)
       ! gdotty(:,i)=0d0
       if (with_cool) then
          call bolometric_integ(freqs,4d0*pi*Inu/cLight,usyn)
-      !    ! call RadTrans_blob(Inu,R,jssc(:,i)+jeic(:,i),anut(:,i))
-      !    ! call RadTrans_blob(Inu,R,jmbs(:,i),ambs(:,i))
+         !    ! call RadTrans_blob(Inu,R,jssc(:,i)+jeic(:,i),anut(:,i))
+         !    ! call RadTrans_blob(Inu,R,jmbs(:,i),ambs(:,i))
          call rad_cool_pwl(dotg_temp2(:,i),g,freqs,4d0*pi*Inu/cLight,cool_withKN)
-      !    call rad_cool_mono(dotg_temp(:,i),g,nu_ext,uph,cool_withKN)
+         !    call rad_cool_mono(dotg_temp(:,i),g,nu_ext,uph,cool_withKN)
       end if
       ! gdotty(:,i)=gdotty(:,0)!+dotg_temp(:,i)
       dotg_temp(:,i)=dotg_temp(:,0)
@@ -349,8 +349,8 @@ subroutine turBlaz(params_file, output_file, cool_withKN, with_abs)
       Ntot(i)=sum((n1(:,i)+n1(:,i-1))*dg*0.5d0)!,mask=n1(:,i)>1d-200)
 
       if (mod(i,nmod)==0.or.i==1) &
-            ! write(*,on_screen) i,t(i),ubol(i),Ntot(i)/Ntot(0),Ntot(i)
-            write(*,on_screen) i,t(i),tstep,maxval(dotg_temp2(:, i)),Ntot(i)
+      ! write(*,on_screen) i,t(i),ubol(i),Ntot(i)/Ntot(0),Ntot(i)
+         write(*,on_screen) i,t(i),tstep,maxval(dotg_temp2(:, i)),Ntot(i)
 
    end do time_loop
 

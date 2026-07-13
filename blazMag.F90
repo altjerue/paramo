@@ -27,14 +27,14 @@ subroutine blazMag(params_file, output_file, cool_withKN, with_abs)
 #endif
    integer :: i, j, k, numbins, numdf, numdt, time_grid
    real(dp) :: uB, uext, R, gmin, gmax, numin, numax, pind, B, D, g1, g2, &
-         tstep, Qnth, tmax, d_lum, z, tinj, gamma_bulk, theta_obs, Rdis, &
-         mu_obs, nu_ext, tesc, tlc, mu_mag, L_jet, volume, sigma, beta_bulk, L_B, &
-         eps_B, f_rec, urad_const, f_esc, eps_acc
+      tstep, Qnth, tmax, d_lum, z, tinj, gamma_bulk, theta_obs, Rdis, &
+      mu_obs, nu_ext, tesc, tlc, mu_mag, L_jet, volume, sigma, beta_bulk, L_B, &
+      eps_B, f_rec, urad_const, f_esc, eps_acc
    real(dp) :: L_e, Qnth2, Qnth3
    real(dp), allocatable, dimension(:) :: freqs, t, Ntot, Inu, gg, dt, nu_obs, &
-         t_obs, dg, urad
+      t_obs, dg, urad
    real(dp), allocatable, dimension(:,:) :: dotg, nn, jnut, jmbs, jssc, jeic, &
-         ambs, anut, Qinj, Ddiff
+      ambs, anut, Qinj, Ddiff
    logical :: with_cool
 
 
@@ -203,14 +203,14 @@ subroutine blazMag(params_file, output_file, cool_withKN, with_abs)
       !  #      #      #    #
       !  ###### ###### #####
       call FP_FinDif_difu(dt(i), &
-            &             gg, &
-            &             nn(:, i - 1), &
-            &             nn(:, i), &
-            &             dotg(:, i - 1), &
-            &             Ddiff(:, i - 1), &
-            &             Qinj(:, i - 1), &
-            &             tesc, &
-            &             tlc)
+      &             gg, &
+      &             nn(:, i - 1), &
+      &             nn(:, i), &
+      &             dotg(:, i - 1), &
+      &             Ddiff(:, i - 1), &
+      &             Qinj(:, i - 1), &
+      &             tesc, &
+      &             tlc)
 
       Qinj(:, i) = injection_pwl(t(i), tinj, gg, g1, g2, pind, Qnth)
       Ddiff(:, i) = 1d-200

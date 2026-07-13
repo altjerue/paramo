@@ -13,7 +13,7 @@ contains
    !  #      # #      #      #    #
    !  #      # ###### ######  ####
    !
-   
+
    !   ----->   create file
    subroutine h5io_createf(hfname, file_id, error)
       implicit none
@@ -24,11 +24,11 @@ contains
       call h5fcreate_f(trim(hfname), H5F_ACC_TRUNC_F, file_id, error)
 
    end subroutine h5io_createf
-   
+
    !   ----->   open file
    subroutine h5io_openf(hfname, file_id, error)
       implicit none
-      
+
       character, intent(in) :: hfname*(*)
       integer, intent(inout) :: error
       integer(HID_T), intent(inout) :: file_id
@@ -36,7 +36,7 @@ contains
       call h5fopen_f(trim(hfname), H5F_ACC_RDWR_F, file_id, error)
 
    end subroutine h5io_openf
-   
+
    !   ----->   close file
    subroutine h5io_closef(file_id, error)
       implicit none
@@ -48,16 +48,16 @@ contains
    end subroutine h5io_closef
 
 
-   ! 
+   !
    !   ####  #####   ####  #    # #####   ####
    !  #    # #    # #    # #    # #    # #
    !  #      #    # #    # #    # #    #  ####
    !  #  ### #####  #    # #    # #####       #
    !  #    # #   #  #    # #    # #      #    #
    !   ####  #    #  ####   ####  #       ####
-   ! 
+   !
 
-   
+
    !   ----->   create group
    subroutine h5io_createg(file_id, hgname, group_id, error)
       implicit none
@@ -68,7 +68,7 @@ contains
       call h5gcreate_f(file_id, trim(hgname), group_id, error)
 
    end subroutine h5io_createg
-   
+
    !   ----->   open group
    subroutine h5io_openg(file_id, hgname, group_id, error)
       implicit none
@@ -79,7 +79,7 @@ contains
       call h5gopen_f(file_id, trim(hgname), group_id, error)
 
    end subroutine h5io_openg
-   
+
    !   ----->   close group
    subroutine h5io_closeg(group_id, error)
       implicit none
@@ -91,14 +91,14 @@ contains
    end subroutine h5io_closeg
 
 
-   ! 
+   !
    !  # #    # ##### ######  ####  ###### #####   ####
    !  # ##   #   #   #      #    # #      #    # #
    !  # # #  #   #   #####  #      #####  #    #  ####
    !  # #  # #   #   #      #  ### #      #####       #
    !  # #   ##   #   #      #    # #      #   #  #    #
    !  # #    #   #   ######  ####  ###### #    #  ####
-   ! 
+   !
 
    !   ----->   write integer scalar
    subroutine h5io_wint0(num_id, iname, buf, error)
@@ -313,7 +313,7 @@ contains
    end subroutine h5io_rdble2
 
 
-      !   ----->   write double precision 3D array
+   !   ----->   write double precision 3D array
    subroutine h5io_wdble3(num_id, dname, buf, error)
       implicit none
       integer(HID_T), intent(in) :: num_id

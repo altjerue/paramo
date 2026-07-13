@@ -260,25 +260,25 @@ contains
 
    !> Linear interpolation
    subroutine linint(x1, x2, x, y1, y2, y)
-   implicit none
-   real(dp), intent(out) :: y
-   real(dp), intent(in) :: y1, y2, x1, x2, x
-   real(dp) :: dx1, dx2, dx, dy1, dy2, dy3
-   dx = abs(x2 - x1)
-   dx1 = abs(x1 - x)
-   dx2 = abs(x2 - x)
-   if (dx1 + dx2 > dx) then
-      write(*, *) x1, x2, x
-      call an_error('linint: x not between x1 and x2')
-   end if
-   y = y1 + ( y2 - y1 ) * ( x - x1 ) / dx
-   dy1 = abs(y2 - y1)
-   dy2 = abs(y1 - y)
-   dy3 = abs(y2 - y)
-   if(dy3 + dy2 > dy1) then
-      write(*, *) y1, y2, y
-      call an_error('linint: Interpolation not between y1 and y2')
-   end if
+      implicit none
+      real(dp), intent(out) :: y
+      real(dp), intent(in) :: y1, y2, x1, x2, x
+      real(dp) :: dx1, dx2, dx, dy1, dy2, dy3
+      dx = abs(x2 - x1)
+      dx1 = abs(x1 - x)
+      dx2 = abs(x2 - x)
+      if (dx1 + dx2 > dx) then
+         write(*, *) x1, x2, x
+         call an_error('linint: x not between x1 and x2')
+      end if
+      y = y1 + ( y2 - y1 ) * ( x - x1 ) / dx
+      dy1 = abs(y2 - y1)
+      dy2 = abs(y1 - y)
+      dy3 = abs(y2 - y)
+      if(dy3 + dy2 > dy1) then
+         write(*, *) y1, y2, y
+         call an_error('linint: Interpolation not between y1 and y2')
+      end if
    end subroutine linint
 
    !> Chebychev evaluation
@@ -497,13 +497,13 @@ contains
       integer :: ndum
       real(dp), dimension(size(y)) :: ak2, ak3, ak4, ak5, ak6, ytemp
       real(dp), parameter :: A2=0.2d0, A3=0.3d0, A4=0.6d0, A5=1.0d0, &
-            A6=0.875d0, B21=0.2d0, B31=3.0d0/40d0, B32=9.0d0/40d0, B41=0.3d0, &
-            B42=-0.9d0, B43=1.2d0, B51=-11.0d0/54d0, B52=2.5d0, B53=-70d0/27d0,&
-            B54=35.0d0/27.0d0, B61=1631d0/55296d0, B62=175d0/512d0, &
-            B63=575d0/13824d0, B64=44275d0/110592d0, B65=253d0/4096d0, &
-            C1=37d0/378d0, C3=250d0/621d0, C4=125d0/594d0, C6=512d0/1771d0, &
-            DC1=C1-2825d0/27648d0, DC3=C3-18575d0/48384d0, &
-            DC4=C4-13525d0/55296d0, DC5=-277d0/14336d0, DC6=C6-0.25d0
+         A6=0.875d0, B21=0.2d0, B31=3.0d0/40d0, B32=9.0d0/40d0, B41=0.3d0, &
+         B42=-0.9d0, B43=1.2d0, B51=-11.0d0/54d0, B52=2.5d0, B53=-70d0/27d0,&
+         B54=35.0d0/27.0d0, B61=1631d0/55296d0, B62=175d0/512d0, &
+         B63=575d0/13824d0, B64=44275d0/110592d0, B65=253d0/4096d0, &
+         C1=37d0/378d0, C3=250d0/621d0, C4=125d0/594d0, C6=512d0/1771d0, &
+         DC1=C1-2825d0/27648d0, DC3=C3-18575d0/48384d0, &
+         DC4=C4-13525d0/55296d0, DC5=-277d0/14336d0, DC6=C6-0.25d0
       ndum = assert_eq((/ size(y), size(dydx), size(yout), size(yerr) /), 'rkck')
       ytemp = y + B21 * h * dydx
       call derivs(x + A2 * h, ytemp, ak2)

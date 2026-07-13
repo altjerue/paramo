@@ -19,66 +19,66 @@ module distribs
 
 contains
 
-      ! #####  #  ####  ##### #####  # #####   ####
-      ! #    # # #        #   #    # # #    # #
-      ! #    # #  ####    #   #    # # #####   ####
-      ! #    # #      #   #   #####  # #    #      #
-      ! #    # # #    #   #   #   #  # #    # #    #
-      ! #####  #  ####    #   #    # # #####   ####
-      !
-      !  :::::   Relativistic Maxwell distribution   :::::
-      !
-      function RMaxwell_s(g, th) result(rm)
-         implicit none
-         real(dp), intent(in) :: g, th
-         real(dp) :: rm
-         call K2_init
-         rm = dmax1(1d-200, g**2 * bofg(g) * dexp(-g / th) / (th * dexp(K2_func(-dlog(th)))))
-      end function RMaxwell_s
+   ! #####  #  ####  ##### #####  # #####   ####
+   ! #    # # #        #   #    # # #    # #
+   ! #    # #  ####    #   #    # # #####   ####
+   ! #    # #      #   #   #####  # #    #      #
+   ! #    # # #    #   #   #   #  # #    # #    #
+   ! #####  #  ####    #   #    # # #####   ####
+   !
+   !  :::::   Relativistic Maxwell distribution   :::::
+   !
+   function RMaxwell_s(g, th) result(rm)
+      implicit none
+      real(dp), intent(in) :: g, th
+      real(dp) :: rm
+      call K2_init
+      rm = dmax1(1d-200, g**2 * bofg(g) * dexp(-g / th) / (th * dexp(K2_func(-dlog(th)))))
+   end function RMaxwell_s
 
-      function RMaxwell_v(g, th) result(rm)
-         implicit none
-         doubleprecision, intent(in) :: th
-         real(dp), intent(in), dimension(:) :: g
-         integer :: k
-         real(dp), dimension(size(g)) :: rm
-         call K2_init
-         do k=1,size(g)
-            rm(k) = dmax1( 1d-200, g(k)**2 * bofg(g(k)) * dexp(-g(k) / th) &
+   function RMaxwell_v(g, th) result(rm)
+      implicit none
+      doubleprecision, intent(in) :: th
+      real(dp), intent(in), dimension(:) :: g
+      integer :: k
+      real(dp), dimension(size(g)) :: rm
+      call K2_init
+      do k=1,size(g)
+         rm(k) = dmax1( 1d-200, g(k)**2 * bofg(g(k)) * dexp(-g(k) / th) &
             / (th * dexp(K2_func(-dlog(th)))) )
-         enddo
-      end function RMaxwell_v
+      enddo
+   end function RMaxwell_v
 
-      !
-      !   :::::   Power-law distribution   :::::
-      !
-      function powlaw_dis_s(g, g1, g2, s) result(pwl)
-         implicit none
-         doubleprecision, intent(in) :: g, g1, g2, s
-         doubleprecision :: pwl
-         if ( g >= g1 .and. g <=g2 ) then
-            pwl = g**(-s)
+   !
+   !   :::::   Power-law distribution   :::::
+   !
+   function powlaw_dis_s(g, g1, g2, s) result(pwl)
+      implicit none
+      doubleprecision, intent(in) :: g, g1, g2, s
+      doubleprecision :: pwl
+      if ( g >= g1 .and. g <=g2 ) then
+         pwl = g**(-s)
+      else
+         pwl = 0d0
+      end if
+      ! pwl = g**(-s) * dexp(-(g1 / g)**2) * dexp(-(g / g2)**2)
+   end function powlaw_dis_s
+
+   function powlaw_dis_v(g, g1, g2, s) result(pwl)
+      implicit none
+      doubleprecision, intent(in) :: g1,g2,s
+      doubleprecision, intent(in), dimension(:) :: g
+      integer :: k
+      doubleprecision, dimension(size(g)) :: pwl
+      do k = 1, size(g)
+         if ( g(k) >= g1 .and. g(k) <= g2 ) then
+            pwl(k) = g(k)**(-s)
          else
-            pwl = 0d0
+            pwl(k) = 0d0
          end if
-         ! pwl = g**(-s) * dexp(-(g1 / g)**2) * dexp(-(g / g2)**2)
-      end function powlaw_dis_s
-
-      function powlaw_dis_v(g, g1, g2, s) result(pwl)
-         implicit none
-         doubleprecision, intent(in) :: g1,g2,s
-         doubleprecision, intent(in), dimension(:) :: g
-         integer :: k
-         doubleprecision, dimension(size(g)) :: pwl
-         do k = 1, size(g)
-            if ( g(k) >= g1 .and. g(k) <= g2 ) then
-               pwl(k) = g(k)**(-s)
-            else
-               pwl(k) = 0d0
-            end if
-         end do
-         ! pwl = g**(-s) * dexp(-(g1 / g)**2) * dexp(-(g / g2)**2)
-      end function powlaw_dis_v
+      end do
+      ! pwl = g**(-s) * dexp(-(g1 / g)**2) * dexp(-(g / g2)**2)
+   end function powlaw_dis_v
 
 
    ! # #    #      # ######  ####  ##### #  ####  #    #
@@ -301,21 +301,21 @@ contains
       real(dp), intent(in), optional :: volume1, volume2, Gbulk, Bbulk, R, dt
       real(dp), dimension(size(gg)) :: dotg
       select case(cool_type)
-      case(0) !> No adiabatic cooling
+       case(0) !> No adiabatic cooling
          dotg = 0d0
-      case(1) !> Volume evolution, i.e., approxim dV/dt with finite differences
+       case(1) !> Volume evolution, i.e., approxim dV/dt with finite differences
          if ( .not. (present(volume1) .or. present(volume2) .or. present(dt)) ) &
-               call an_error("adiab_cooling: Arguments volume1, volume2 and dt not present")
+            call an_error("adiab_cooling: Arguments volume1, volume2 and dt not present")
          dotg = pofg(gg) * dlog(volume2 / volume1) / (3d0 * dt)
-      case(2) !> Following MSB00
+       case(2) !> Following MSB00
          if ( .not. (present(Bbulk) .or. present(Gbulk) .or. present(R)) ) &
-               call an_error("adiab_cooling: Arguments Gbulk, Bbulk and R not present")
+            call an_error("adiab_cooling: Arguments Gbulk, Bbulk and R not present")
          dotg = cLight * Bbulk * Gbulk * gg / R
-      case(3) !> See Hao et al. (2020)
+       case(3) !> See Hao et al. (2020)
          if ( .not. (present(Gbulk) .or. present(R)) ) &
-               call an_error("adiab_cooling: Arguments Gbulk and R not present")
+            call an_error("adiab_cooling: Arguments Gbulk and R not present")
          dotg = 1.6d0 * cLight * Bbulk * Gbulk * pofg(gg) / R
-      case default
+       case default
          call an_error("adiab_cooling: wrong value of cool_type")
       end select
    end function adiab_cooling
@@ -328,15 +328,15 @@ end module distribs
 !!!!!!!!!!!!!!!!!!!    D  E  P  R  E  C  A  T  E  D    !!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 #if 0
-   !
-   !     Slope of the Relativistic Maxwell distribution
-   !
-   function dRMaxwell(g, th) result(drm)
-      implicit none
-      real(dp), intent(in) :: g, th
-      real(dp) :: drm
-      call K2_init
-      !!$drm = -((2d0 * g**(2) - 1d0) / (g**(2) - 1d0) - g / th)
-      drm = (g - g**3 - th + 2 * th * g**2) * dexp(-g/th) / ( dsqrt(g**2 - 1d0) * th**2 * dexp(K2_func(-dlog(th))) )
-   end function dRMaxwell
+ !
+ !     Slope of the Relativistic Maxwell distribution
+ !
+function dRMaxwell(g, th) result(drm)
+   implicit none
+   real(dp), intent(in) :: g, th
+   real(dp) :: drm
+   call K2_init
+   !!$drm = -((2d0 * g**(2) - 1d0) / (g**(2) - 1d0) - g / th)
+   drm = (g - g**3 - th + 2 * th * g**2) * dexp(-g/th) / ( dsqrt(g**2 - 1d0) * th**2 * dexp(K2_func(-dlog(th))) )
+end function dRMaxwell
 #endif

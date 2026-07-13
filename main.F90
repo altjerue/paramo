@@ -50,7 +50,7 @@ program main
    call mezcal(trim(args(1)), args(2), with_arg(1), with_arg(2), with_arg(3))
 #elif AGLOW
    call bw1D_afterglow(trim(args(1)), args(2), with_arg(1), with_arg(2), &
-         with_arg(3))
+      with_arg(3))
 #elif INTERJETS
    call interJets(trim(args(1)), args(2))
 #elif TURB

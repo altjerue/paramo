@@ -98,7 +98,7 @@ contains
       real(dp), intent(in), optional :: s
       real(dp), intent(out) :: Rd1, Rd2
       if ( with_wind .and. .not. present(s) ) &
-            call an_error("deceleration_radius: Wind index s not declared")
+         call an_error("deceleration_radius: Wind index s not declared")
       if ( with_wind ) then
          !     Eq. (5) in PK00
          Rd1 = ( (3d0 - s) * E0 / (4d0 * pi * Aw * mass_p * (cLight * G0)**2) )**(1d0 / (3d0 - s))
@@ -123,18 +123,18 @@ contains
       integer :: i
 
       select case( sol_kind )
-      case(1)
-      !---> Eqs. (9)-(10) in CD99
-      M0 = E0 / (G0 * cLight**2)
+       case(1)
+         !---> Eqs. (9)-(10) in CD99
+         M0 = E0 / (G0 * cLight**2)
          x = 4d0 * pi * mass_p * Aw * Rshk**3 / 3d0
-      Gshk = (x + G0 * M0) / dsqrt(M0**2 + 2d0 * G0 * M0 * x + x**2)
-      case(2)
+         Gshk = (x + G0 * M0) / dsqrt(M0**2 + 2d0 * G0 * M0 * x + x**2)
+       case(2)
          if ( .not. present(s) ) call an_error("deceleration_radius: Wind index s not declared")
-      !---> Eqs. (4)-(5) in PK00
-      R0 = ( (3d0 - s) * E0 / (4d0 * pi * mass_p * cLight**2 * Aw * G0**2))**(1d0 / (3d0 - s) )
-      x = Rshk / R0
-      Gshk = 0.5d0 * x**(s - 3d0) * G0 * ( dsqrt( 4d0 * x**(3d0 - s) + 1d0 + (2d0 * x**(3d0 - s) / G0)**2 ) - 1d0 )
-      case(3)
+         !---> Eqs. (4)-(5) in PK00
+         R0 = ( (3d0 - s) * E0 / (4d0 * pi * mass_p * cLight**2 * Aw * G0**2))**(1d0 / (3d0 - s) )
+         x = Rshk / R0
+         Gshk = 0.5d0 * x**(s - 3d0) * G0 * ( dsqrt( 4d0 * x**(3d0 - s) + 1d0 + (2d0 * x**(3d0 - s) / G0)**2 ) - 1d0 )
+       case(3)
          ! Numerical interpolation for a blast wave using an external file (ASCII)
          if ( .not. (present(Npts) .or. present(filename)) ) then
             call an_error("deceleration_radius: Arguments Npts or filename not declared")
@@ -157,7 +157,7 @@ contains
          call linint(rshknum(i-1), rshknum(i), Rshk, gshknum(i-1), gshknum(i), Gshk)
          !!TODO: Try polint. You can save the do while above, and have a more accurate value than linint.
          ! call polint(rshknum, gshknum, Rshk, Gshk, dR)
-      case default
+       case default
          call an_error("adiab_blastwave: wrong value of sol_kind")
       end select
 
@@ -177,19 +177,19 @@ contains
       real(dp) :: theta_j
       !---> Uniform isotropic or beamed?
       select case( beam_kind )
-      case(0)!> Isotropic blast-wave
+       case(0)!> Isotropic blast-wave
          theta_j = pi
-      case(1)!> Half blob
+       case(1)!> Half blob
          theta_j = halfpi
-      case(2)!> Classic beamed jet
+       case(2)!> Classic beamed jet
          theta_j = 1d0 / Gbulk
-      case(3)!> Beamed jet with initial opening angle theta_j0
+       case(3)!> Beamed jet with initial opening angle theta_j0
          theta_j = theta_j0
-      case(4)
+       case(4)
          theta_j = theta_j0 + 1d0 / (Gbulk * dsqrt(3d0))
-      case(5)
+       case(5)
          theta_j = theta_j0 + 1d0 / Gbulk
-      case default
+       case default
          call an_error("bw_crossec_area: wrong value of beam_kind")
       end select
       Oj = 2d0 * pi * (1d0 - dcos(theta_j))

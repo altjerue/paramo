@@ -214,15 +214,15 @@ contains
       real(dp), intent(in) :: nucom, z, dopp
       real(dp) ::nuobs
       nuobs = nucom * dopp / (1d0 + z)
-    end function nu_obs_s
+   end function nu_obs_s
 
-    function nu_obs_v(nucom, z, dopp) result(nuobs)
+   function nu_obs_v(nucom, z, dopp) result(nuobs)
       implicit none
       real(dp), intent(in) :: z, dopp
       real(dp), intent(in), dimension(:) :: nucom
       real(dp), dimension(size(nucom)) :: nuobs
       nuobs = nucom * dopp / (1d0 + z)
-    end function nu_obs_v
+   end function nu_obs_v
 
 
    !> Frequency in the comoving frame

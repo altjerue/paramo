@@ -86,14 +86,14 @@ contains
       d_c = d / c
       if ( LN3(b / (a * d), eps) * (alpha + 1d0)**2 > eps * 6d0 ) then
          res = c**(beta + 1d0) * ( b**(alpha + 1d0) * Pinteg(d_c, -beta, eps) - &
-               (a * c)**(alpha + 1d0) * Pinteg(d_c, -(alpha + beta + 1d0), eps) &
-               ) / (alpha + 1d0)
+            (a * c)**(alpha + 1d0) * Pinteg(d_c, -(alpha + beta + 1d0), eps) &
+            ) / (alpha + 1d0)
       else
          res = c**(alpha + beta + 2d0) * a**(alpha + 1d0) * ( LN1(b_ac, eps) * &
-               Pinteg(d_c, -beta, eps) - Qinteg(d_c, -beta, eps) + 0.5d0 * &
-               (alpha + 1d0) * ( LN2(b_ac, eps) * Pinteg(d_c, -beta, eps) - &
-               2d0 * LN1(b_ac, eps) * Qinteg(d_c, -beta, eps) + &
-               Q2integ(d_c, -beta, eps) ) )
+            Pinteg(d_c, -beta, eps) - Qinteg(d_c, -beta, eps) + 0.5d0 * &
+            (alpha + 1d0) * ( LN2(b_ac, eps) * Pinteg(d_c, -beta, eps) - &
+            2d0 * LN1(b_ac, eps) * Qinteg(d_c, -beta, eps) + &
+            Q2integ(d_c, -beta, eps) ) )
       end if
    end function sscS
 
@@ -120,19 +120,19 @@ contains
    !   -----{   Find gamma_1   }-----
    !
    function get_g1(g2, k, q) result(g1)
-   implicit none
-   real(dp), intent(in) :: g2, k, q
-   real(dp), parameter :: ttol = 1d-8, eps = 1d-9
-   real(dp) :: g1, f, df, x, xn
-   xn = 100d0
-   x = -1d0
-   do while( dabs((xn - x) / x) > ttol )
-      x = xn
-      f = x * Pinteg(x, q - 1d0, eps) - g2 * k * Pinteg(x, q, eps)
-      df = Pinteg(x, q - 1d0, eps) + x**(2d0 - q) - g2 * k * x**(-q)
-      xn = x - f / df
-   enddo
-   g1 = g2 / xn
+      implicit none
+      real(dp), intent(in) :: g2, k, q
+      real(dp), parameter :: ttol = 1d-8, eps = 1d-9
+      real(dp) :: g1, f, df, x, xn
+      xn = 100d0
+      x = -1d0
+      do while( dabs((xn - x) / x) > ttol )
+         x = xn
+         f = x * Pinteg(x, q - 1d0, eps) - g2 * k * Pinteg(x, q, eps)
+         df = Pinteg(x, q - 1d0, eps) + x**(2d0 - q) - g2 * k * x**(-q)
+         xn = x - f / df
+      enddo
+      g1 = g2 / xn
    end function get_g1
 
 
