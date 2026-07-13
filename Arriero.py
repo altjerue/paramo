@@ -6,16 +6,53 @@ import os
 import subprocess
 import sys
 from time import strftime, localtime
-from Eduviges.misc import fortran_double
 
 
-#
-#  #####    ##   #####    ##   #    #  ####
-#  #    #  #  #  #    #  #  #  ##  ## #
-#  #    # #    # #    # #    # # ## #  ####
-#  #####  ###### #####  ###### #    #      #
-#  #      #    # #   #  #    # #    # #    #
-#  #      #    # #    # #    # #    #  ####
+def exp10(decimal):
+    """Function that gets the exponent of a double number."""
+    string = "{:.10e}".format(decimal)
+    parts = string.split("e")
+    return int(parts[-1])
+
+
+# ------------------------------------------------------------------------------
+# Fortran double precision functions
+# ------------------------------------------------------------------------------
+def fortran_double(number, dble=True):
+    """Function that returns a floating point (as a string) in the FORTRAN
+    notation
+    """
+    string = f"{number:.10e}"
+    parts = string.split("e")
+
+    ss = parts[0].split(".")
+    s = ss[1]
+    while s.endswith("0"):
+        s = s[:-1]
+    if len(s) > 0:
+        ss = ss[0] + "." + s
+    else:
+        ss = ss[0]
+    ee = parts[-1]
+    if ee.startswith("-"):
+        e = ee.split("-")[-1]
+        while e.startswith("0"):
+            e = e[1:]
+        ee = "-" + e
+    else:
+        while ee.startswith("+") or ee.startswith("0"):
+            ee = ee[1:]
+    if len(ee) == 0:
+        ee = "0"
+    if dble:
+        return f"{ss}d{ee}"
+    else:
+        return f"{ss}e{ee}"
+
+
+# ------------------------------------------------------------------------------
+# Parameters class
+# ------------------------------------------------------------------------------
 class parameters(object):
     '''This is the parameters class
     '''
@@ -107,13 +144,9 @@ class parameters(object):
             # print(self.file_label, ' ! label to identify each output', file=f)
         print("--> Parameters file: ", self.params_file)
 
-
-#   ####   ####  #    # #####  # #      ######
-#  #    # #    # ##  ## #    # # #      #
-#  #      #    # # ## # #    # # #      #####
-#  #      #    # #    # #####  # #      #
-#  #    # #    # #    # #      # #      #
-#   ####   ####  #    # #      # ###### ######
+# ------------------------------------------------------------------------------
+# Compiler class
+# ------------------------------------------------------------------------------
 class compiler(object):
     '''This is the compilation class
     This function sets the value of the compilation options. The value of these
@@ -189,17 +222,14 @@ class compiler(object):
         os.chdir(self.cwd)
 
 
-#  #####  #    # #    #
-#  #    # #    # ##   #
-#  #    # #    # # #  #
-#  #####  #    # #  # #
-#  #   #  #    # #   ##
-#  #    #  ####  #    #
+# ------------------------------------------------------------------------------
+# Runner class
+# ------------------------------------------------------------------------------
 class Runner(object):
     '''
     Description
     -----------
-    This class sets up the exectuable instructions.
+    This class sets up the executable instructions.
     '''
 
     def __init__(self, flabel='DriverTest', par_kw={}, comp_kw={}):

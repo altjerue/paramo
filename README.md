@@ -1,42 +1,43 @@
 # Paramo
 
-`Paramo` stands for: PArticles and RAdiation MOnitor. `Paramo` is a Fortran 95 code with a Fokker-Planck equation solver and calculates synchrotron and inverse Compton emission.
+> "Vine a Comala porque me dijeron que acá vivía mi padre, un tal Pedro Páramo." - Juan Rulfo
+
+`paramo` stands for: PArticles and RAdiation MOnitor. `paramo` is a Fortran 95 simulation library. It solves the Fokker-Planck equation to model the time evolution of relativistic particle distributions in relativistic plasma, coupled to synchrotron and inverse Compton radiative transfer. It is also parallelized with OpenMP, and uses HDF5 for output.
+
+The Fortran core is organized into modular source files separating physical processes, numerical methods, and I/O routines.
+
+[`Arriero.py`](./Arriero.py) is the user Python layer that provides a class-based interface for parameter management, compilation orchestration across GCC and Intel compilers, and HPC job submission supporting both PBS and SLURM schedulers. This separation between the performance-critical Fortran core and the Python workflow layer is a design pattern I carried forward into Tleco, its Rust and Python successor described in [Davis, Rueda-Becerril & Giannios (2022)](https://academic.oup.com/mnras/article/513/4/5766/6583293).
 
 ## Prerequisites
 
-- Fortran
+- Fortran (GNU/Intel)
 - HDF5
 
 ## How to run it
 
-### Customize `Makefile`
+1. **Clone the repository**
 
-The `Makefile` has a sereies of variables that allow to compile to our convenience.
+2. **Customize `Makefile`**. The `Makefile` has a series of variables that allows to configure compilation.
 
-- `COMPILER`: 0 for GCC and 1 for Intel compilers
-- `DEBUGGING`: Compile in debugging or optimized mode
-- `USEHDF5`: Compile with HDF5 libraries and save data in that format. **NOTE**: Not all problems are 
+    - `COMPILER`: 0 for GCC and 1 for Intel compilers.
+    - `DEBUGGING`: Compile in debugging or optimized mode.
+    - `USEHDF5`: Compile with HDF5 libraries and save data in that format.
 
-### Compile and run
+3. **Create parameters file**
 
-- Clone the repository
-- Create parameters file
-- `make`
-- Run executable
+4. **Run `make` in terminal**
 
-## Example
+5. **Run executable**
 
-A fast way to run `Paramo` can be done by downloading/copy the file [`runGRB190114C.py`](https://bitbucket.org/comala/workspace/snippets/LpLgGL/afterglow-of-grb190114c#file-runGRB190114C.py) from the [snippets](https://bitbucket.org/comala/workspace/snippets/). Running this file will:
+The alternative is calling [`Arriero.py`](./Arriero.py).
 
-- Create the parameters file
-- Compile `Paramo` for an afterglow simulation
-- Run the executable
+## Output
 
-**Note**: The code can be run from another directory. This can be done by specifying in `runGRB190114C.py` its full address, as well `Paramo`'s.
+Output files can be analyzed using [SAPytho](https://github.com/altjerue/SAPytho), a companion Python toolkit for computing spectra, light curves, and SED fits from simulation data.
 
-# References
+## References
 
-These are the most referenced works on which I based all the modeling of afterglows
+These are some of the references used to build this code:
 
 - [PVP14] Pannanen, Vurm, Poutanen, 2014, A&A, 564, A77
 - [PM09]  Petropoulou, Mastichiadis, 2009, A&A, 507, 599
@@ -46,3 +47,9 @@ These are the most referenced works on which I based all the modeling of aftergl
 - [PK00]  Panaitescu & Kumar, 2000, ApJ, 543, 66
 - [CL00]  Chavalier & Li, 2000, ApJ, 536, 195
 - [CD99]  Chiang & Dermer, 1999, ApJ, 512, 699
+
+Publications using `paramo`:
+
+- [Rueda-Becerril, Harrison & Giannios (2021)](https://academic.oup.com/mnras/article/501/3/4092/6043215)
+- [Davis, Rueda-Becerril & Giannios (2022)](https://academic.oup.com/mnras/article/513/4/5766/6583293)
+- [Combi & Siegel (2023)](https://iopscience.iop.org/article/10.3847/1538-4357/acac29/meta)
