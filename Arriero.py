@@ -1,7 +1,3 @@
-# –¿Qué es lo que pasa, doña Eduviges?
-# Ella sacudieo la cabeza como si despertara de un sueño
-# –Es el caballo de Miguel Páramo, que galopa por el camino de la Media Luna.
-
 import os
 import subprocess
 import sys
@@ -144,6 +140,7 @@ class parameters(object):
             # print(f"{self.file_label:<26s} ! label to identify each output", file=f)
         print(f"--> Parameters file: {self.params_file}")
 
+
 # ------------------------------------------------------------------------------
 # Compiler class
 # ------------------------------------------------------------------------------
@@ -218,7 +215,7 @@ class compiler(object):
 
     def cleanup(self):
         os.chdir(self.compileDir)
-        os.system("make clean")
+        subprocess.run(["make", "clean"], check=True)
         os.chdir(self.cwd)
 
 
@@ -244,9 +241,9 @@ class Runner(object):
         if clean:
             comp.cleanup()
         comp.compile()
-        run_cmd = '{0}xTests'.format(comp.compileDir)
+        run_cmd = f"{comp.compileDir}xTests"
         print("\n--> Running:\n  ", run_cmd, "\n")
-        os.system(run_cmd)
+        subprocess.run(run_cmd.split(), check=True)
         print("\n--> Finished")
 
     # ----->   BlazMag compilation and run
@@ -265,20 +262,19 @@ class Runner(object):
         comp.compile()
         outfile = self.flabel + '.jp.h5'
         if pream is None:
-            run_cmd = '{0}Paramo {1} {2} {3} {4}'.format(comp.compileDir, self.par.params_file, outfile, in1, in2)
+            run_cmd = f"{comp.compileDir}Paramo {self.par.params_file} {outfile} {in1} {in2}"
         else:
-            run_cmd = '{0} {1}Paramo {2} {3} {4} {5}'.format(pream, comp.compileDir, self.par.params_file, outfile, in1, in2)
+            run_cmd = f"{pream} {comp.compileDir}Paramo {self.par.params_file} {outfile} {in1} {in2}"
         print("\n--> Parameters:")
-        os.system("cat -n " + self.par.params_file)
+        subprocess.run(["cat", "-n", self.par.params_file], check=True)
         if cl:
             print("\n--> Running:\n  ", run_cmd, "\n")
             return run_cmd
         else:
             print("\n--> Running:\n  ", run_cmd, "\n")
-            os.system(run_cmd)
+            subprocess.run(run_cmd.split(), check=True)
             print("\n--> Finished")
 
-    #####
     def run_Aglow(self, cmd_args=(False, False, False), pream=None, clean=False, cl=False, wMezcal=False):
         '''
         Description
@@ -314,17 +310,17 @@ class Runner(object):
         comp.compile()
         outfile = self.flabel + '.jp.h5'
         if pream is None:
-            run_cmd = '{0}Paramo {1} {2} {3} {4} {5}'.format(comp.compileDir, self.par.params_file, outfile, in1, in2, in3)
+            run_cmd = f"{comp.compileDir}Paramo {self.par.params_file} {outfile} {in1} {in2} {in3}"
         else:
-            run_cmd = '{0} {1}Paramo {2} {3} {4} {5} {6}'.format(pream, comp.compileDir, self.par.params_file, outfile, in1, in2, in3)
+            run_cmd = f"{pream} {comp.compileDir}Paramo {self.par.params_file} {outfile} {in1} {in2} {in3}"
         print("\n--> Parameters:")
-        os.system("cat -n " + self.par.params_file)
+        subprocess.run(["cat", "-n", self.par.params_file], check=True)
         if cl:
             print("\n--> Running:\n  ", run_cmd, "\n")
             return run_cmd
         else:
             print("\n--> Running:\n  ", run_cmd, "\n")
-            os.system(run_cmd)
+            subprocess.run(run_cmd.split(), check=True)
             print("\n--> Finished")
 
     # ----->   turbulence compilation and run
@@ -346,24 +342,24 @@ class Runner(object):
         outfile = self.flabel + '.jp.h5'
 
         if pream is None:
-            run_cmd = '{0}xTurBlaz {1} {2} {3} {4}'.format(comp.compileDir, self.par.params_file, wCool, wAbs, outfile)
+            run_cmd = f"{comp.compileDir}xTurBlaz {self.par.params_file} {wCool} {wAbs} {outfile}"
         else:
-            run_cmd = '{0} {1}xTurBlaz {2} {3} {4} {5}'.format(pream, comp.compileDir, self.par.params_file, wCool, wAbs, outfile)
+            run_cmd = f"{pream} {comp.compileDir}xTurBlaz {self.par.params_file} {wCool} {wAbs} {outfile}"
         print("\n--> Parameters:")
-        os.system("cat -n " + self.par.params_file)
+        subprocess.run(["cat", "-n", self.par.params_file], check=True)
         if cl:
             print("\n--> Running:\n  ", run_cmd, "\n")
             return run_cmd
         else:
             print("\n--> Running:\n  ", run_cmd, "\n")
-            os.system(run_cmd)
+            subprocess.run(run_cmd.split(), check=True)
             print("\n--> Finished")
 
 
 # ------------------------------------------------------------------------------
 # PBS
 # ------------------------------------------------------------------------------
-def PBSfile(jname, qname, xcmd, depen=None, nodes=None, cores=None, mail=None, htime=None):
+def PBSfile(workdir, jname, qname, xcmd, depen=None, nodes=None, cores=None, mail=None, htime=None):
     '''This function generates the PBS file to queue a simulation
     '''
     from datetime import timedelta as td
@@ -372,7 +368,7 @@ def PBSfile(jname, qname, xcmd, depen=None, nodes=None, cores=None, mail=None, h
         t = str(td(hours=2.0))
     else:
         t = str(td(hours=htime))
-    sname = "{0}.sub".format(jname)
+    sname = f"{jname}.sub"
 
     if nodes is None:
         n = 1
@@ -386,22 +382,22 @@ def PBSfile(jname, qname, xcmd, depen=None, nodes=None, cores=None, mail=None, h
 
     with open(sname, 'w') as f:
         print("#!/bin/bash -l\n", file=f)
-        print("# FILENAME: {0}\n".format(sname), file=f)
-        print("#PBS -q " + qname, file=f)
-        print("#PBS -l nodes={0:d}:ppn={1:d},naccesspolicy=singleuser".format(n, c), file=f)
-        print("#PBS -l walltime={0}".format(t), file=f)
-        print("#PBS -N " + jname, file=f)
-        print("#PBS -o /scratch/brown/jruedabe/joboutput/{0}.out".format(jname), file=f)
-        print("#PBS -e /scratch/brown/jruedabe/joboutput/{0}.err".format(jname), file=f)
+        print(f"# FILENAME: {sname}\n", file=f)
+        print(f"#PBS -q {qname}", file=f)
+        print(f"#PBS -l nodes={n:d}:ppn={c:d},naccesspolicy=singleuser", file=f)
+        print(f"#PBS -l walltime={t}", file=f)
+        print(f"#PBS -N {jname}", file=f)
+        print(f"#PBS -o {workdir}/joboutput/{jname}.out", file=f)
+        print(f"#PBS -e {workdir}/joboutput/{jname}.err", file=f)
         if depen is not None:
-            print("#PBS -W depend=afterok:{0}".format(depen), file=f)
+            print(f"#PBS -W depend=afterok:{depen}", file=f)
         if mail is not None:
-            print("#PBS -M {0}".format(mail), file=f)
+            print(f"#PBS -M {mail}", file=f)
             print("#PBS -m bae", file=f)
-        print("Working at: {0}".format(os.getcwd()))
-        print("\ncd {0}".format(os.getcwd()), file=f)
+        print(f"Working at: {os.getcwd()}")
+        print(f"\ncd {os.getcwd()}", file=f)
         if (c > 1) or not (qname == 'debug'):
-            print("export OMP_NUM_THREADS={0}".format(c), file=f)
+            print(f"export OMP_NUM_THREADS={c}", file=f)
         print("\n# RUN", file=f)
         print(xcmd, file=f)
     return sname
@@ -410,7 +406,7 @@ def PBSfile(jname, qname, xcmd, depen=None, nodes=None, cores=None, mail=None, h
 # ------------------------------------------------------------------------------
 #  SLURM
 # ------------------------------------------------------------------------------
-def SlurmFile(jname, qname, xcmd, depen=None, nodes=None, cores=None, mail=None, htime=None, box=None):
+def SlurmFile(workdir, jname, qname, xcmd, depen=None, nodes=None, cores=None, mail=None, htime=None, box=None):
     '''
     Description
     -----------
@@ -422,7 +418,7 @@ def SlurmFile(jname, qname, xcmd, depen=None, nodes=None, cores=None, mail=None,
         t = str(td(hours=2.0))
     else:
         t = str(td(hours=htime))
-    sname = "{0}.sub".format(jname)
+    sname = f"{jname}.sub"
 
     if nodes is None:
         n = 1
@@ -436,28 +432,28 @@ def SlurmFile(jname, qname, xcmd, depen=None, nodes=None, cores=None, mail=None,
 
     with open(sname, 'w') as f:
         print("#!/bin/sh -l\n", file=f)
-        print("# FILENAME: {0}\n".format(sname), file=f)
-        print("#SBATCH -A {0}".format(qname), file=f)
-        print("#SBATCH -N {0:d}".format(n), file=f)
-        print("#SBATCH -n {0:d}".format(c), file=f)
+        print(f"# FILENAME: {sname}\n", file=f)
+        print(f"#SBATCH -A {qname}", file=f)
+        print(f"#SBATCH -N {n:d}", file=f)
+        print(f"#SBATCH -n {c:d}", file=f)
         print("#SBATCH --exclusive", file=f)
-        print("#SBATCH -t {0}".format(t), file=f)
-        print("#SBATCH --job-name={0}".format(jname), file=f)
-        print("#SBATCH -o /scratch/brown/jruedabe/joboutput/{0}.out".format(jname), file=f)
-        print("#SBATCH -e /scratch/brown/jruedabe/joboutput/{0}.err".format(jname), file=f)
+        print(f"#SBATCH -t {t}", file=f)
+        print(f"#SBATCH --job-name={jname}", file=f)
+        print(f"#SBATCH -o {workdir}/joboutput/{jname}.out", file=f)
+        print(f"#SBATCH -e {workdir}/joboutput/{jname}.err", file=f)
         if depen is not None:
-            print("#SBATCH --depend=afterok:{0}".format(depen), file=f)
+            print(f"#SBATCH --depend=afterok:{depen}", file=f)
         if mail is not None:
-            print("#SBATCH --mail-user={0}".format(mail), file=f)
+            print(f"#SBATCH --mail-user={mail}", file=f)
             print("#SBATCH --mail-type=FAIL", file=f)
         else:
             print("#SBATCH --mail-type=NONE", file=f)
-        print("Working at: {0}".format(os.getcwd()))
-        print("\ncd {0}".format(os.getcwd()), file=f)
+        print(f"Working at: {os.getcwd()}")
+        print(f"\ncd {os.getcwd()}", file=f)
         if (c > 1) or not (qname == 'debug'):
-            print("export OMP_NUM_THREADS={0}".format(c), file=f)
+            print(f"export OMP_NUM_THREADS={c}", file=f)
         if box == 'brown':
-            print("module load intel impi hdf5", file=f)
+            print(f"module load intel impi hdf5", file=f)
         print("\n# RUN", file=f)
         print(xcmd, file=f)
     return sname
