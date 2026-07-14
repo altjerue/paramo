@@ -1,6 +1,8 @@
 # Paramo
 
-> "Vine a Comala porque me dijeron que acá vivía mi padre, un tal Pedro Páramo." - Juan Rulfo
+> "Vine a Comala porque me dijeron que acá vivía mi padre, un tal Pedro Páramo."
+>
+> Juan Rulfo
 
 `paramo` stands for: PArticles and RAdiation MOnitor. `paramo` is a Fortran 95 simulation library. It solves the Fokker-Planck equation to model the time evolution of relativistic particle distributions in relativistic plasma, coupled to synchrotron and inverse Compton radiative transfer. It is also parallelized with OpenMP, and uses HDF5 for output.
 

@@ -10,7 +10,7 @@ from time import strftime, localtime
 
 def exp10(decimal):
     """Function that gets the exponent of a double number."""
-    string = "{:.10e}".format(decimal)
+    string = "{:.20e}".format(decimal)
     parts = string.split("e")
     return int(parts[-1])
 
@@ -22,7 +22,7 @@ def fortran_double(number, dble=True):
     """Function that returns a floating point (as a string) in the FORTRAN
     notation
     """
-    string = f"{number:.10e}"
+    string = f"{number:.20e}"
     parts = string.split("e")
 
     ss = parts[0].split(".")
@@ -59,44 +59,44 @@ class parameters(object):
 
     # -----  PARAMETERS  -----
     def rParams(self):
-        self.R = 1e15                   # radius of emitting region (assuming spherical)
-        self.R0 = 1e14                  # distance from central engine
-        self.dLum = 4.0793e26           # luminosity distance (default Mrk 421)
-        self.z = 0.03                   # redshift (default Mrk 421)
-        self.theta_obs = 5.0            # observer viewing angle
-        self.gamma_bulk = 1e2           # emitting region bulk Lorentz factor
-        self.mu_mag = 1.0               # (1 + sigma) Gamma_bulk
-        self.sigma = 1.0                # magnetization (sigma)
-        self.f_rec = 1.0                # magnetic reconection dissipative efficiency
-        self.b_index = 0.0              # magnetic field decay index
-        self.Bfield = 1.0               # magnetic field decay index
-        self.eps_B = 0.03               # epsilon_B
-        self.eps_e = 0.1                # epsilon_e
-        self.eps_acc = 1e-2             # epsilon_acc
-        self.theta_e = 10.0             # electrons temperature
-        self.zeta_e = 0.99              # fraction of non-thermal particles
-        self.f_esc = 1.0                # electrons escape time factor
-        self.tstep = 1e-2               # time step factor
-        self.tmax = 1e5                 # maximum time
-        self.tmin = 0e0                 # minimum time
-        self.tvar = 2e0                 # variability time scale
-        self.L_jet = 1e45               # jet luminosity
-        self.E0 = 1e50                  # energy of the blast wave
-        self.n_ext = 1.0                # number density of the external medium
-        self.g1 = 1e2                   # power-law min Lorentz factor
-        self.g2 = 1e4                   # power-law max Lorentz factor
-        self.gmin = 1.01                # EED minimum Lorentz factor
-        self.gmax = 2e4                 # EED maximum Lorentz factor
-        self.pind = 2.5                 # EED power-law index
-        self.nu_ext = 1e14              # external radiation field freq.
-        self.u_ext = 1e-4               # external radiation field ener. dens.
-        self.numin = 1e7                # minimum frequency
-        self.numax = 1e15               # maximum frequency
-        self.NG = 128                   # number of EED bins
-        self.NT = 300                   # number of time steps
-        self.NF = 256                   # number of frequencies
-        self.time_grid = 1              # kind of cooling
-        self.params_file = 'input.par'  # name of the parameters file
+        self.R = 1e15                 # radius of emitting region (assuming spherical)
+        self.R0 = 1e14                # distance from central engine
+        self.dLum = 4.0793e26         # luminosity distance (default Mrk 421)
+        self.z = 0.03                 # redshift (default Mrk 421)
+        self.theta_obs = 5.0          # observer viewing angle
+        self.gamma_bulk = 1e2         # emitting region bulk Lorentz factor
+        self.mu_mag = 1.0             # (1 + sigma) Gamma_bulk
+        self.sigma = 1.0              # magnetization (sigma)
+        self.f_rec = 1.0              # magnetic reconnection dissipative efficiency
+        self.b_index = 0.0            # magnetic field decay index
+        self.Bfield = 1.0              # magnetic field decay index
+        self.eps_B = 0.03             # epsilon_B
+        self.eps_e = 0.1              # epsilon_e
+        self.eps_acc = 1e-2           # epsilon_acc
+        self.theta_e = 10.0           # electrons temperature
+        self.zeta_e = 0.99            # fraction of non-thermal particles
+        self.f_esc = 1.0              # electrons escape time factor
+        self.tstep = 1e-2             # time step factor
+        self.tmax = 1e5               # maximum time
+        self.tmin = 0e0               # minimum time
+        self.tvar = 2e0               # variability time scale
+        self.L_jet = 1e45             # jet luminosity
+        self.E0 = 1e50                # energy of the blast wave
+        self.n_ext = 1.0              # number density of the external medium
+        self.g1 = 1e2                 # power-law min Lorentz factor
+        self.g2 = 1e4                 # power-law max Lorentz factor
+        self.gmin = 1.01              # EED minimum Lorentz factor
+        self.gmax = 2e4               # EED maximum Lorentz factor
+        self.pind = 2.5               # EED power-law index
+        self.nu_ext = 1e14            # external radiation field frequency
+        self.u_ext = 1e-4             # external radiation field energy density
+        self.numin = 1e7              # minimum frequency
+        self.numax = 1e15             # maximum frequency
+        self.NG = 128                 # number of EED bins
+        self.NT = 300                 # number of time steps
+        self.NF = 256                 # number of frequencies
+        self.time_grid = 1            # kind of cooling
+        self.params_file = 'input.par' # name of the parameters file
 
     def __init__(self, **kwargs):
         self.rParams()
@@ -104,45 +104,45 @@ class parameters(object):
 
     def wParams(self):
         with open(self.params_file, 'w') as f:
-            print(fortran_double(self.R), ' ! Radius', file=f)
-            print(fortran_double(self.R0), ' ! Initial radius', file=f)
-            print(fortran_double(self.dLum), ' ! luminosity distance', file=f)
-            print(fortran_double(self.z), ' ! redshift', file=f)
-            print(fortran_double(self.theta_obs), ' ! viewing angle', file=f)
-            print(fortran_double(self.gamma_bulk), ' ! bulk Lorentz factor', file=f)
-            print(fortran_double(self.mu_mag), ' ! (1 + sigma) Gamma', file=f)
-            print(fortran_double(self.sigma), ' ! magnetization', file=f)
-            print(fortran_double(self.f_rec), ' ! dissipative efficiency of magnetic reconection', file=f)
-            print(fortran_double(self.b_index), ' ! magnetic field decay index', file=f)
-            print(fortran_double(self.Bfield), ' ! magnetic field strength', file=f)
-            print(fortran_double(self.theta_e), ' ! electrons temperature', file=f)
-            print(fortran_double(self.zeta_e), ' ! fraction of nonthermal electrons', file=f)
-            print(fortran_double(self.f_esc), ' ! electrons escape time', file=f)
-            print(fortran_double(self.tstep), ' ! time step factor', file=f)
-            print(fortran_double(self.tmax), ' ! maximum time', file=f)
-            print(fortran_double(self.tmin), ' ! minimum time', file=f)
-            print(fortran_double(self.tvar), ' ! variability time scale', file=f)
-            print(fortran_double(self.L_jet), ' ! jet luminosity', file=f)
-            print(fortran_double(self.E0), ' ! energy of the blast wave', file=f)
-            print(fortran_double(self.n_ext), ' ! number density of the external medium', file=f)
-            print(fortran_double(self.eps_e), ' ! epsilon_e', file=f)
-            print(fortran_double(self.eps_B), ' ! epsilon_B', file=f)
-            print(fortran_double(self.eps_acc), ' ! epsilon_acc', file=f)
-            print(fortran_double(self.g1), ' ! power-law min Lorentz factor', file=f)
-            print(fortran_double(self.g2), ' ! power-law max Lorentz factor', file=f)
-            print(fortran_double(self.gmin), ' ! EED min Lorentz factor', file=f)
-            print(fortran_double(self.gmax), ' ! EED max Lorentz factor', file=f)
-            print(fortran_double(self.pind), ' ! EED power-law index', file=f)
-            print(fortran_double(self.nu_ext), ' ! external rad. field frequency', file=f)
-            print(fortran_double(self.u_ext), ' ! external rad. field ener. density', file=f)
-            print(fortran_double(self.numin), ' ! min frequency', file=f)
-            print(fortran_double(self.numax), ' ! max frequency', file=f)
-            print(self.NG, ' ! number of EED bins', file=f)
-            print(self.NT, ' ! number of time steps', file=f)
-            print(self.NF, ' ! number of frequencies', file=f)
-            print(self.time_grid, ' ! kind of time grid', file=f)
-            # print(self.file_label, ' ! label to identify each output', file=f)
-        print("--> Parameters file: ", self.params_file)
+            print(f"{fortran_double(self.R):<26s} ! Radius", file=f)
+            print(f"{fortran_double(self.R0):<26s} ! Initial radius", file=f)
+            print(f"{fortran_double(self.dLum):<26s} ! luminosity distance", file=f)
+            print(f"{fortran_double(self.z):<26s} ! redshift", file=f)
+            print(f"{fortran_double(self.theta_obs):<26s} ! viewing angle", file=f)
+            print(f"{fortran_double(self.gamma_bulk):<26s} ! bulk Lorentz factor", file=f)
+            print(f"{fortran_double(self.mu_mag):<26s} ! (1 + sigma) Gamma", file=f)
+            print(f"{fortran_double(self.sigma):<26s} ! magnetization", file=f)
+            print(f"{fortran_double(self.f_rec):<26s} ! dissipative efficiency of magnetic reconection", file=f)
+            print(f"{fortran_double(self.b_index):<26s} ! magnetic field decay index", file=f)
+            print(f"{fortran_double(self.Bfield):<26s} ! magnetic field strength", file=f)
+            print(f"{fortran_double(self.theta_e):<26s} ! electrons temperature", file=f)
+            print(f"{fortran_double(self.zeta_e):<26s} ! fraction of nonthermal electrons", file=f)
+            print(f"{fortran_double(self.f_esc):<26s} ! electrons escape time", file=f)
+            print(f"{fortran_double(self.tstep):<26s} ! time step factor", file=f)
+            print(f"{fortran_double(self.tmax):<26s} ! maximum time", file=f)
+            print(f"{fortran_double(self.tmin):<26s} ! minimum time", file=f)
+            print(f"{fortran_double(self.tvar):<26s} ! variability time scale", file=f)
+            print(f"{fortran_double(self.L_jet):<26s} ! jet luminosity", file=f)
+            print(f"{fortran_double(self.E0):<26s} ! energy of the blast wave", file=f)
+            print(f"{fortran_double(self.n_ext):<26s} ! number density of the external medium", file=f)
+            print(f"{fortran_double(self.eps_e):<26s} ! epsilon_e", file=f)
+            print(f"{fortran_double(self.eps_B):<26s} ! epsilon_B", file=f)
+            print(f"{fortran_double(self.eps_acc):<26s} ! epsilon_acc", file=f)
+            print(f"{fortran_double(self.g1):<26s} ! power-law min Lorentz factor", file=f)
+            print(f"{fortran_double(self.g2):<26s} ! power-law max Lorentz factor", file=f)
+            print(f"{fortran_double(self.gmin):<26s} ! EED min Lorentz factor", file=f)
+            print(f"{fortran_double(self.gmax):<26s} ! EED max Lorentz factor", file=f)
+            print(f"{fortran_double(self.pind):<26s} ! EED power-law index", file=f)
+            print(f"{fortran_double(self.nu_ext):<26s} ! external rad. field frequency", file=f)
+            print(f"{fortran_double(self.u_ext):<26s} ! external rad. field ener. density", file=f)
+            print(f"{fortran_double(self.numin):<26s} ! min frequency", file=f)
+            print(f"{fortran_double(self.numax):<26s} ! max frequency", file=f)
+            print(f"{self.NG:<26d} ! number of EED bins", file=f)
+            print(f"{self.NT:<26d} ! number of time steps", file=f)
+            print(f"{self.NF:<26d} ! number of frequencies", file=f)
+            print(f"{self.time_grid:<26d} ! kind of time grid", file=f)
+            # print(f"{self.file_label:<26s} ! label to identify each output", file=f)
+        print(f"--> Parameters file: {self.params_file}")
 
 # ------------------------------------------------------------------------------
 # Compiler class
@@ -360,12 +360,9 @@ class Runner(object):
             print("\n--> Finished")
 
 
-#  #####  #####   ####     ###### # #      ######
-#  #    # #    # #         #      # #      #
-#  #    # #####   ####     #####  # #      #####
-#  #####  #    #      #    #      # #      #
-#  #      #    # #    #    #      # #      #
-#  #      #####   ####     #      # ###### ######
+# ------------------------------------------------------------------------------
+# PBS
+# ------------------------------------------------------------------------------
 def PBSfile(jname, qname, xcmd, depen=None, nodes=None, cores=None, mail=None, htime=None):
     '''This function generates the PBS file to queue a simulation
     '''
@@ -410,9 +407,9 @@ def PBSfile(jname, qname, xcmd, depen=None, nodes=None, cores=None, mail=None, h
     return sname
 
 
-#
+# ------------------------------------------------------------------------------
 #  SLURM
-#
+# ------------------------------------------------------------------------------
 def SlurmFile(jname, qname, xcmd, depen=None, nodes=None, cores=None, mail=None, htime=None, box=None):
     '''
     Description
